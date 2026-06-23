@@ -35,6 +35,7 @@ export default function GroupLeaderView() {
   const [activeSession, setActiveSession] = useState(null)
   const [sessionChildren, setSessionChildren] = useState([])
   const [absences, setAbsences] = useState([])
+  const [groupLoaded, setGroupLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [actionId, setActionId] = useState(null)
@@ -42,10 +43,19 @@ export default function GroupLeaderView() {
   useEffect(() => {
     if (!user || !groupId) return
 
-    const unsubGroup = subscribeToGroup(groupId, setGroup, (err) => {
-      setError(err.message)
-      setLoading(false)
-    })
+    const unsubGroup = subscribeToGroup(
+      groupId,
+      (data) => {
+        setGroup(data)
+        setGroupLoaded(true)
+        setLoading(false)
+      },
+      (err) => {
+        setError(err.message)
+        setGroupLoaded(true)
+        setLoading(false)
+      },
+    )
     const unsubSession = subscribeToActiveWalkSession(groupId, setActiveSession)
     const unsubAbsences = subscribeToGroupAbsences(groupId, setAbsences)
 
@@ -59,7 +69,6 @@ export default function GroupLeaderView() {
   useEffect(() => {
     if (!activeSession?.id) {
       setSessionChildren([])
-      setLoading(false)
       return
     }
 
@@ -67,7 +76,6 @@ export default function GroupLeaderView() {
       activeSession.id,
       (children) => {
         setSessionChildren(children)
-        setLoading(false)
       },
       (err) => setError(err.message),
     )
@@ -75,11 +83,21 @@ export default function GroupLeaderView() {
     return unsubscribe
   }, [activeSession?.id])
 
-  useEffect(() => {
-    if (group) setLoading(false)
-  }, [group])
-
   const isParticipant = group?.participantIds?.includes(user?.uid)
+    || group?.parties?.some((party) => party.userId === user?.uid)
+  const resolvedParticipantIds =
+    group?.participantIds?.length > 0
+      ? group.participantIds
+      : [...new Set((group?.parties ?? []).map((party) => party.userId))]
+  const groupReadyForWalk =
+    groupLoaded
+    && Boolean(group)
+    && isParticipant
+    && matchIsConnectedForUser(group, user?.uid)
+    && resolvedParticipantIds.includes(user?.uid)
+    && resolvedParticipantIds.length > 0
+    && Array.isArray(group.parties)
+    && group.parties.length > 0
   const walkInProgress = Boolean(activeSession)
   const children = useMemo(() => {
     if (walkInProgress) return sessionChildren
@@ -92,10 +110,12 @@ export default function GroupLeaderView() {
     : null
 
   async function handleStartWalk() {
+    if (!groupReadyForWalk || !user) return
+
     setError(null)
     setActionId('start')
     try {
-      await startGroupWalk(groupId, user.uid)
+      await startGroupWalk(groupId, user.uid, { match: group })
     } catch (err) {
       setError(formatFirestoreError(err, 'Could not start the walk.'))
     } finally {
@@ -110,23 +130,39 @@ export default function GroupLeaderView() {
     }
 
     const dropOffId = child.id ?? `${child.userId}_${child.childId}`
-    console.log('[dropOff] handleDropOff clicked', {
-      sessionId: activeSession.id,
-      dropOffId,
-      child,
-    })
 
     setError(null)
     setActionId(dropOffId)
+
+    const optimisticDroppedOffAt = new Date()
+    setSessionChildren((current) =>
+      current.map((entry) =>
+        entry.id === child.id
+        || (entry.userId === child.userId && entry.childId === child.childId)
+          ? { ...entry, walkStatus: 'dropped_off', droppedOffAt: optimisticDroppedOffAt }
+          : entry,
+      ),
+    )
+
     try {
-      await withTimeout(
+      const result = await withTimeout(
         markChildDroppedOff(activeSession.id, child.userId, child.childId, child.id),
         DROP_OFF_TIMEOUT_MS,
         'Drop-off timed out after 30 seconds. Check your connection and try again.',
       )
-      console.log('[dropOff] handleDropOff completed successfully')
+
+      if (result?.completed) {
+        setActiveSession(null)
+      }
     } catch (err) {
-      console.error('[dropOff] handleDropOff failed', err)
+      setSessionChildren((current) =>
+        current.map((entry) =>
+          entry.id === child.id
+          || (entry.userId === child.userId && entry.childId === child.childId)
+            ? { ...entry, walkStatus: child.walkStatus, droppedOffAt: child.droppedOffAt ?? null }
+            : entry,
+        ),
+      )
       setError(formatFirestoreError(err, 'Could not save drop-off. Please try again.'))
     } finally {
       setActionId(null)
@@ -202,10 +238,14 @@ export default function GroupLeaderView() {
             <button
               type="button"
               onClick={handleStartWalk}
-              disabled={actionId === 'start'}
+              disabled={actionId === 'start' || !groupReadyForWalk}
               className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
             >
-              {actionId === 'start' ? 'Starting…' : 'Start walk'}
+              {actionId === 'start'
+                ? 'Starting…'
+                : !groupReadyForWalk
+                  ? 'Loading group…'
+                  : 'Start walk'}
             </button>
           </>
         )}

@@ -38,3 +38,14 @@ export function formatFirestoreError(error, fallback = 'Something went wrong. Pl
 
   return message || fallback
 }
+
+export function isFirestorePermissionError(error) {
+  if (!error) return false
+  const code = error.code ?? ''
+  const message = error.message ?? ''
+  return (
+    code === 'permission-denied'
+    || message.includes('Missing or insufficient permissions')
+    || message.includes('insufficient permissions')
+  )
+}

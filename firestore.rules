@@ -18,10 +18,43 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/matches/$(groupId));
     }
 
+    function matchParticipantIds(groupId) {
+      return matchDoc(groupId).data.get('participantIds', []);
+    }
+
     function isMatchParticipant(groupId) {
       return isSignedIn()
         && matchExists(groupId)
-        && request.auth.uid in matchDoc(groupId).data.participantIds;
+        && request.auth.uid in matchParticipantIds(groupId);
+    }
+
+    function isInParticipantList(participantIds) {
+      return isSignedIn() && request.auth.uid in participantIds;
+    }
+
+    // Walk sessions: create validates against match; ongoing access uses session participantIds.
+    function canCreateWalkSession() {
+      return isSignedIn()
+        && request.resource.data.groupId is string
+        && isInParticipantList(request.resource.data.get('participantIds', []))
+        && matchExists(request.resource.data.groupId)
+        && request.auth.uid in matchParticipantIds(request.resource.data.groupId);
+    }
+
+    function canAccessWalkSession() {
+      return isInParticipantList(resource.data.get('participantIds', []));
+    }
+
+    function canAccessWalkSessionChildren(sessionId) {
+      let session = get(/databases/$(database)/documents/walkSessions/$(sessionId)).data;
+      return isInParticipantList(session.get('participantIds', []));
+    }
+
+    function canWriteWalkHistory(groupId) {
+      return isSignedIn()
+        && groupId is string
+        && matchExists(groupId)
+        && request.auth.uid in matchParticipantIds(groupId);
     }
 
     function buildingWalkSlotPath(walkType, activityId) {
@@ -88,25 +121,16 @@ service cloud.firestore {
       allow delete: if canDeleteMatch();
     }
 
-    // Walk sessions — created and updated by match participants.
+    // Walk sessions — match participants can create, read, and update.
     match /walkSessions/{sessionId} {
-      allow read: if isSignedIn() && isMatchParticipant(resource.data.groupId);
-      allow create: if isSignedIn()
-        && isMatchParticipant(request.resource.data.groupId);
-      allow update: if isSignedIn()
-        && isMatchParticipant(resource.data.groupId);
-      allow delete: if isSignedIn()
-        && isMatchParticipant(resource.data.groupId);
+      allow read: if canAccessWalkSession();
+      allow create: if canCreateWalkSession();
+      allow update: if canAccessWalkSession();
+      allow delete: if canAccessWalkSession();
 
       match /children/{childId} {
-        function sessionGroupId() {
-          return get(/databases/$(database)/documents/walkSessions/$(sessionId)).data.groupId;
-        }
-
-        allow read: if isSignedIn() && isMatchParticipant(sessionGroupId());
-        allow create: if isSignedIn() && isMatchParticipant(sessionGroupId());
-        allow update: if isSignedIn() && isMatchParticipant(sessionGroupId());
-        allow delete: if isSignedIn() && isMatchParticipant(sessionGroupId());
+        allow read, create, update: if canAccessWalkSessionChildren(sessionId);
+        allow delete: if canAccessWalkSessionChildren(sessionId);
       }
     }
 
@@ -127,10 +151,8 @@ service cloud.firestore {
     // Walk history — parent reads; match participants write.
     match /walkHistory/{historyId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn()
-        && isMatchParticipant(request.resource.data.groupId);
-      allow update: if isSignedIn()
-        && isMatchParticipant(resource.data.groupId);
+      allow create: if canWriteWalkHistory(request.resource.data.groupId);
+      allow update: if canWriteWalkHistory(resource.data.groupId);
       allow delete: if isSignedIn()
         && resource.data.userId == request.auth.uid;
     }

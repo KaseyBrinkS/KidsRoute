@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -11,10 +10,38 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import { db } from './db'
 import { isPartyScheduledOnDate, todayKey } from './sessions'
-import { createWalkHistoryEntry, syncWalkHistoryDropOff } from './walkHistory'
+import { syncWalkHistoryDropOff } from './walkHistory'
+import { isFirestorePermissionError } from './errors'
+
+const START_WALK_MAX_ATTEMPTS = 3
+const START_WALK_RETRY_MS = 1000
+const DROP_OFF_MAX_ATTEMPTS = 3
+const DROP_OFF_RETRY_MS = 1000
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function withPermissionRetries(operation, label, maxAttempts = 3, delayMs = 1000) {
+  let lastError = null
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await operation(attempt)
+    } catch (error) {
+      lastError = error
+      if (!isFirestorePermissionError(error) || attempt === maxAttempts) {
+        throw error
+      }
+      console.warn(`[${label}] permission error on attempt ${attempt}, retrying…`, error)
+      await sleep(delayMs * attempt)
+    }
+  }
+  throw lastError
+}
 
 export const CHILD_WALK_STATUSES = {
   confirmed: { label: 'Confirmed', style: 'bg-green-50 text-green-700' },
@@ -249,199 +276,174 @@ export function mergePartiesWithScheduleStatus(parties, absences, matchDay, date
   })
 }
 
-export async function startGroupWalk(groupId, leaderId) {
-  const match = await fetchGroup(groupId)
-  if (!match) return
-
-  if (await getActiveSession(groupId)) {
-    throw new Error('A walk is already in progress for this group.')
-  }
-
-  const today = todayKey()
-  const absencesSnap = await getDocs(
-    query(collection(db, 'groupAbsences'), where('groupId', '==', groupId)),
-  )
-  const absences = absencesSnap.docs.map((docSnap) => docSnap.data())
-
-  const sessionRef = await addDoc(collection(db, 'walkSessions'), {
-    groupId,
-    participantIds: match.participantIds,
-    location: match.location,
-    scheduleDay: match.day,
-    dateKey: today,
-    status: 'started',
-    startedAt: serverTimestamp(),
-    completedAt: null,
-    leaderId,
-    createdAt: serverTimestamp(),
-  })
-
-  for (const party of match.parties.map(normalizeParty)) {
-    const absent = isAbsentOnDate(absences, party.userId, party.childId, today)
-    const walkStatus = absent ? 'absent' : 'confirmed'
-
-    let historyId = null
-    const pickedUpAt = walkStatus === 'confirmed' ? serverTimestamp() : null
-
-    if (walkStatus === 'confirmed') {
-      const historyRef = await createWalkHistoryEntry({
-        userId: party.userId,
-        childId: party.childId,
-        childFirstName: party.childFirstName,
-        groupId,
-        sessionId: sessionRef.id,
-        location: match.location,
-        scheduleDay: match.day,
-      })
-      historyId = historyRef.id
+export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch = null } = {}) {
+  return withPermissionRetries(async (attempt) => {
+    const match =
+      attempt === 1 && prefetchedMatch ? prefetchedMatch : await fetchGroup(groupId)
+    if (!match) {
+      throw new Error('Group not found. Refresh the page and try again.')
     }
 
-    await setDoc(
-      doc(db, 'walkSessions', sessionRef.id, 'children', childDocId(party.userId, party.childId)),
-      {
-        userId: party.userId,
-        childId: party.childId,
-        childFirstName: party.childFirstName,
-        parentName: party.parentName,
-        contactPhone: party.contactPhone,
-        walkStatus,
-        historyId,
-        pickedUpAt,
-        droppedOffAt: null,
-      },
-    )
-  }
+    const sessionParticipantIds =
+      match.participantIds?.length > 0
+        ? match.participantIds
+        : [...new Set(match.parties.map((party) => party.userId))]
 
-  return sessionRef.id
+    if (!sessionParticipantIds.includes(leaderId)) {
+      throw new Error('You are not a participant in this group. Refresh the page and try again.')
+    }
+
+    if (await getActiveSession(groupId)) {
+      throw new Error('A walk is already in progress for this group.')
+    }
+
+    const today = todayKey()
+    const absencesSnap = await getDocs(
+      query(collection(db, 'groupAbsences'), where('groupId', '==', groupId)),
+    )
+    const absences = absencesSnap.docs.map((docSnap) => docSnap.data())
+
+    const sessionRef = doc(collection(db, 'walkSessions'))
+    const batch = writeBatch(db)
+
+    batch.set(sessionRef, {
+      groupId,
+      participantIds: sessionParticipantIds,
+      location: match.location,
+      scheduleDay: match.day,
+      dateKey: today,
+      status: 'started',
+      startedAt: serverTimestamp(),
+      completedAt: null,
+      leaderId,
+      createdAt: serverTimestamp(),
+    })
+
+    for (const party of match.parties.map(normalizeParty)) {
+      const absent = isAbsentOnDate(absences, party.userId, party.childId, today)
+      const walkStatus = absent ? 'absent' : 'confirmed'
+      const pickedUpAt = walkStatus === 'confirmed' ? serverTimestamp() : null
+
+      let historyId = null
+      if (walkStatus === 'confirmed') {
+        const historyRef = doc(collection(db, 'walkHistory'))
+        historyId = historyRef.id
+        batch.set(historyRef, {
+          userId: party.userId,
+          childId: party.childId,
+          childFirstName: party.childFirstName,
+          groupId,
+          sessionId: sessionRef.id,
+          location: match.location,
+          scheduleDay: match.day,
+          pickedUpAt: pickedUpAt ?? serverTimestamp(),
+          droppedOffAt: null,
+          createdAt: serverTimestamp(),
+        })
+      }
+
+      batch.set(
+        doc(db, 'walkSessions', sessionRef.id, 'children', childDocId(party.userId, party.childId)),
+        {
+          userId: party.userId,
+          childId: party.childId,
+          childFirstName: party.childFirstName,
+          parentName: party.parentName,
+          contactPhone: party.contactPhone,
+          walkStatus,
+          historyId,
+          pickedUpAt,
+          droppedOffAt: null,
+        },
+      )
+    }
+
+    await batch.commit()
+    return sessionRef.id
+  }, 'startWalk', START_WALK_MAX_ATTEMPTS, START_WALK_RETRY_MS)
 }
 
 export async function markChildDroppedOff(sessionId, userId, childId, childDocKey = null) {
-  console.log('[dropOff] markChildDroppedOff called', {
-    sessionId,
-    userId,
-    childId,
-    childDocKey,
-  })
-
-  if (!sessionId) {
-    throw new Error('No active walk session. Refresh the page and try again.')
-  }
-
-  const sessionRef = doc(db, 'walkSessions', sessionId)
-  console.log('[dropOff] loading walk session', { path: sessionRef.path })
-  const sessionSnap = await getDoc(sessionRef)
-  if (!sessionSnap.exists()) {
-    console.error('[dropOff] walk session not found', { sessionId })
-    throw new Error('This walk session no longer exists. Refresh the page and try again.')
-  }
-
-  const session = sessionSnap.data()
-  console.log('[dropOff] walk session loaded', {
-    groupId: session.groupId,
-    status: session.status,
-    dateKey: session.dateKey,
-  })
-
-  const located = await findSessionChild(sessionId, userId, childId, childDocKey)
-  if (!located) {
-    console.error('[dropOff] child document not found in session', {
+  return withPermissionRetries(async () => {
+    console.log('[dropOff] markChildDroppedOff called', {
       sessionId,
       userId,
       childId,
       childDocKey,
     })
-    throw new Error(
-      'This child is not part of the active walk session. Refresh the page and try again.',
-    )
-  }
 
-  const { childRef, childSnap, resolvedChildDocId } = located
-  const child = childSnap.data()
-  console.log('[dropOff] child document loaded', {
-    path: childRef.path,
-    walkStatus: child.walkStatus,
-    historyId: child.historyId,
-    childFirstName: child.childFirstName,
-  })
+    if (!sessionId) {
+      throw new Error('No active walk session. Refresh the page and try again.')
+    }
 
-  if (child.walkStatus === 'absent') {
-    throw new Error(`${child.childFirstName || 'This child'} is marked absent and cannot be dropped off.`)
-  }
-  if (child.walkStatus === 'dropped_off') {
-    throw new Error(`${child.childFirstName || 'This child'} is already marked as dropped off.`)
-  }
+    const sessionRef = doc(db, 'walkSessions', sessionId)
+    const sessionSnap = await getDoc(sessionRef)
+    if (!sessionSnap.exists()) {
+      throw new Error('This walk session no longer exists. Refresh the page and try again.')
+    }
 
-  console.log('[dropOff] updating child document', { path: childRef.path })
-  const droppedOffAt = serverTimestamp()
-  try {
-    await updateDoc(childRef, {
+    const session = sessionSnap.data()
+    const located = await findSessionChild(sessionId, userId, childId, childDocKey)
+    if (!located) {
+      throw new Error(
+        'This child is not part of the active walk session. Refresh the page and try again.',
+      )
+    }
+
+    const { childRef, childSnap, resolvedChildDocId } = located
+    const child = childSnap.data()
+
+    if (child.walkStatus === 'absent') {
+      throw new Error(`${child.childFirstName || 'This child'} is marked absent and cannot be dropped off.`)
+    }
+    if (child.walkStatus === 'dropped_off') {
+      return { alreadyDroppedOff: true, sessionId, groupId: session.groupId }
+    }
+
+    const childrenSnap = await getDocs(collection(db, 'walkSessions', sessionId, 'children'))
+    const children = childrenSnap.docs.map((docSnap) => {
+      if (docSnap.id === resolvedChildDocId) {
+        return { ...docSnap.data(), walkStatus: 'dropped_off' }
+      }
+      return docSnap.data()
+    })
+    const allDroppedOff = shouldCompleteWalk(children)
+
+    const droppedOffAt = serverTimestamp()
+    const batch = writeBatch(db)
+    batch.update(childRef, {
       walkStatus: 'dropped_off',
       droppedOffAt,
     })
-    console.log('[dropOff] child document updated successfully')
-  } catch (error) {
-    console.error('[dropOff] child document update failed', error)
-    throw error
-  }
-
-  const resolvedUserId = child.userId ?? userId
-  const resolvedChildId = child.childId ?? childId
-
-  console.log('[dropOff] syncing walk history', {
-    historyId: child.historyId,
-    userId: resolvedUserId,
-    childId: resolvedChildId,
-  })
-  try {
-    await syncWalkHistoryDropOff({
-      historyId: child.historyId,
-      userId: resolvedUserId,
-      childId: resolvedChildId,
-      childFirstName: child.childFirstName,
-      groupId: session.groupId,
-      sessionId,
-      location: session.location,
-      scheduleDay: session.scheduleDay,
-      pickedUpAt: child.pickedUpAt ?? session.startedAt,
-    })
-    console.log('[dropOff] walk history synced successfully')
-  } catch (error) {
-    // Child drop-off is saved; history sync is best-effort so a history failure
-    // must not leave the UI stuck or roll back the drop-off.
-    console.error('[dropOff] walk history sync failed (drop-off still saved)', error)
-  }
-
-  console.log('[dropOff] checking if walk should complete', { sessionId })
-  const childrenSnap = await getDocs(collection(db, 'walkSessions', sessionId, 'children'))
-  const children = childrenSnap.docs.map((docSnap) => {
-    if (docSnap.id === resolvedChildDocId) {
-      return { ...docSnap.data(), walkStatus: 'dropped_off' }
-    }
-    return docSnap.data()
-  })
-
-  const allDroppedOff = shouldCompleteWalk(children)
-  console.log('[dropOff] walk completion check', {
-    activeChildren: children.filter((entry) => entry.walkStatus !== 'absent').length,
-    droppedOffChildren: children.filter((entry) => entry.walkStatus === 'dropped_off').length,
-    allDroppedOff,
-  })
-
-  if (allDroppedOff) {
-    console.log('[dropOff] completing walk session', { path: sessionRef.path })
-    try {
-      await updateDoc(sessionRef, {
+    if (allDroppedOff) {
+      batch.update(sessionRef, {
         status: 'completed',
         completedAt: serverTimestamp(),
       })
-      console.log('[dropOff] walk session marked completed')
-    } catch (error) {
-      console.error('[dropOff] walk session completion failed (drop-off still saved)', error)
-      throw error
     }
-  }
+    await batch.commit()
 
-  console.log('[dropOff] markChildDroppedOff finished successfully')
+    const resolvedUserId = child.userId ?? userId
+    const resolvedChildId = child.childId ?? childId
+
+    try {
+      await syncWalkHistoryDropOff({
+        historyId: child.historyId,
+        userId: resolvedUserId,
+        childId: resolvedChildId,
+        childFirstName: child.childFirstName,
+        groupId: session.groupId,
+        sessionId,
+        location: session.location,
+        scheduleDay: session.scheduleDay,
+        pickedUpAt: child.pickedUpAt ?? session.startedAt,
+      })
+    } catch (error) {
+      console.error('[dropOff] walk history sync failed (drop-off still saved)', error)
+    }
+
+    return { alreadyDroppedOff: false, sessionId, groupId: session.groupId, completed: allDroppedOff }
+  }, 'dropOff', DROP_OFF_MAX_ATTEMPTS, DROP_OFF_RETRY_MS)
 }
 
 export async function markAbsentSingleDate({
