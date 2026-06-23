@@ -6,10 +6,142 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Temporary permissive rules for development/testing.
-    // Lock down before launch — only authenticated users may access data.
-    match /{document=**} {
-      allow read, write: if isSignedIn();
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function matchDoc(groupId) {
+      return get(/databases/$(database)/documents/matches/$(groupId));
+    }
+
+    function matchExists(groupId) {
+      return exists(/databases/$(database)/documents/matches/$(groupId));
+    }
+
+    function isMatchParticipant(groupId) {
+      return isSignedIn()
+        && matchExists(groupId)
+        && request.auth.uid in matchDoc(groupId).data.participantIds;
+    }
+
+    function buildingWalkSlotPath(walkType, activityId) {
+      return activityId == null
+        ? /databases/$(database)/documents/buildingWalkSlots/$(request.auth.uid + '_' + walkType)
+        : /databases/$(database)/documents/buildingWalkSlots/$(request.auth.uid + '_' + walkType + '_' + activityId);
+    }
+
+    function userHasBuildingWalkSlot(matchData) {
+      return matchData.matchType == 'building'
+        && matchData.buildingWalkType != null
+        && exists(buildingWalkSlotPath(matchData.buildingWalkType, matchData.get('activityId', null)));
+    }
+
+    function canReadMatch() {
+      return isSignedIn() && request.auth.uid in resource.data.participantIds;
+    }
+
+    function canCreateMatch() {
+      return isSignedIn()
+        && request.auth.uid in request.resource.data.participantIds;
+    }
+
+    function canUpdateMatch() {
+      return isSignedIn()
+        && request.auth.uid in request.resource.data.participantIds
+        && (
+          request.auth.uid in resource.data.participantIds
+          || userHasBuildingWalkSlot(resource.data)
+        );
+    }
+
+    function canDeleteMatch() {
+      return isSignedIn() && request.auth.uid in resource.data.participantIds;
+    }
+
+    // User profiles, kids, and activities — owner only.
+    match /users/{userId} {
+      allow read, create, update, delete: if isOwner(userId);
+
+      match /children/{childId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /activities/{activityId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+    }
+
+    // Activity matching index — readable by all signed-in users; writable by slot owner.
+    match /activitySlots/{slotId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // Activity and building walk groups — participants only.
+    match /matches/{matchId} {
+      allow read: if canReadMatch();
+      allow create: if canCreateMatch();
+      allow update: if canUpdateMatch();
+      allow delete: if canDeleteMatch();
+    }
+
+    // Walk sessions — created and updated by match participants.
+    match /walkSessions/{sessionId} {
+      allow read: if isSignedIn() && isMatchParticipant(resource.data.groupId);
+      allow create: if isSignedIn()
+        && isMatchParticipant(request.resource.data.groupId);
+      allow update: if isSignedIn()
+        && isMatchParticipant(resource.data.groupId);
+      allow delete: if isSignedIn()
+        && isMatchParticipant(resource.data.groupId);
+
+      match /children/{childId} {
+        function sessionGroupId() {
+          return get(/databases/$(database)/documents/walkSessions/$(sessionId)).data.groupId;
+        }
+
+        allow read: if isSignedIn() && isMatchParticipant(sessionGroupId());
+        allow create: if isSignedIn() && isMatchParticipant(sessionGroupId());
+        allow update: if isSignedIn() && isMatchParticipant(sessionGroupId());
+        allow delete: if isSignedIn() && isMatchParticipant(sessionGroupId());
+      }
+    }
+
+    // Absences — parent creates; match participants can read.
+    match /groupAbsences/{absenceId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+        || isMatchParticipant(resource.data.groupId)
+      );
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && matchExists(request.resource.data.groupId)
+        && isMatchParticipant(request.resource.data.groupId);
+      allow update, delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // Walk history — parent reads; match participants write.
+    match /walkHistory/{historyId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isMatchParticipant(request.resource.data.groupId);
+      allow update: if isSignedIn()
+        && isMatchParticipant(resource.data.groupId);
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // Building walk opt-in slots — readable by signed-in users; writable by owner.
+    match /buildingWalkSlots/{slotId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
     }
   }
 }

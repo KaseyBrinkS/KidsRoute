@@ -20,6 +20,10 @@ export function formatFirestoreError(error, fallback = 'Something went wrong. Pl
     return message || 'This action could not be completed in the current state.'
   }
 
+  if (code === 'deadline-exceeded' || message.includes('timed out')) {
+    return message || 'The save took too long. Check your connection and try again.'
+  }
+
   if (message.includes('Could not identify which child')) {
     return message
   }

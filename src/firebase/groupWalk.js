@@ -31,9 +31,58 @@ function childDocId(userId, childId) {
   return `${userId}_${childId}`
 }
 
-function resolveSessionChildDocId(userId, childId, childDocKey) {
-  if (childDocKey) return childDocKey
-  if (userId && childId) return childDocId(userId, childId)
+async function findSessionChild(sessionId, userId, childId, childDocKey) {
+  const candidateIds = [
+    childDocKey,
+    userId && childId ? childDocId(userId, childId) : null,
+  ].filter(Boolean)
+
+  console.log('[dropOff] findSessionChild', {
+    sessionId,
+    userId,
+    childId,
+    childDocKey,
+    candidateIds,
+  })
+
+  for (const docId of candidateIds) {
+    const childRef = doc(db, 'walkSessions', sessionId, 'children', docId)
+    const childSnap = await getDoc(childRef)
+    console.log('[dropOff] candidate lookup', { docId, exists: childSnap.exists() })
+    if (childSnap.exists()) {
+      return { childRef, childSnap, resolvedChildDocId: docId }
+    }
+  }
+
+  const childrenSnap = await getDocs(collection(db, 'walkSessions', sessionId, 'children'))
+  const sessionChildren = childrenSnap.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  }))
+  console.log('[dropOff] session children snapshot', {
+    count: sessionChildren.length,
+    children: sessionChildren.map((child) => ({
+      id: child.id,
+      userId: child.userId,
+      childId: child.childId,
+      walkStatus: child.walkStatus,
+    })),
+  })
+
+  const matched = childrenSnap.docs.find((docSnap) => {
+    const data = docSnap.data()
+    return data.userId === userId && data.childId === childId
+  })
+
+  if (matched) {
+    console.log('[dropOff] matched child by userId+childId', { docId: matched.id })
+    return {
+      childRef: matched.ref,
+      childSnap: matched,
+      resolvedChildDocId: matched.id,
+    }
+  }
+
   return null
 }
 
@@ -267,29 +316,54 @@ export async function startGroupWalk(groupId, leaderId) {
 }
 
 export async function markChildDroppedOff(sessionId, userId, childId, childDocKey = null) {
+  console.log('[dropOff] markChildDroppedOff called', {
+    sessionId,
+    userId,
+    childId,
+    childDocKey,
+  })
+
   if (!sessionId) {
     throw new Error('No active walk session. Refresh the page and try again.')
   }
 
-  const resolvedChildDocId = resolveSessionChildDocId(userId, childId, childDocKey)
-  if (!resolvedChildDocId) {
-    throw new Error('Could not identify which child to mark as dropped off.')
-  }
-
   const sessionRef = doc(db, 'walkSessions', sessionId)
+  console.log('[dropOff] loading walk session', { path: sessionRef.path })
   const sessionSnap = await getDoc(sessionRef)
   if (!sessionSnap.exists()) {
+    console.error('[dropOff] walk session not found', { sessionId })
     throw new Error('This walk session no longer exists. Refresh the page and try again.')
   }
 
   const session = sessionSnap.data()
-  const childRef = doc(db, 'walkSessions', sessionId, 'children', resolvedChildDocId)
-  const childSnap = await getDoc(childRef)
-  if (!childSnap.exists()) {
-    throw new Error('This child is not part of the active walk session.')
+  console.log('[dropOff] walk session loaded', {
+    groupId: session.groupId,
+    status: session.status,
+    dateKey: session.dateKey,
+  })
+
+  const located = await findSessionChild(sessionId, userId, childId, childDocKey)
+  if (!located) {
+    console.error('[dropOff] child document not found in session', {
+      sessionId,
+      userId,
+      childId,
+      childDocKey,
+    })
+    throw new Error(
+      'This child is not part of the active walk session. Refresh the page and try again.',
+    )
   }
 
+  const { childRef, childSnap, resolvedChildDocId } = located
   const child = childSnap.data()
+  console.log('[dropOff] child document loaded', {
+    path: childRef.path,
+    walkStatus: child.walkStatus,
+    historyId: child.historyId,
+    childFirstName: child.childFirstName,
+  })
+
   if (child.walkStatus === 'absent') {
     throw new Error(`${child.childFirstName || 'This child'} is marked absent and cannot be dropped off.`)
   }
@@ -297,27 +371,47 @@ export async function markChildDroppedOff(sessionId, userId, childId, childDocKe
     throw new Error(`${child.childFirstName || 'This child'} is already marked as dropped off.`)
   }
 
+  console.log('[dropOff] updating child document', { path: childRef.path })
   const droppedOffAt = serverTimestamp()
-  await updateDoc(childRef, {
-    walkStatus: 'dropped_off',
-    droppedOffAt,
-  })
+  try {
+    await updateDoc(childRef, {
+      walkStatus: 'dropped_off',
+      droppedOffAt,
+    })
+    console.log('[dropOff] child document updated successfully')
+  } catch (error) {
+    console.error('[dropOff] child document update failed', error)
+    throw error
+  }
 
   const resolvedUserId = child.userId ?? userId
   const resolvedChildId = child.childId ?? childId
 
-  await syncWalkHistoryDropOff({
+  console.log('[dropOff] syncing walk history', {
     historyId: child.historyId,
     userId: resolvedUserId,
     childId: resolvedChildId,
-    childFirstName: child.childFirstName,
-    groupId: session.groupId,
-    sessionId,
-    location: session.location,
-    scheduleDay: session.scheduleDay,
-    pickedUpAt: child.pickedUpAt ?? session.startedAt,
   })
+  try {
+    await syncWalkHistoryDropOff({
+      historyId: child.historyId,
+      userId: resolvedUserId,
+      childId: resolvedChildId,
+      childFirstName: child.childFirstName,
+      groupId: session.groupId,
+      sessionId,
+      location: session.location,
+      scheduleDay: session.scheduleDay,
+      pickedUpAt: child.pickedUpAt ?? session.startedAt,
+    })
+    console.log('[dropOff] walk history synced successfully')
+  } catch (error) {
+    // Child drop-off is saved; history sync is best-effort so a history failure
+    // must not leave the UI stuck or roll back the drop-off.
+    console.error('[dropOff] walk history sync failed (drop-off still saved)', error)
+  }
 
+  console.log('[dropOff] checking if walk should complete', { sessionId })
   const childrenSnap = await getDocs(collection(db, 'walkSessions', sessionId, 'children'))
   const children = childrenSnap.docs.map((docSnap) => {
     if (docSnap.id === resolvedChildDocId) {
@@ -326,12 +420,28 @@ export async function markChildDroppedOff(sessionId, userId, childId, childDocKe
     return docSnap.data()
   })
 
-  if (shouldCompleteWalk(children)) {
-    await updateDoc(sessionRef, {
-      status: 'completed',
-      completedAt: serverTimestamp(),
-    })
+  const allDroppedOff = shouldCompleteWalk(children)
+  console.log('[dropOff] walk completion check', {
+    activeChildren: children.filter((entry) => entry.walkStatus !== 'absent').length,
+    droppedOffChildren: children.filter((entry) => entry.walkStatus === 'dropped_off').length,
+    allDroppedOff,
+  })
+
+  if (allDroppedOff) {
+    console.log('[dropOff] completing walk session', { path: sessionRef.path })
+    try {
+      await updateDoc(sessionRef, {
+        status: 'completed',
+        completedAt: serverTimestamp(),
+      })
+      console.log('[dropOff] walk session marked completed')
+    } catch (error) {
+      console.error('[dropOff] walk session completion failed (drop-off still saved)', error)
+      throw error
+    }
   }
+
+  console.log('[dropOff] markChildDroppedOff finished successfully')
 }
 
 export async function markAbsentSingleDate({

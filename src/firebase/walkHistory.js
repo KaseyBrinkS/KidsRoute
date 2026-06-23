@@ -85,18 +85,29 @@ export async function syncWalkHistoryDropOff({
   pickedUpAt,
 }) {
   const normalizedHistoryId = normalizeHistoryId(historyId)
+  console.log('[dropOff] syncWalkHistoryDropOff', {
+    historyId,
+    normalizedHistoryId,
+    userId,
+    childId,
+    sessionId,
+  })
 
   if (normalizedHistoryId) {
     try {
+      console.log('[dropOff] updating walk history entry', { historyId: normalizedHistoryId })
       await completeWalkHistoryEntry(normalizedHistoryId)
+      console.log('[dropOff] walk history entry updated')
       return normalizedHistoryId
     } catch (error) {
-      if (error?.code !== 'not-found') {
-        throw error
-      }
+      console.warn('[dropOff] walk history update failed, will create fallback entry', {
+        code: error?.code,
+        message: error?.message,
+      })
     }
   }
 
+  console.log('[dropOff] creating walk history entry (fallback)')
   const historyRef = await createWalkHistoryEntry({
     userId,
     childId,
@@ -109,6 +120,7 @@ export async function syncWalkHistoryDropOff({
     droppedOffAt: serverTimestamp(),
   })
 
+  console.log('[dropOff] walk history entry created', { historyId: historyRef.id })
   return historyRef.id
 }
 

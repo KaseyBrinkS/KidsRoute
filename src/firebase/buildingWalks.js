@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -120,7 +119,7 @@ function childrenForSchoolWalk(children, school) {
   return children.filter((child) => (child.school ?? DEFAULT_SCHOOL) === school)
 }
 
-function buildBuildingParty(userId, child, profile, walkTypeConfig, activityId = null) {
+function buildBuildingParty(userId, child, slot, walkTypeConfig, activityId = null) {
   return {
     userId,
     childId: child.id,
@@ -134,8 +133,8 @@ function buildBuildingParty(userId, child, profile, walkTypeConfig, activityId =
     sessions: defaultSessions(),
     summerStartDate: null,
     summerEndDate: null,
-    contactPhone: profile.phoneNumber || 'Not provided',
-    parentName: profile.displayName || 'Parent',
+    contactPhone: slot.contactPhone || 'Not provided',
+    parentName: slot.parentName || 'Parent',
   }
 }
 
@@ -146,15 +145,17 @@ function buildMatchLocation(walkTypeConfig, homeAddressDisplay, activityLocation
   return `${walkTypeConfig.label} · ${homeAddressDisplay}`
 }
 
+export function buildingMatchDocId(matchKey) {
+  return `building_${matchKey.replace(/\//g, '_').replace(/\|/g, '__')}`
+}
+
 async function findMatchByKey(matchKey) {
-  const snapshot = await getDocs(
-    query(collection(db, 'matches'), where('matchKey', '==', matchKey)),
-  )
-  const buildingMatches = snapshot.docs.filter(
-    (docSnap) => docSnap.data().matchType === 'building',
-  )
-  if (buildingMatches.length === 0) return null
-  return { id: buildingMatches[0].id, ...buildingMatches[0].data() }
+  const matchRef = doc(db, 'matches', buildingMatchDocId(matchKey))
+  const matchSnap = await getDoc(matchRef)
+  if (!matchSnap.exists()) return null
+  const data = matchSnap.data()
+  if (data.matchType !== 'building') return null
+  return { id: matchSnap.id, ...data }
 }
 
 async function syncBuildingMatch({
@@ -191,13 +192,12 @@ async function syncBuildingMatch({
   const parties = []
 
   for (const slot of slots) {
-    const profile = await getUserProfile(slot.userId)
     for (const child of slot.children ?? []) {
       parties.push(
         buildBuildingParty(
           slot.userId,
           child,
-          profile,
+          slot,
           walkTypeConfig,
           walkType === 'after_school_home' ? slot.activityId : null,
         ),
@@ -242,18 +242,19 @@ async function syncBuildingMatch({
   }
 
   const existing = await findMatchByKey(matchKey)
+  const matchRef = doc(db, 'matches', buildingMatchDocId(matchKey))
 
   if (participantIds.length === 0) {
-    if (existing) await deleteDoc(doc(db, 'matches', existing.id))
+    if (existing) await deleteDoc(matchRef)
     return null
   }
 
   if (existing) {
-    await updateDoc(doc(db, 'matches', existing.id), matchData)
+    await updateDoc(matchRef, matchData)
     return existing.id
   }
 
-  const matchRef = await addDoc(collection(db, 'matches'), {
+  await setDoc(matchRef, {
     ...matchData,
     createdAt: serverTimestamp(),
   })
@@ -324,6 +325,8 @@ export async function joinBuildingWalk(userId, walkType, { activityId = null } =
     zipCode,
     homeAddressDisplay,
     school,
+    parentName: profile.displayName || 'Parent',
+    contactPhone: profile.phoneNumber || 'Not provided',
     children: eligibleChildren.map((child) => ({
       id: child.id,
       firstName: child.firstName,
@@ -475,6 +478,8 @@ export async function syncBuildingWalkChildren(userId) {
         zipCode,
         homeAddressDisplay,
         school,
+        parentName: profile.displayName || 'Parent',
+        contactPhone: profile.phoneNumber || 'Not provided',
         children: eligibleChildren.map((child) => ({
           id: child.id,
           firstName: child.firstName,

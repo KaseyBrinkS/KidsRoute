@@ -18,6 +18,16 @@ import {
 } from '../firebase/groupWalk'
 import { formatHistoryTime } from '../firebase/walkHistory'
 
+const DROP_OFF_TIMEOUT_MS = 30000
+
+function withTimeout(promise, ms, message) {
+  let timeoutId
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId))
+}
+
 export default function GroupLeaderView() {
   const { groupId } = useParams()
   const { user } = useAuth()
@@ -99,12 +109,24 @@ export default function GroupLeaderView() {
       return
     }
 
-    const dropOffId = child.id ?? `${child.userId}:${child.childId}`
+    const dropOffId = child.id ?? `${child.userId}_${child.childId}`
+    console.log('[dropOff] handleDropOff clicked', {
+      sessionId: activeSession.id,
+      dropOffId,
+      child,
+    })
+
     setError(null)
     setActionId(dropOffId)
     try {
-      await markChildDroppedOff(activeSession.id, child.userId, child.childId, child.id)
+      await withTimeout(
+        markChildDroppedOff(activeSession.id, child.userId, child.childId, child.id),
+        DROP_OFF_TIMEOUT_MS,
+        'Drop-off timed out after 30 seconds. Check your connection and try again.',
+      )
+      console.log('[dropOff] handleDropOff completed successfully')
     } catch (err) {
+      console.error('[dropOff] handleDropOff failed', err)
       setError(formatFirestoreError(err, 'Could not save drop-off. Please try again.'))
     } finally {
       setActionId(null)
@@ -206,7 +228,7 @@ export default function GroupLeaderView() {
       <ul className="mt-3 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
         {children.map((child) => {
           const status = getChildWalkStatus(child)
-          const dropOffId = child.id ?? `${child.userId}:${child.childId}`
+          const dropOffId = child.id ?? `${child.userId}_${child.childId}`
           const canDropOff =
             walkInProgress &&
             child.walkStatus !== 'absent' &&
