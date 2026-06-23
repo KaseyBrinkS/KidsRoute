@@ -1,0 +1,258 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
+import { useAuth } from '../context/AuthContext'
+import { logOut } from '../firebase/auth'
+import { syncUserMatchingOptOut } from '../firebase/matching'
+import {
+  DEFAULT_SCHOOL,
+  subscribeToUserProfile,
+  updateUserProfile,
+} from '../firebase/users'
+
+const inputClass =
+  'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
+
+function SettingsSection({ title, description, children }) {
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white p-6">
+      <h2 className="text-sm font-medium text-gray-900">{title}</h2>
+      {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+      <div className="mt-4">{children}</div>
+    </section>
+  )
+}
+
+function Toggle({ label, description, checked, onChange, disabled }) {
+  return (
+    <label className="flex cursor-pointer items-start justify-between gap-4">
+      <span>
+        <span className="block text-sm font-medium text-gray-900">{label}</span>
+        {description && <span className="mt-0.5 block text-sm text-gray-500">{description}</span>}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+          checked ? 'bg-indigo-600' : 'bg-gray-200'
+        }`}
+      >
+        <span
+          className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow transition-transform ${
+            checked ? 'translate-x-5' : 'translate-x-0.5'
+          }`}
+        />
+      </button>
+    </label>
+  )
+}
+
+export default function Settings() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [profile, setProfile] = useState(null)
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [savingPhone, setSavingPhone] = useState(false)
+  const [savingToggle, setSavingToggle] = useState(null)
+  const [signingOut, setSigningOut] = useState(false)
+  const [error, setError] = useState(null)
+  const [phoneSaved, setPhoneSaved] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+
+    const unsubscribe = subscribeToUserProfile(
+      user.uid,
+      (data) => {
+        setProfile(data)
+        setPhoneNumber(data.phoneNumber ?? '')
+        setLoading(false)
+      },
+      (err) => {
+        setError(err.message)
+        setLoading(false)
+      },
+    )
+
+    return unsubscribe
+  }, [user])
+
+  async function handleSavePhone(event) {
+    event.preventDefault()
+    if (!user) return
+
+    setError(null)
+    setPhoneSaved(false)
+    setSavingPhone(true)
+    try {
+      await updateUserProfile(user.uid, { phoneNumber: phoneNumber.trim() })
+      setPhoneSaved(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingPhone(false)
+    }
+  }
+
+  async function handleToggleChange(field, value) {
+    if (!user) return
+
+    setError(null)
+    setSavingToggle(field)
+    try {
+      await updateUserProfile(user.uid, { [field]: value })
+
+      if (field === 'matchingOptOut') {
+        await syncUserMatchingOptOut(user.uid, value)
+      }
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingToggle(null)
+    }
+  }
+
+  async function handleSignOut() {
+    setError(null)
+    setSigningOut(true)
+    try {
+      await logOut()
+      navigate('/login')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSigningOut(false)
+    }
+  }
+
+  if (!user) return null
+
+  const displayName = profile?.displayName || user.displayName || 'Parent'
+  const email = profile?.email || user.email || ''
+
+  return (
+    <div>
+      <PageHeader
+        title="Settings"
+        description="Account and notification preferences"
+      />
+
+      {error && (
+        <p className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+      )}
+
+      {loading ? (
+        <p className="text-sm text-gray-600">Loading settings…</p>
+      ) : (
+        <div className="space-y-6">
+          <SettingsSection
+            title="Parent profile"
+            description="Your phone number is shared with matched families when both parents accept a connection."
+          >
+            <dl className="space-y-4">
+              <div>
+                <dt className="text-sm font-medium text-gray-700">Name</dt>
+                <dd className="mt-1 text-sm text-gray-900">{displayName}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-700">Email</dt>
+                <dd className="mt-1 text-sm text-gray-900">{email}</dd>
+              </div>
+            </dl>
+
+            <form onSubmit={handleSavePhone} className="mt-4">
+              <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+                Phone number
+              </label>
+              <div className="mt-1 flex flex-wrap gap-2">
+                <input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(event) => {
+                    setPhoneNumber(event.target.value)
+                    setPhoneSaved(false)
+                  }}
+                  placeholder="(555) 555-5555"
+                  className={`${inputClass} mt-0 max-w-xs flex-1`}
+                />
+                <button
+                  type="submit"
+                  disabled={savingPhone}
+                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {savingPhone ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+              {phoneSaved && (
+                <p className="mt-2 text-sm text-green-600">Phone number saved.</p>
+              )}
+            </form>
+          </SettingsSection>
+
+          <SettingsSection
+            title="Notification preferences"
+            description="Choose how you'd like to hear from KidsRoute."
+          >
+            <div className="space-y-4 divide-y divide-gray-100">
+              <Toggle
+                label="Email notifications"
+                description="Get updates about matches, groups, and walks by email."
+                checked={profile?.emailNotifications ?? true}
+                disabled={savingToggle === 'emailNotifications'}
+                onChange={(value) => handleToggleChange('emailNotifications', value)}
+              />
+              <div className="pt-4">
+                <Toggle
+                  label="SMS notifications"
+                  description="Get text message alerts for walk updates. Coming soon."
+                  checked={profile?.smsNotifications ?? false}
+                  disabled={savingToggle === 'smsNotifications'}
+                  onChange={(value) => handleToggleChange('smsNotifications', value)}
+                />
+              </div>
+            </div>
+          </SettingsSection>
+
+          <SettingsSection
+            title="Privacy"
+            description="Control whether your family appears in the matching pool."
+          >
+            <Toggle
+              label="Opt out of matching"
+              description="When enabled, your kids won't appear in the matching pool and no new matches will be suggested."
+              checked={profile?.matchingOptOut ?? false}
+              disabled={savingToggle === 'matchingOptOut'}
+              onChange={(value) => handleToggleChange('matchingOptOut', value)}
+            />
+          </SettingsSection>
+
+          <SettingsSection title="School">
+            <p className="text-sm font-medium text-gray-900">
+              {profile?.school ?? DEFAULT_SCHOOL}
+            </p>
+            <p className="mt-2 text-sm text-gray-500">
+              More schools coming soon. KidsRoute is currently available for PS 150 families.
+            </p>
+          </SettingsSection>
+
+          <div className="rounded-lg border border-gray-200 bg-white p-6">
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {signingOut ? 'Signing out…' : 'Sign out'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

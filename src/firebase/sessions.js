@@ -1,0 +1,156 @@
+export const SESSION_TYPES = [
+  { id: 'fall', label: 'Fall Session', description: 'September through January' },
+  { id: 'spring', label: 'Spring Session', description: 'February through June' },
+  { id: 'summer', label: 'Summer Camp', description: 'Custom date range' },
+]
+
+const JS_TO_DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+export function formatDateKey(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export function parseDateKey(dateKey) {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  return new Date(year, month - 1, day, 12, 0, 0, 0)
+}
+
+export function formatDisplayDate(dateKey) {
+  return parseDateKey(dateKey).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+export function todayKey() {
+  return formatDateKey(new Date())
+}
+
+function getSchoolYearStart(referenceDate = new Date()) {
+  const year = referenceDate.getFullYear()
+  const month = referenceDate.getMonth()
+  return month >= 8 ? year : year - 1
+}
+
+function datesInRange(startDate, endDate, days) {
+  if (!days?.length) return []
+
+  const daySet = new Set(days)
+  const result = []
+  const current = new Date(startDate)
+  current.setHours(12, 0, 0, 0)
+  const end = new Date(endDate)
+  end.setHours(12, 0, 0, 0)
+
+  while (current <= end) {
+    if (daySet.has(JS_TO_DAY[current.getDay()])) {
+      result.push(formatDateKey(current))
+    }
+    current.setDate(current.getDate() + 1)
+  }
+
+  return result
+}
+
+function fallRange(schoolYearStart) {
+  return {
+    start: new Date(schoolYearStart, 8, 1, 12, 0, 0, 0),
+    end: new Date(schoolYearStart + 1, 0, 31, 12, 0, 0, 0),
+  }
+}
+
+function springRange(schoolYearStart) {
+  return {
+    start: new Date(schoolYearStart + 1, 1, 1, 12, 0, 0, 0),
+    end: new Date(schoolYearStart + 1, 5, 30, 12, 0, 0, 0),
+  }
+}
+
+export function getScheduledDates(activity, referenceDate = new Date()) {
+  if (!activity?.days?.length) return []
+
+  const sessions = activity.sessions ?? ['fall', 'spring']
+  const dates = new Set()
+  const schoolYear = getSchoolYearStart(referenceDate)
+
+  for (const year of [schoolYear, schoolYear + 1]) {
+    if (sessions.includes('fall')) {
+      const { start, end } = fallRange(year)
+      datesInRange(start, end, activity.days).forEach((dateKey) => dates.add(dateKey))
+    }
+
+    if (sessions.includes('spring')) {
+      const { start, end } = springRange(year)
+      datesInRange(start, end, activity.days).forEach((dateKey) => dates.add(dateKey))
+    }
+  }
+
+  if (sessions.includes('summer') && activity.summerStartDate && activity.summerEndDate) {
+    datesInRange(
+      parseDateKey(activity.summerStartDate),
+      parseDateKey(activity.summerEndDate),
+      activity.days,
+    ).forEach((dateKey) => dates.add(dateKey))
+  }
+
+  return [...dates].sort()
+}
+
+export function isScheduledOnDate(activity, dateKey) {
+  return getScheduledDates(activity).includes(dateKey)
+}
+
+export function partyScheduleSource(party, fallbackDay) {
+  const days = party.days?.length ? party.days : fallbackDay ? [fallbackDay] : []
+  return {
+    days,
+    sessions: party.sessions ?? defaultSessions(),
+    summerStartDate: party.summerStartDate ?? null,
+    summerEndDate: party.summerEndDate ?? null,
+  }
+}
+
+export function isPartyScheduledOnDate(party, dateKey, fallbackDay) {
+  return isScheduledOnDate(partyScheduleSource(party, fallbackDay), dateKey)
+}
+
+export function getPartyUpcomingScheduledDates(party, fallbackDay, fromDateKey = todayKey()) {
+  return getUpcomingScheduledDates(partyScheduleSource(party, fallbackDay), fromDateKey)
+}
+
+export function getUpcomingScheduledDates(activity, fromDateKey = todayKey()) {
+  return getScheduledDates(activity).filter((dateKey) => dateKey >= fromDateKey)
+}
+
+export function formatSessionLabels(sessions) {
+  if (!sessions?.length) return 'Fall, Spring'
+  return sessions
+    .map((id) => SESSION_TYPES.find((session) => session.id === id)?.label ?? id)
+    .join(', ')
+}
+
+export function defaultSessions() {
+  return ['fall', 'spring']
+}
+
+export function validateSessionForm(sessions, summerStartDate, summerEndDate) {
+  if (!sessions?.length) {
+    return 'Select at least one session.'
+  }
+
+  if (sessions.includes('summer')) {
+    if (!summerStartDate || !summerEndDate) {
+      return 'Enter summer camp start and end dates.'
+    }
+    if (summerStartDate > summerEndDate) {
+      return 'Summer camp end date must be on or after the start date.'
+    }
+  }
+
+  return null
+}

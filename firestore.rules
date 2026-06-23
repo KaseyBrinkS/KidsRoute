@@ -1,0 +1,15 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Temporary permissive rules for development/testing.
+    // Lock down before launch — only authenticated users may access data.
+    match /{document=**} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}
