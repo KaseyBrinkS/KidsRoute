@@ -360,7 +360,17 @@ export function matchIsDeclinedForUser(match, userId) {
   )
 }
 
+export function isActivityMatch(match) {
+  return !match?.matchType || match.matchType === 'activity'
+}
+
 export function matchIsConnectedForUser(match, userId) {
+  if (match.matchType === 'building') {
+    if (match.status !== 'connected') return false
+    const myParties = getPartiesForUser(match, userId)
+    return myParties.length > 0 && myParties.every((party) => party.response === 'accepted')
+  }
+
   if (matchIsDeclinedForUser(match, userId)) return false
 
   const myParties = getPartiesForUser(match, userId)

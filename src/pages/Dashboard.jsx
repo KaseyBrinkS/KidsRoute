@@ -8,6 +8,7 @@ import {
   getOtherChildFirstName,
   getOtherParty,
   getPartiesForUser,
+  isActivityMatch,
   isSameFamilyMatch,
   matchIsConnectedForUser,
   matchIsDeclinedForUser,
@@ -43,10 +44,13 @@ export default function Dashboard() {
     return unsubscribe
   }, [user])
 
-  const pendingMatches = matches.filter((match) => matchNeedsUserResponse(match, user.uid))
+  const pendingMatches = matches.filter(
+    (match) => isActivityMatch(match) && matchNeedsUserResponse(match, user.uid),
+  )
 
   const waitingMatches = matches.filter(
     (match) =>
+      isActivityMatch(match) &&
       !matchIsDeclinedForUser(match, user.uid) &&
       match.status === 'pending' &&
       !isSameFamilyMatch(match) &&
@@ -54,9 +58,13 @@ export default function Dashboard() {
       getOtherParty(match, user.uid)?.response === 'pending',
   )
 
-  const connectedMatches = matches.filter((match) => matchIsConnectedForUser(match, user.uid))
+  const connectedMatches = matches.filter(
+    (match) => isActivityMatch(match) && matchIsConnectedForUser(match, user.uid),
+  )
 
-  const declinedMatches = matches.filter((match) => matchIsDeclinedForUser(match, user.uid))
+  const declinedMatches = matches.filter(
+    (match) => isActivityMatch(match) && matchIsDeclinedForUser(match, user.uid),
+  )
 
   async function handleResponse(matchId, response) {
     setError(null)

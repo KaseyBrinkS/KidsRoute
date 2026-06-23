@@ -50,10 +50,66 @@ export async function createWalkHistoryEntry({
   return addDoc(collection(db, 'walkHistory'), entry)
 }
 
+function normalizeHistoryId(historyId) {
+  if (!historyId) return null
+  if (typeof historyId === 'string') {
+    const trimmed = historyId.trim()
+    return trimmed || null
+  }
+  if (typeof historyId === 'object' && typeof historyId.id === 'string') {
+    return historyId.id
+  }
+  return null
+}
+
 export async function completeWalkHistoryEntry(historyId) {
-  await updateDoc(doc(db, 'walkHistory', historyId), {
+  const normalizedHistoryId = normalizeHistoryId(historyId)
+  if (!normalizedHistoryId) {
+    throw new Error('Missing walk history entry id.')
+  }
+
+  await updateDoc(doc(db, 'walkHistory', normalizedHistoryId), {
     droppedOffAt: serverTimestamp(),
   })
+}
+
+export async function syncWalkHistoryDropOff({
+  historyId,
+  userId,
+  childId,
+  childFirstName,
+  groupId,
+  sessionId,
+  location,
+  scheduleDay,
+  pickedUpAt,
+}) {
+  const normalizedHistoryId = normalizeHistoryId(historyId)
+
+  if (normalizedHistoryId) {
+    try {
+      await completeWalkHistoryEntry(normalizedHistoryId)
+      return normalizedHistoryId
+    } catch (error) {
+      if (error?.code !== 'not-found') {
+        throw error
+      }
+    }
+  }
+
+  const historyRef = await createWalkHistoryEntry({
+    userId,
+    childId,
+    childFirstName,
+    groupId,
+    sessionId,
+    location,
+    scheduleDay,
+    pickedUpAt,
+    droppedOffAt: serverTimestamp(),
+  })
+
+  return historyRef.id
 }
 
 export function hasDropOffTime(entry) {

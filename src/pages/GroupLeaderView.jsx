@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
 import { formatGroupTimes } from '../firebase/groups'
+import { BUILDING_WALK_TYPES, isBuildingWalkMatch } from '../firebase/buildingWalks'
+import { formatFirestoreError } from '../firebase/errors'
 import { matchIsConnectedForUser } from '../firebase/matching'
 import {
   getChildWalkStatus,
@@ -74,25 +76,36 @@ export default function GroupLeaderView() {
     return mergePartiesWithScheduleStatus(group?.parties ?? [], absences, group?.day)
   }, [walkInProgress, sessionChildren, group?.parties, group?.day, absences])
 
+  const isBuildingWalk = isBuildingWalkMatch(group)
+  const buildingWalkConfig = isBuildingWalk
+    ? BUILDING_WALK_TYPES[group.buildingWalkType]
+    : null
+
   async function handleStartWalk() {
     setError(null)
     setActionId('start')
     try {
       await startGroupWalk(groupId, user.uid)
     } catch (err) {
-      setError(err.message)
+      setError(formatFirestoreError(err, 'Could not start the walk.'))
     } finally {
       setActionId(null)
     }
   }
 
   async function handleDropOff(child) {
+    if (!activeSession?.id) {
+      setError('No walk is in progress. Refresh the page and try again.')
+      return
+    }
+
+    const dropOffId = child.id ?? `${child.userId}:${child.childId}`
     setError(null)
-    setActionId(`${child.userId}:${child.childId}`)
+    setActionId(dropOffId)
     try {
-      await markChildDroppedOff(activeSession.id, child.userId, child.childId)
+      await markChildDroppedOff(activeSession.id, child.userId, child.childId, child.id)
     } catch (err) {
-      setError(err.message)
+      setError(formatFirestoreError(err, 'Could not save drop-off. Please try again.'))
     } finally {
       setActionId(null)
     }
@@ -121,6 +134,20 @@ export default function GroupLeaderView() {
     )
   }
 
+  const pickupLabel = isBuildingWalk
+    ? group.buildingWalkType === 'morning_to_school'
+      ? 'Picked up from home'
+      : group.buildingWalkType === 'afternoon_from_school'
+        ? 'Picked up from school'
+        : 'Picked up from activity'
+    : 'Picked up from school'
+
+  const dropOffLabel = isBuildingWalk
+    ? group.buildingWalkType === 'morning_to_school'
+      ? 'Mark each child as dropped off at school.'
+      : 'Mark each child as dropped off at home.'
+    : 'Mark each child as dropped off at their activity.'
+
   return (
     <div>
       <PageHeader
@@ -133,7 +160,9 @@ export default function GroupLeaderView() {
           <div>
             <p className="font-medium text-gray-900">{group.location}</p>
             <p className="mt-1 text-sm text-gray-600">
-              {group.day} · {formatGroupTimes(group)}
+              {isBuildingWalk
+                ? `${buildingWalkConfig?.route} · ${buildingWalkConfig?.scheduleLabel}`
+                : `${group.day} · ${formatGroupTimes(group)}`}
             </p>
           </div>
           <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
@@ -144,8 +173,9 @@ export default function GroupLeaderView() {
         {!walkInProgress && (
           <>
             <p className="mt-4 text-sm text-gray-600">
-              Children are automatically confirmed on scheduled class days. They show as absent
-              only when a parent has marked them absent for today.
+              {isBuildingWalk
+                ? 'Children are automatically confirmed on weekdays. They show as absent only when a parent has marked them absent for today.'
+                : 'Children are automatically confirmed on scheduled class days. They show as absent only when a parent has marked them absent for today.'}
             </p>
             <button
               type="button"
@@ -161,11 +191,9 @@ export default function GroupLeaderView() {
         {walkInProgress && (
           <>
             <p className="mt-4 text-sm text-gray-600">
-              Picked up from school: {formatHistoryTime(activeSession.startedAt)}
+              {pickupLabel}: {formatHistoryTime(activeSession.startedAt)}
             </p>
-            <p className="mt-2 text-sm text-gray-600">
-              Mark each child as dropped off at their activity.
-            </p>
+            <p className="mt-2 text-sm text-gray-600">{dropOffLabel}</p>
           </>
         )}
       </div>
@@ -178,7 +206,7 @@ export default function GroupLeaderView() {
       <ul className="mt-3 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
         {children.map((child) => {
           const status = getChildWalkStatus(child)
-          const dropOffId = `${child.userId}:${child.childId}`
+          const dropOffId = child.id ?? `${child.userId}:${child.childId}`
           const canDropOff =
             walkInProgress &&
             child.walkStatus !== 'absent' &&

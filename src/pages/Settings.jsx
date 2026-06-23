@@ -9,6 +9,7 @@ import {
   subscribeToUserProfile,
   updateUserProfile,
 } from '../firebase/users'
+import { syncBuildingWalkChildren, validateHomeAddress } from '../firebase/buildingWalks'
 
 const inputClass =
   'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
@@ -55,12 +56,15 @@ export default function Settings() {
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [phoneNumber, setPhoneNumber] = useState('')
+  const [homeAddress, setHomeAddress] = useState('')
   const [loading, setLoading] = useState(true)
   const [savingPhone, setSavingPhone] = useState(false)
+  const [savingHomeAddress, setSavingHomeAddress] = useState(false)
   const [savingToggle, setSavingToggle] = useState(null)
   const [signingOut, setSigningOut] = useState(false)
   const [error, setError] = useState(null)
   const [phoneSaved, setPhoneSaved] = useState(false)
+  const [homeAddressSaved, setHomeAddressSaved] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -70,6 +74,7 @@ export default function Settings() {
       (data) => {
         setProfile(data)
         setPhoneNumber(data.phoneNumber ?? '')
+        setHomeAddress(data.homeAddress ?? '')
         setLoading(false)
       },
       (err) => {
@@ -95,6 +100,30 @@ export default function Settings() {
       setError(err.message)
     } finally {
       setSavingPhone(false)
+    }
+  }
+
+  async function handleSaveHomeAddress(event) {
+    event.preventDefault()
+    if (!user) return
+
+    const validationError = validateHomeAddress(homeAddress)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setError(null)
+    setHomeAddressSaved(false)
+    setSavingHomeAddress(true)
+    try {
+      await updateUserProfile(user.uid, { homeAddress: homeAddress.trim() })
+      await syncBuildingWalkChildren(user.uid)
+      setHomeAddressSaved(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingHomeAddress(false)
     }
   }
 
@@ -145,10 +174,7 @@ export default function Settings() {
         <p className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
       )}
 
-      {loading ? (
-        <p className="text-sm text-gray-600">Loading settings…</p>
-      ) : (
-        <div className="space-y-6">
+      <div className="space-y-6">
           <SettingsSection
             title="Parent profile"
             description="Your phone number is shared with matched families when both parents accept a connection."
@@ -156,11 +182,15 @@ export default function Settings() {
             <dl className="space-y-4">
               <div>
                 <dt className="text-sm font-medium text-gray-700">Name</dt>
-                <dd className="mt-1 text-sm text-gray-900">{displayName}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {loading ? 'Loading…' : displayName}
+                </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-700">Email</dt>
-                <dd className="mt-1 text-sm text-gray-900">{email}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {loading ? 'Loading…' : email}
+                </dd>
               </div>
             </dl>
 
@@ -191,6 +221,41 @@ export default function Settings() {
               </div>
               {phoneSaved && (
                 <p className="mt-2 text-sm text-green-600">Phone number saved.</p>
+              )}
+            </form>
+          </SettingsSection>
+
+          <SettingsSection
+            title="Home address"
+            description="Your street address (no apartment number) is used to match you with neighbors for building walks."
+          >
+            <form onSubmit={handleSaveHomeAddress}>
+              <label htmlFor="homeAddress" className="block text-sm font-medium text-gray-700">
+                Street address
+              </label>
+              <div className="mt-1 flex flex-wrap gap-2">
+                <input
+                  id="homeAddress"
+                  name="homeAddress"
+                  type="text"
+                  value={homeAddress}
+                  onChange={(event) => {
+                    setHomeAddress(event.target.value)
+                    setHomeAddressSaved(false)
+                  }}
+                  placeholder="123 Main Street"
+                  className={`${inputClass} mt-0 max-w-md flex-1`}
+                />
+                <button
+                  type="submit"
+                  disabled={savingHomeAddress}
+                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {savingHomeAddress ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+              {homeAddressSaved && (
+                <p className="mt-2 text-sm text-green-600">Home address saved.</p>
               )}
             </form>
           </SettingsSection>
@@ -234,7 +299,7 @@ export default function Settings() {
 
           <SettingsSection title="School">
             <p className="text-sm font-medium text-gray-900">
-              {profile?.school ?? DEFAULT_SCHOOL}
+              {loading ? 'Loading…' : (profile?.school ?? DEFAULT_SCHOOL)}
             </p>
             <p className="mt-2 text-sm text-gray-500">
               More schools coming soon. KidsRoute is currently available for PS 150 families.
@@ -252,7 +317,6 @@ export default function Settings() {
             </button>
           </div>
         </div>
-      )}
     </div>
   )
 }

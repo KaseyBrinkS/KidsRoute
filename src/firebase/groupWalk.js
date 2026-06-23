@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './db'
 import { isPartyScheduledOnDate, todayKey } from './sessions'
-import { completeWalkHistoryEntry, createWalkHistoryEntry } from './walkHistory'
+import { createWalkHistoryEntry, syncWalkHistoryDropOff } from './walkHistory'
 
 export const CHILD_WALK_STATUSES = {
   confirmed: { label: 'Confirmed', style: 'bg-green-50 text-green-700' },
@@ -29,6 +29,12 @@ function isActiveTodaySession(session) {
 
 function childDocId(userId, childId) {
   return `${userId}_${childId}`
+}
+
+function resolveSessionChildDocId(userId, childId, childDocKey) {
+  if (childDocKey) return childDocKey
+  if (userId && childId) return childDocId(userId, childId)
+  return null
 }
 
 function singleAbsenceDocId(groupId, userId, childId, dateKey) {
@@ -132,7 +138,12 @@ export function subscribeToWalkSessionChildren(sessionId, onData, onError) {
   return onSnapshot(
     collection(db, 'walkSessions', sessionId, 'children'),
     (snapshot) => {
-      onData(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })))
+      onData(
+        snapshot.docs.map((docSnap) => ({
+          ...docSnap.data(),
+          id: docSnap.id,
+        })),
+      )
     },
     onError,
   )
@@ -255,49 +266,68 @@ export async function startGroupWalk(groupId, leaderId) {
   return sessionRef.id
 }
 
-export async function markChildDroppedOff(sessionId, userId, childId) {
-  const sessionSnap = await getDoc(doc(db, 'walkSessions', sessionId))
-  if (!sessionSnap.exists()) return
+export async function markChildDroppedOff(sessionId, userId, childId, childDocKey = null) {
+  if (!sessionId) {
+    throw new Error('No active walk session. Refresh the page and try again.')
+  }
+
+  const resolvedChildDocId = resolveSessionChildDocId(userId, childId, childDocKey)
+  if (!resolvedChildDocId) {
+    throw new Error('Could not identify which child to mark as dropped off.')
+  }
+
+  const sessionRef = doc(db, 'walkSessions', sessionId)
+  const sessionSnap = await getDoc(sessionRef)
+  if (!sessionSnap.exists()) {
+    throw new Error('This walk session no longer exists. Refresh the page and try again.')
+  }
 
   const session = sessionSnap.data()
-  const childRef = doc(db, 'walkSessions', sessionId, 'children', childDocId(userId, childId))
+  const childRef = doc(db, 'walkSessions', sessionId, 'children', resolvedChildDocId)
   const childSnap = await getDoc(childRef)
-  if (!childSnap.exists()) return
+  if (!childSnap.exists()) {
+    throw new Error('This child is not part of the active walk session.')
+  }
 
   const child = childSnap.data()
-  if (child.walkStatus === 'absent' || child.walkStatus === 'dropped_off') return
+  if (child.walkStatus === 'absent') {
+    throw new Error(`${child.childFirstName || 'This child'} is marked absent and cannot be dropped off.`)
+  }
+  if (child.walkStatus === 'dropped_off') {
+    throw new Error(`${child.childFirstName || 'This child'} is already marked as dropped off.`)
+  }
 
+  const droppedOffAt = serverTimestamp()
   await updateDoc(childRef, {
     walkStatus: 'dropped_off',
-    droppedOffAt: serverTimestamp(),
+    droppedOffAt,
   })
 
-  if (child.historyId) {
-    await completeWalkHistoryEntry(child.historyId)
-  } else {
-    await createWalkHistoryEntry({
-      userId: child.userId,
-      childId: child.childId,
-      childFirstName: child.childFirstName,
-      groupId: session.groupId,
-      sessionId,
-      location: session.location,
-      scheduleDay: session.scheduleDay,
-      pickedUpAt: child.pickedUpAt ?? session.startedAt,
-      droppedOffAt: serverTimestamp(),
-    })
-  }
+  const resolvedUserId = child.userId ?? userId
+  const resolvedChildId = child.childId ?? childId
+
+  await syncWalkHistoryDropOff({
+    historyId: child.historyId,
+    userId: resolvedUserId,
+    childId: resolvedChildId,
+    childFirstName: child.childFirstName,
+    groupId: session.groupId,
+    sessionId,
+    location: session.location,
+    scheduleDay: session.scheduleDay,
+    pickedUpAt: child.pickedUpAt ?? session.startedAt,
+  })
 
   const childrenSnap = await getDocs(collection(db, 'walkSessions', sessionId, 'children'))
   const children = childrenSnap.docs.map((docSnap) => {
-    if (docSnap.id === childDocId(userId, childId)) {
+    if (docSnap.id === resolvedChildDocId) {
       return { ...docSnap.data(), walkStatus: 'dropped_off' }
     }
     return docSnap.data()
   })
 
   if (shouldCompleteWalk(children)) {
-    await updateDoc(doc(db, 'walkSessions', sessionId), {
+    await updateDoc(sessionRef, {
       status: 'completed',
       completedAt: serverTimestamp(),
     })
