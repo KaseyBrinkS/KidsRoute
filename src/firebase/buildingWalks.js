@@ -44,22 +44,48 @@ export const BUILDING_WALK_TYPES = {
 
 export const BUILDING_WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 
-const MIN_HOME_ADDRESS_LENGTH = 5
-
-export function normalizeHomeAddress(address) {
-  if (!address || typeof address !== 'string') return ''
-  return address.trim().toLowerCase().replace(/\s+/g, ' ')
+export function formatHomeAddressDisplay({ streetNumber, streetName, zipCode }) {
+  const number = streetNumber?.trim() ?? ''
+  const name = streetName?.trim() ?? ''
+  const zip = zipCode?.trim() ?? ''
+  const streetLine = [number, name].filter(Boolean).join(' ')
+  if (!streetLine && !zip) return ''
+  return zip ? `${streetLine}, ${zip}` : streetLine
 }
 
-export function validateHomeAddress(address) {
-  const trimmed = address?.trim() ?? ''
-  if (trimmed.length < MIN_HOME_ADDRESS_LENGTH) {
-    return 'Enter a street address (at least 5 characters).'
+export function normalizeBuildingMatchKey(streetNumber, zipCode) {
+  const number = streetNumber?.trim().toLowerCase().replace(/\s+/g, ' ') ?? ''
+  const zip = zipCode?.trim().replace(/\D/g, '').slice(0, 5) ?? ''
+  if (!number || !zip) return ''
+  return `${number}|${zip}`
+}
+
+export function validateHomeAddressFields({ streetNumber, streetName, zipCode }) {
+  const number = streetNumber?.trim() ?? ''
+  const name = streetName?.trim() ?? ''
+  const zip = zipCode?.trim() ?? ''
+
+  if (!number) {
+    return 'Enter a street number.'
   }
-  if (!/\d/.test(trimmed)) {
-    return 'Enter a street address that includes a street number.'
+  if (!/\d/.test(number)) {
+    return 'Street number must include a number (e.g. 123).'
+  }
+  if (!name || name.length < 2) {
+    return 'Enter a street name (e.g. Warren Street).'
+  }
+  if (!/^\d{5}(-\d{4})?$/.test(zip)) {
+    return 'Enter a valid 5-digit zip code (e.g. 10013).'
   }
   return null
+}
+
+function homeAddressFromProfile(profile) {
+  return {
+    streetNumber: profile.streetNumber?.trim() ?? '',
+    streetName: profile.streetName?.trim() ?? '',
+    zipCode: profile.zipCode?.trim() ?? '',
+  }
 }
 
 function normalizeLocation(location) {
@@ -74,11 +100,11 @@ function slotDocId(userId, walkType, activityId = null) {
   return `${userId}_${walkType}`
 }
 
-function buildMatchKey(walkType, homeAddress, school, activityLocation = null) {
+function buildMatchKey(walkType, buildingMatchKey, school, activityLocation = null) {
   if (walkType === 'after_school_home') {
-    return `${walkType}|${homeAddress}|${activityLocation}`
+    return `${walkType}|${buildingMatchKey}|${activityLocation}`
   }
-  return `${walkType}|${homeAddress}|${school}`
+  return `${walkType}|${buildingMatchKey}|${school}`
 }
 
 function partyKey(party) {
@@ -135,7 +161,10 @@ async function syncBuildingMatch({
   matchKey,
   walkType,
   walkTypeConfig,
-  homeAddress,
+  buildingMatchKey,
+  streetNumber,
+  streetName,
+  zipCode,
   homeAddressDisplay,
   school,
   activityId,
@@ -146,7 +175,7 @@ async function syncBuildingMatch({
     query(
       collection(db, 'buildingWalkSlots'),
       where('walkType', '==', walkType),
-      where('homeAddress', '==', homeAddress),
+      where('buildingMatchKey', '==', buildingMatchKey),
     ),
   )
 
@@ -188,7 +217,10 @@ async function syncBuildingMatch({
     status,
     participantIds,
     parties,
-    homeAddress,
+    buildingMatchKey,
+    streetNumber,
+    streetName,
+    zipCode,
     homeAddressDisplay,
     school: school ?? DEFAULT_SCHOOL,
     location: buildMatchLocation(
@@ -243,13 +275,17 @@ export async function joinBuildingWalk(userId, walkType, { activityId = null } =
     throw new Error('You have opted out of matching. Enable matching in Settings to join building walks.')
   }
 
-  const homeAddressDisplay = profile.homeAddress?.trim() ?? ''
-  const validationError = validateHomeAddress(homeAddressDisplay)
+  const addressFields = homeAddressFromProfile(profile)
+  const validationError = validateHomeAddressFields(addressFields)
   if (validationError) {
     throw new Error(`Set your home address in Settings before joining. ${validationError}`)
   }
 
-  const homeAddress = normalizeHomeAddress(homeAddressDisplay)
+  const streetNumber = addressFields.streetNumber
+  const streetName = addressFields.streetName
+  const zipCode = addressFields.zipCode
+  const buildingMatchKey = normalizeBuildingMatchKey(streetNumber, zipCode)
+  const homeAddressDisplay = formatHomeAddressDisplay(addressFields)
   const school = profile.school ?? DEFAULT_SCHOOL
   const children = await fetchUserChildren(userId)
 
@@ -282,7 +318,10 @@ export async function joinBuildingWalk(userId, walkType, { activityId = null } =
   await setDoc(slotRef, {
     userId,
     walkType,
-    homeAddress,
+    buildingMatchKey,
+    streetNumber,
+    streetName,
+    zipCode,
     homeAddressDisplay,
     school,
     children: eligibleChildren.map((child) => ({
@@ -302,12 +341,15 @@ export async function joinBuildingWalk(userId, walkType, { activityId = null } =
     updatedAt: serverTimestamp(),
   })
 
-  const matchKey = buildMatchKey(walkType, homeAddress, school, activityLocation)
+  const matchKey = buildMatchKey(walkType, buildingMatchKey, school, activityLocation)
   await syncBuildingMatch({
     matchKey,
     walkType,
     walkTypeConfig,
-    homeAddress,
+    buildingMatchKey,
+    streetNumber,
+    streetName,
+    zipCode,
     homeAddressDisplay,
     school,
     activityId,
@@ -327,11 +369,14 @@ export async function leaveBuildingWalk(userId, walkType, { activityId = null } 
   if (!slotSnap.exists()) return
 
   const slot = slotSnap.data()
-  const homeAddress = slot.homeAddress
+  const buildingMatchKey =
+    slot.buildingMatchKey ??
+    normalizeBuildingMatchKey(slot.streetNumber, slot.zipCode) ??
+    slot.homeAddress
   const school = slot.school ?? DEFAULT_SCHOOL
   const activityLocation = slot.activityLocation ?? null
 
-  const matchKey = buildMatchKey(walkType, homeAddress, school, activityLocation)
+  const matchKey = buildMatchKey(walkType, buildingMatchKey, school, activityLocation)
 
   const existingMatch = await findMatchByKey(matchKey)
   if (existingMatch && (await getActiveSession(existingMatch.id))) {
@@ -344,8 +389,11 @@ export async function leaveBuildingWalk(userId, walkType, { activityId = null } 
     matchKey,
     walkType,
     walkTypeConfig,
-    homeAddress,
-    homeAddressDisplay: slot.homeAddressDisplay,
+    buildingMatchKey,
+    streetNumber: slot.streetNumber ?? '',
+    streetName: slot.streetName ?? '',
+    zipCode: slot.zipCode ?? '',
+    homeAddressDisplay: slot.homeAddressDisplay ?? '',
     school,
     activityId: slot.activityId ?? null,
     activityLocation,
@@ -385,10 +433,14 @@ export function formatBuildingWalkTime(fixedTime) {
 
 export async function syncBuildingWalkChildren(userId) {
   const profile = await getUserProfile(userId)
-  const homeAddressDisplay = profile.homeAddress?.trim() ?? ''
-  if (!homeAddressDisplay) return
+  const addressFields = homeAddressFromProfile(profile)
+  if (!addressFields.streetNumber || !addressFields.zipCode) return
 
-  const homeAddress = normalizeHomeAddress(homeAddressDisplay)
+  const streetNumber = addressFields.streetNumber
+  const streetName = addressFields.streetName
+  const zipCode = addressFields.zipCode
+  const buildingMatchKey = normalizeBuildingMatchKey(streetNumber, zipCode)
+  const homeAddressDisplay = formatHomeAddressDisplay(addressFields)
   const school = profile.school ?? DEFAULT_SCHOOL
   const children = await fetchUserChildren(userId)
   const eligibleChildren = childrenForSchoolWalk(children, school)
@@ -403,10 +455,13 @@ export async function syncBuildingWalkChildren(userId) {
     const walkTypeConfig = BUILDING_WALK_TYPES[walkType]
     if (!walkTypeConfig) continue
 
-    const previousHomeAddress = slot.homeAddress
+    const previousBuildingMatchKey =
+      slot.buildingMatchKey ??
+      normalizeBuildingMatchKey(slot.streetNumber, slot.zipCode) ??
+      slot.homeAddress
     const previousMatchKey = buildMatchKey(
       walkType,
-      previousHomeAddress,
+      previousBuildingMatchKey,
       slot.school ?? DEFAULT_SCHOOL,
       slot.activityLocation ?? null,
     )
@@ -414,7 +469,10 @@ export async function syncBuildingWalkChildren(userId) {
     await setDoc(
       slotDoc.ref,
       {
-        homeAddress,
+        buildingMatchKey,
+        streetNumber,
+        streetName,
+        zipCode,
         homeAddressDisplay,
         school,
         children: eligibleChildren.map((child) => ({
@@ -430,18 +488,21 @@ export async function syncBuildingWalkChildren(userId) {
 
     const matchKey = buildMatchKey(
       walkType,
-      homeAddress,
+      buildingMatchKey,
       school,
       slot.activityLocation ?? null,
     )
 
-    if (previousHomeAddress && previousMatchKey !== matchKey) {
+    if (previousBuildingMatchKey && previousMatchKey !== matchKey) {
       await syncBuildingMatch({
         matchKey: previousMatchKey,
         walkType,
         walkTypeConfig,
-        homeAddress: previousHomeAddress,
-        homeAddressDisplay: slot.homeAddressDisplay,
+        buildingMatchKey: previousBuildingMatchKey,
+        streetNumber: slot.streetNumber ?? '',
+        streetName: slot.streetName ?? '',
+        zipCode: slot.zipCode ?? '',
+        homeAddressDisplay: slot.homeAddressDisplay ?? '',
         school: slot.school ?? DEFAULT_SCHOOL,
         activityId: slot.activityId ?? null,
         activityLocation: slot.activityLocation ?? null,
@@ -453,7 +514,10 @@ export async function syncBuildingWalkChildren(userId) {
       matchKey,
       walkType,
       walkTypeConfig,
-      homeAddress,
+      buildingMatchKey,
+      streetNumber,
+      streetName,
+      zipCode,
       homeAddressDisplay,
       school,
       activityId: slot.activityId ?? null,

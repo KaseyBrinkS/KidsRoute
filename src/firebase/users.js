@@ -5,7 +5,9 @@ export const DEFAULT_SCHOOL = 'PS 150'
 
 export const DEFAULT_USER_SETTINGS = {
   phoneNumber: '',
-  homeAddress: '',
+  streetNumber: '',
+  streetName: '',
+  zipCode: '',
   emailNotifications: true,
   smsNotifications: false,
   matchingOptOut: false,

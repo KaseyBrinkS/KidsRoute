@@ -9,7 +9,11 @@ import {
   subscribeToUserProfile,
   updateUserProfile,
 } from '../firebase/users'
-import { syncBuildingWalkChildren, validateHomeAddress } from '../firebase/buildingWalks'
+import {
+  formatHomeAddressDisplay,
+  syncBuildingWalkChildren,
+  validateHomeAddressFields,
+} from '../firebase/buildingWalks'
 
 const inputClass =
   'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
@@ -56,7 +60,9 @@ export default function Settings() {
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [phoneNumber, setPhoneNumber] = useState('')
-  const [homeAddress, setHomeAddress] = useState('')
+  const [streetNumber, setStreetNumber] = useState('')
+  const [streetName, setStreetName] = useState('')
+  const [zipCode, setZipCode] = useState('')
   const [loading, setLoading] = useState(true)
   const [savingPhone, setSavingPhone] = useState(false)
   const [savingHomeAddress, setSavingHomeAddress] = useState(false)
@@ -74,7 +80,9 @@ export default function Settings() {
       (data) => {
         setProfile(data)
         setPhoneNumber(data.phoneNumber ?? '')
-        setHomeAddress(data.homeAddress ?? '')
+        setStreetNumber(data.streetNumber ?? '')
+        setStreetName(data.streetName ?? '')
+        setZipCode(data.zipCode ?? '')
         setLoading(false)
       },
       (err) => {
@@ -107,7 +115,7 @@ export default function Settings() {
     event.preventDefault()
     if (!user) return
 
-    const validationError = validateHomeAddress(homeAddress)
+    const validationError = validateHomeAddressFields({ streetNumber, streetName, zipCode })
     if (validationError) {
       setError(validationError)
       return
@@ -117,7 +125,11 @@ export default function Settings() {
     setHomeAddressSaved(false)
     setSavingHomeAddress(true)
     try {
-      await updateUserProfile(user.uid, { homeAddress: homeAddress.trim() })
+      await updateUserProfile(user.uid, {
+        streetNumber: streetNumber.trim(),
+        streetName: streetName.trim(),
+        zipCode: zipCode.trim(),
+      })
       await syncBuildingWalkChildren(user.uid)
       setHomeAddressSaved(true)
     } catch (err) {
@@ -162,6 +174,7 @@ export default function Settings() {
 
   const displayName = profile?.displayName || user.displayName || 'Parent'
   const email = profile?.email || user.email || ''
+  const formattedHomeAddress = formatHomeAddressDisplay({ streetNumber, streetName, zipCode })
 
   return (
     <div>
@@ -227,31 +240,79 @@ export default function Settings() {
 
           <SettingsSection
             title="Home address"
-            description="Your street address (no apartment number) is used to match you with neighbors for building walks."
+            description="Used to match you with neighbors for building walks. Neighbors are matched by street number and zip code."
           >
             <form onSubmit={handleSaveHomeAddress}>
-              <label htmlFor="homeAddress" className="block text-sm font-medium text-gray-700">
-                Street address
-              </label>
-              <div className="mt-1 flex flex-wrap gap-2">
-                <input
-                  id="homeAddress"
-                  name="homeAddress"
-                  type="text"
-                  value={homeAddress}
-                  onChange={(event) => {
-                    setHomeAddress(event.target.value)
-                    setHomeAddressSaved(false)
-                  }}
-                  placeholder="123 Main Street"
-                  className={`${inputClass} mt-0 max-w-md flex-1`}
-                />
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label htmlFor="streetNumber" className="block text-sm font-medium text-gray-700">
+                    Street number
+                  </label>
+                  <input
+                    id="streetNumber"
+                    name="streetNumber"
+                    type="text"
+                    inputMode="numeric"
+                    value={streetNumber}
+                    onChange={(event) => {
+                      setStreetNumber(event.target.value)
+                      setHomeAddressSaved(false)
+                    }}
+                    placeholder="123"
+                    className={inputClass}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="streetName" className="block text-sm font-medium text-gray-700">
+                    Street name
+                  </label>
+                  <input
+                    id="streetName"
+                    name="streetName"
+                    type="text"
+                    value={streetName}
+                    onChange={(event) => {
+                      setStreetName(event.target.value)
+                      setHomeAddressSaved(false)
+                    }}
+                    placeholder="Warren Street"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700">
+                    Zip code
+                  </label>
+                  <input
+                    id="zipCode"
+                    name="zipCode"
+                    type="text"
+                    inputMode="numeric"
+                    value={zipCode}
+                    onChange={(event) => {
+                      setZipCode(event.target.value)
+                      setHomeAddressSaved(false)
+                    }}
+                    placeholder="10013"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              {formattedHomeAddress && (
+                <p className="mt-3 text-sm text-gray-600">
+                  <span className="font-medium text-gray-700">Your address: </span>
+                  {formattedHomeAddress}
+                </p>
+              )}
+
+              <div className="mt-4">
                 <button
                   type="submit"
                   disabled={savingHomeAddress}
                   className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {savingHomeAddress ? 'Saving…' : 'Save'}
+                  {savingHomeAddress ? 'Saving…' : 'Save address'}
                 </button>
               </div>
               {homeAddressSaved && (
