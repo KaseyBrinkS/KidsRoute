@@ -302,19 +302,18 @@ export default function MyActivities() {
       <PageHeader
         title="My Activities"
         description="After-school activities your kids are signed up for"
-        actions={
-          !loading && activities.length > 0 ? (
-            <ViewToggle
-              value={viewMode}
-              onChange={setViewMode}
-              options={[
-                { value: 'list', label: 'List' },
-                { value: 'calendar', label: 'Calendar' },
-              ]}
-            />
-          ) : null
-        }
       />
+
+      <div className="mb-6 flex justify-end">
+        <ViewToggle
+          value={viewMode}
+          onChange={setViewMode}
+          options={[
+            { value: 'list', label: 'List' },
+            { value: 'calendar', label: 'Calendar' },
+          ]}
+        />
+      </div>
 
       <div className="kr-card p-6">
         <h2 className="kr-section-title">
@@ -586,10 +585,6 @@ export default function MyActivities() {
 
         {loading ? (
           <p className="mt-4 text-muted">Loading…</p>
-        ) : activities.length === 0 ? (
-          <p className="kr-card-flat mt-4">
-            No activities added yet. Use the form above to add your first activity.
-          </p>
         ) : viewMode === 'calendar' ? (
           <div className="mt-4">
             <ActivitiesWeekCalendar
@@ -599,6 +594,10 @@ export default function MyActivities() {
               onWeekChange={setWeekStart}
             />
           </div>
+        ) : activities.length === 0 ? (
+          <p className="kr-card-flat mt-4">
+            No activities added yet. Use the form above to add your first activity.
+          </p>
         ) : (
           <div className="mt-4 space-y-6">
             {activitiesByChild.map(({ kid, activities: childActivities }) =>
