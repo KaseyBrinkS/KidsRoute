@@ -159,6 +159,10 @@ h3,
   @apply rounded-2xl px-3 py-2 text-sm font-semibold transition-all;
 }
 
+.kr-nav-link-mobile {
+  @apply flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl px-1 py-2 text-[11px] font-semibold leading-tight transition-all;
+}
+
 .kr-nav-link-active {
   @apply bg-primary/12 text-primary;
 }

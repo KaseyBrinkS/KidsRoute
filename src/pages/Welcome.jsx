@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AboutHero, { AboutDescription } from '../components/onboarding/AboutHero'
+import WelcomeNavGrid from '../components/onboarding/WelcomeNavGrid'
 import { useAuth } from '../context/AuthContext'
 import {
   advanceOnboardingStep,
@@ -57,7 +58,7 @@ export default function Welcome() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10">
-      <div className="kr-card w-full max-w-lg overflow-hidden p-0">
+      <div className="kr-card w-full max-w-xl overflow-hidden p-0">
         {setupIncomplete && onboardingStep === 1 && (
           <p className="pt-6 text-center text-sm font-semibold text-primary">Step 1 of 4</p>
         )}
@@ -66,6 +67,8 @@ export default function Welcome() {
 
         <div className="space-y-6 px-8 pb-10 pt-2">
           <AboutDescription />
+
+          <WelcomeNavGrid />
 
           <div className="flex flex-col gap-3">
             {setupIncomplete ? (

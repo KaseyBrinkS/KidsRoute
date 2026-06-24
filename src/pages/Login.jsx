@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { signInWithGoogle } from '../firebase/auth'
+import { completeGoogleRedirectSignIn, signInWithGoogle } from '../firebase/auth'
 import { getPostLoginPath, saveUserProfile } from '../firebase/users'
 import KidsRouteLogo from '../components/KidsRouteLogo'
 
@@ -19,11 +19,35 @@ export default function Login() {
       .catch(() => navigate('/dashboard', { replace: true }))
   }, [user, navigate])
 
+  useEffect(() => {
+    let cancelled = false
+
+    async function handleRedirectResult() {
+      try {
+        const result = await completeGoogleRedirectSignIn()
+        if (cancelled || !result) return
+
+        await saveUserProfile(result.user)
+        const path = await getPostLoginPath(result.user.uid)
+        navigate(path, { replace: true })
+      } catch (err) {
+        if (!cancelled) setError(err.message)
+      }
+    }
+
+    handleRedirectResult()
+    return () => {
+      cancelled = true
+    }
+  }, [navigate])
+
   async function handleGoogleSignIn() {
     setError(null)
     setSigningIn(true)
     try {
       const result = await signInWithGoogle()
+      if (!result) return
+
       await saveUserProfile(result.user)
       const path = await getPostLoginPath(result.user.uid)
       navigate(path)
