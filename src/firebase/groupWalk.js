@@ -367,24 +367,26 @@ function logStartWalkPreWrite(attempt, leaderId, groupId, match, extra = {}) {
 
 async function ensureWalkGroupParticipantIds(groupId, group, leaderId) {
   const derivedIds = resolveWalkGroupParticipantIds(group)
+  const storedIds = group.participantIds ?? []
+  const mergedIds = [...new Set([...storedIds, ...derivedIds])]
 
-  if (participantIdsMatch(group.participantIds, derivedIds)) {
-    return derivedIds
+  if (participantIdsMatch(storedIds, mergedIds)) {
+    return mergedIds
   }
 
-  if (derivedIds.length === 0) {
+  if (mergedIds.length === 0) {
     console.warn('[startWalk] no participantIds derived from walk group', { groupId })
-    return derivedIds
+    return mergedIds
   }
 
-  if (!derivedIds.includes(leaderId)) {
-    return derivedIds
+  if (!mergedIds.includes(leaderId)) {
+    return mergedIds
   }
 
   const groupRef = doc(db, 'walkGroups', groupId)
   try {
-    await updateDoc(groupRef, { participantIds: derivedIds })
-    console.log('[startWalk] synced walkGroup.participantIds', { groupId, participantIds: derivedIds })
+    await updateDoc(groupRef, { participantIds: mergedIds })
+    console.log('[startWalk] synced walkGroup.participantIds', { groupId, participantIds: mergedIds })
   } catch (error) {
     console.warn('[startWalk] sync walkGroup.participantIds failed (continuing with derived list)', {
       groupId,
@@ -392,7 +394,7 @@ async function ensureWalkGroupParticipantIds(groupId, group, leaderId) {
     })
   }
 
-  return derivedIds
+  return mergedIds
 }
 
 async function ensureGroupParticipantIds(groupId, group, leaderId) {
@@ -784,7 +786,7 @@ export async function markChildDroppedOff(sessionId, userId, childId, childDocKe
     if (child.walkStatus === 'absent') {
       throw new Error(`${child.childFirstName || 'This child'} is marked absent and cannot be dropped off.`)
     }
-    if (child.walkStatus === 'waiting_arrival') {
+    if (child.walkStatus === 'waiting_arrival' && !child.pickedUpAt) {
       throw new Error(`${child.childFirstName || 'This child'} must be marked arrived before drop-off.`)
     }
     if (child.walkStatus === 'dropped_off') {

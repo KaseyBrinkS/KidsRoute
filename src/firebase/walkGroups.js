@@ -75,12 +75,16 @@ export function getAllGroupChildNames(group) {
   return getActiveParties(group).map((party) => party.childFirstName).join(', ')
 }
 
+/** All family user IDs in the group (pending or accepted — not declined). */
 export function resolveWalkGroupParticipantIds(group) {
-  const acceptedUserIds = [...new Set(getActiveParties(group).map((party) => party.userId))]
-  if (group.participantIds?.length > 0) {
-    return group.participantIds.filter((id) => acceptedUserIds.includes(id))
-  }
-  return acceptedUserIds
+  const partyUserIds = [...new Set(getNonDeclinedParties(group).map((party) => party.userId))]
+  const stored = group.participantIds ?? []
+  return [...new Set([...stored, ...partyUserIds])].filter(Boolean)
+}
+
+/** Accepted families only — for walk roster / absence visibility. */
+export function resolveWalkGroupAcceptedParticipantIds(group) {
+  return [...new Set(getActiveParties(group).map((party) => party.userId))].filter(Boolean)
 }
 
 export function walkGroupIsReadyForWalk(group, userId) {
@@ -277,6 +281,28 @@ async function addFamilyToWalkGroup(groupId, userId, activityId, activity) {
   })
 
   return 'added'
+}
+
+export async function repairWalkGroupParticipantIds(userId) {
+  const snapshot = await getDocs(
+    query(collection(db, 'walkGroups'), where('participantIds', 'array-contains', userId)),
+  )
+
+  await Promise.all(
+    snapshot.docs.map(async (docSnap) => {
+      const group = docSnap.data()
+      const mergedIds = resolveWalkGroupParticipantIds({ ...group, id: docSnap.id })
+      const stored = group.participantIds ?? []
+      if (mergedIds.length === stored.length && mergedIds.every((id) => stored.includes(id))) {
+        return
+      }
+      await updateDoc(docSnap.ref, {
+        participantIds: mergedIds,
+        updatedAt: serverTimestamp(),
+      })
+      debugLog('repaired walkGroup participantIds', { groupId: docSnap.id, participantIds: mergedIds })
+    }),
+  )
 }
 
 export async function processActivityWalkGrouping(userId, activityId, activity) {

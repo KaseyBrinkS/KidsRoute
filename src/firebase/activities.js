@@ -14,7 +14,7 @@ import {
 import { db } from './db'
 import { defaultSessions } from './sessions'
 import { getUserProfile } from './users'
-import { processActivityWalkGrouping, syncWalkGroupPartiesForActivity } from './walkGroups'
+import { processActivityWalkGrouping, repairWalkGroupParticipantIds, syncWalkGroupPartiesForActivity } from './walkGroups'
 
 export function activityMatchingPayload(activityData) {
   return {
@@ -122,6 +122,8 @@ export async function syncWalkGroupsForUser(userId) {
     await processActivityWalkGrouping(userId, activity.id, activityMatchingPayload(activity))
     synced += 1
   }
+
+  await repairWalkGroupParticipantIds(userId)
 
   console.log('[walkGroups] syncWalkGroupsForUser complete', { userId, synced })
   return { synced, skipped: null }

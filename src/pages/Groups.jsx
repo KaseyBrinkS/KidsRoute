@@ -26,7 +26,6 @@ import {
   subscribeToWalkGroups,
   walkGroupIsVisibleOnGroupsPage,
 } from '../firebase/walkGroups'
-import { isUserActiveLeader } from '../firebase/groupLeaders'
 import { getPartiesForUser as getMatchPartiesForUser, subscribeToMatches } from '../firebase/matching'
 import {
   BUILDING_WALK_TYPES,
@@ -315,7 +314,6 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
   }, [group.id, userId])
 
   const walkInProgress = Boolean(activeSession)
-  const isLeader = isUserActiveLeader(group, userId)
   const myParties = getPartiesForUser(group, userId)
   const displayWalkStatus =
     displayStatusProp ?? (walkInProgress ? 'in progress' : getGroupWalkStatus(group))
@@ -375,11 +373,9 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
         </span>
       </div>
 
-      {(isLeader || !walkInProgress) && (
-        <Link to={`/groups/${group.id}/leader`} className="btn-leader">
-          Group Leader View
-        </Link>
-      )}
+      <Link to={`/groups/${group.id}/leader`} className="btn-leader">
+        Group Leader View
+      </Link>
 
       {!walkInProgress && (
         <button

@@ -278,11 +278,8 @@ export default function GroupLeaderView() {
 
   const hasAccess = group && (
     isUserActiveLeader(group, user?.uid)
-    || (
-      isParticipant && (
-        isWalkGroup ? walkGroupIsReadyForWalk(group, user?.uid) : matchIsConnectedForUser(group, user?.uid)
-      )
-    )
+    || isParticipant
+    || walkInProgress
   )
 
   if (!hasAccess) {
@@ -400,15 +397,26 @@ export default function GroupLeaderView() {
           const status = getChildWalkStatus(child)
           const childKey = child.id ?? `${child.userId}_${child.childId}`
           const arrivalId = `arrive_${childKey}`
+          const isInactive =
+            child.walkStatus === 'absent' ||
+            child.walkStatus === 'off_day' ||
+            child.walkStatus === 'dropped_off'
+          const hasArrived =
+            child.walkStatus === 'confirmed' ||
+            child.walkStatus === 'dropped_off' ||
+            Boolean(child.pickedUpAt)
           const canArrive =
             walkInProgress &&
             !walkComplete &&
+            !isInactive &&
             isWalkGroup &&
-            child.walkStatus === 'waiting_arrival'
+            child.walkStatus === 'waiting_arrival' &&
+            !hasArrived
           const canDropOff =
             walkInProgress &&
             !walkComplete &&
-            child.walkStatus === 'confirmed'
+            !isInactive &&
+            (hasArrived || !isWalkGroup)
 
           return (
             <li key={childKey} className="px-5 py-4">
