@@ -245,7 +245,7 @@ export default function GroupLeaderView() {
     return (
       <div>
         <PageHeader title="Group Leader View" description="Manage your walking group" />
-        <p className="text-sm text-gray-600">Loading group…</p>
+        <p className="text-muted">Loading group…</p>
       </div>
     )
   }
@@ -258,9 +258,9 @@ export default function GroupLeaderView() {
     return (
       <div>
         <PageHeader title="Group Leader View" description="Manage your walking group" />
-        <p className="text-sm text-gray-600">
+        <p className="text-muted">
           Group not found or you don&apos;t have access.{' '}
-          <Link to="/groups" className="font-medium text-indigo-600 hover:text-indigo-700">
+          <Link to="/groups" className="font-semibold text-primary hover:underline">
             Back to Groups
           </Link>
         </p>
@@ -289,35 +289,35 @@ export default function GroupLeaderView() {
         description="Manage your walking group"
       />
 
-      <div className="mb-6 rounded-lg border border-gray-200 bg-white p-5">
+      <div className="kr-card mb-6 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="font-medium text-gray-900">{group.location}</p>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="text-lg font-semibold text-[var(--color-text)]">{group.location}</p>
+            <p className="mt-1 text-sm text-muted">
               {isBuildingWalk
                 ? `${buildingWalkConfig?.route} · ${buildingWalkConfig?.scheduleLabel}`
                 : `${group.day} · ${formatGroupTimes(group)}`}
             </p>
             {isWalkGroup && (
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-muted">
                 {preWalkParties.length} children in this group
               </p>
             )}
           </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+          <span className={
             walkComplete
-              ? 'bg-green-50 text-green-700'
+              ? 'badge-walk-upcoming'
               : walkInProgress
-                ? 'bg-amber-50 text-amber-800'
-                : 'bg-gray-100 text-gray-700'
-          }`}>
+                ? 'badge-walk-active'
+                : 'badge-walk-upcoming'
+          }>
             {walkComplete ? 'Walk complete' : walkInProgress ? 'Walk in progress' : 'Ready to start'}
           </span>
         </div>
 
         {!walkInProgress && (
           <>
-            <p className="mt-4 text-sm text-gray-600">
+            <p className="mt-4 text-sm text-muted">
               {isWalkGroup
                 ? 'All accepted children in the group appear below. Mark each child as arrived when they join the walk, then dropped off at their destination.'
                 : isBuildingWalk
@@ -328,7 +328,7 @@ export default function GroupLeaderView() {
               type="button"
               onClick={handleStartWalk}
               disabled={actionId === 'start' || !groupReadyForWalk}
-              className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="btn-primary mt-4"
             >
               {actionId === 'start'
                 ? 'Starting…'
@@ -341,15 +341,15 @@ export default function GroupLeaderView() {
 
         {walkInProgress && !walkComplete && (
           <>
-            <p className="mt-4 text-sm text-gray-600">
+            <p className="mt-4 text-sm text-muted">
               {pickupLabel}: {formatHistoryTime(activeSession.startedAt)}
             </p>
-            <p className="mt-2 text-sm text-gray-600">{dropOffLabel}</p>
+            <p className="mt-2 text-sm text-muted">{dropOffLabel}</p>
           </>
         )}
 
         {walkComplete && (
-          <p className="mt-4 text-sm text-green-700">
+          <p className="mt-4 text-sm text-[var(--color-walk-green)]">
             All children have been dropped off. This walk is complete.
           </p>
         )}
@@ -360,11 +360,11 @@ export default function GroupLeaderView() {
       )}
 
       {error && (
-        <p className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+        <p className="alert-error mb-4">{error}</p>
       )}
 
-      <h2 className="text-sm font-medium text-gray-900">Children</h2>
-      <ul className="mt-3 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+      <h2 className="kr-section-title">Children</h2>
+      <ul className="kr-card mt-3 divide-y divide-border">
         {children.map((child) => {
           const status = getChildWalkStatus(child)
           const childKey = child.id ?? `${child.userId}_${child.childId}`
@@ -380,24 +380,24 @@ export default function GroupLeaderView() {
             child.walkStatus === 'confirmed'
 
           return (
-            <li key={childKey} className="px-4 py-4 sm:px-6">
+            <li key={childKey} className="px-5 py-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3">
-                    <p className="font-medium text-gray-900">{child.childFirstName}</p>
+                    <p className="font-semibold text-[var(--color-text)]">{child.childFirstName}</p>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.style}`}>
                       {status.label}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-gray-600">Parent: {child.parentName}</p>
-                  <p className="text-sm text-gray-600">Phone: {child.contactPhone}</p>
+                  <p className="mt-2 text-sm text-muted">Parent: {child.parentName}</p>
+                  <p className="text-sm text-muted">Phone: {child.contactPhone}</p>
                   {child.pickedUpAt && (
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-2 text-sm text-muted">
                       Arrived: {formatHistoryTime(child.pickedUpAt)}
                     </p>
                   )}
                   {child.droppedOffAt && (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted">
                       Dropped off: {formatHistoryTime(child.droppedOffAt)}
                     </p>
                   )}
@@ -409,7 +409,7 @@ export default function GroupLeaderView() {
                       type="button"
                       onClick={() => handleArrival(child)}
                       disabled={actionId === arrivalId}
-                      className="rounded-md border border-green-600 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
+                      className="rounded-xl border border-[var(--color-walk-green)] px-3 py-1.5 text-sm font-semibold text-[var(--color-walk-green)] hover:bg-[var(--color-walk-green-bg)] disabled:opacity-50"
                     >
                       {actionId === arrivalId ? 'Saving…' : 'Arrived'}
                     </button>
@@ -419,7 +419,7 @@ export default function GroupLeaderView() {
                       type="button"
                       onClick={() => handleDropOff(child)}
                       disabled={actionId === childKey}
-                      className="rounded-md border border-indigo-600 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+                      className="btn-primary py-1.5"
                     >
                       {actionId === childKey ? 'Saving…' : 'Dropped off'}
                     </button>
@@ -432,7 +432,7 @@ export default function GroupLeaderView() {
       </ul>
 
       <p className="mt-6">
-        <Link to="/groups" className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+        <Link to="/groups" className="text-sm font-semibold text-primary hover:underline">
           ← Back to Groups
         </Link>
       </p>

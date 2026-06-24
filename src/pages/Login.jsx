@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { signInWithGoogle } from '../firebase/auth'
+import KidsRouteLogo from '../components/KidsRouteLogo'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -29,19 +30,21 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
-        <h1 className="text-center text-2xl font-semibold text-indigo-600">KidsRoute</h1>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Coordinate neighborhood walks to after-school activities
-        </p>
+    <div className="flex min-h-screen items-center justify-center bg-bg px-4">
+      <div className="kr-card w-full max-w-md p-10">
+        <div className="flex flex-col items-center text-center">
+          <h1 className="text-4xl font-bold tracking-tight text-primary">KidsRoute</h1>
+          <KidsRouteLogo className="mt-6 h-24 w-24 text-primary" />
+          <p className="mt-5 text-lg font-medium text-muted">Safe walks, together.</p>
+        </div>
+
         <button
           type="button"
           onClick={handleGoogleSignIn}
           disabled={signingIn}
-          className="mt-8 flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="btn-secondary mt-10 w-full gap-3 py-3"
         >
-          <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+          <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -61,8 +64,9 @@ export default function Login() {
           </svg>
           {signingIn ? 'Signing in…' : 'Sign in with Google'}
         </button>
+
         {error && (
-          <p className="mt-4 text-center text-sm text-red-600">{error}</p>
+          <p className="alert-error mt-4 text-center">{error}</p>
         )}
       </div>
     </div>

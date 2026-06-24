@@ -15,14 +15,13 @@ import {
   validateHomeAddressFields,
 } from '../firebase/buildingWalks'
 
-const inputClass =
-  'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
+const inputClass = 'input-kr'
 
 function SettingsSection({ title, description, children }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-6">
-      <h2 className="text-sm font-medium text-gray-900">{title}</h2>
-      {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+    <section className="kr-card p-6">
+      <h2 className="kr-section-title">{title}</h2>
+      {description && <p className="kr-section-desc">{description}</p>}
       <div className="mt-4">{children}</div>
     </section>
   )
@@ -32,8 +31,8 @@ function Toggle({ label, description, checked, onChange, disabled }) {
   return (
     <label className="flex cursor-pointer items-start justify-between gap-4">
       <span>
-        <span className="block text-sm font-medium text-gray-900">{label}</span>
-        {description && <span className="mt-0.5 block text-sm text-gray-500">{description}</span>}
+        <span className="block text-sm font-medium text-[var(--color-text)]">{label}</span>
+        {description && <span className="mt-0.5 block text-sm text-muted">{description}</span>}
       </span>
       <button
         type="button"
@@ -42,11 +41,11 @@ function Toggle({ label, description, checked, onChange, disabled }) {
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-          checked ? 'bg-indigo-600' : 'bg-gray-200'
+          checked ? 'bg-primary' : 'bg-border'
         }`}
       >
         <span
-          className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow transition-transform ${
+          className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-surface shadow transition-transform ${
             checked ? 'translate-x-5' : 'translate-x-0.5'
           }`}
         />
@@ -194,21 +193,21 @@ export default function Settings() {
           >
             <dl className="space-y-4">
               <div>
-                <dt className="text-sm font-medium text-gray-700">Name</dt>
-                <dd className="mt-1 text-sm text-gray-900">
+                <dt className="text-sm font-medium text-[var(--color-text)]">Name</dt>
+                <dd className="mt-1 text-sm text-[var(--color-text)]">
                   {loading ? 'Loading…' : displayName}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-700">Email</dt>
-                <dd className="mt-1 text-sm text-gray-900">
+                <dt className="text-sm font-medium text-[var(--color-text)]">Email</dt>
+                <dd className="mt-1 text-sm text-[var(--color-text)]">
                   {loading ? 'Loading…' : email}
                 </dd>
               </div>
             </dl>
 
             <form onSubmit={handleSavePhone} className="mt-4">
-              <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="phoneNumber" className="block text-sm font-medium text-[var(--color-text)]">
                 Phone number
               </label>
               <div className="mt-1 flex flex-wrap gap-2">
@@ -227,7 +226,7 @@ export default function Settings() {
                 <button
                   type="submit"
                   disabled={savingPhone}
-                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {savingPhone ? 'Saving…' : 'Save'}
                 </button>
@@ -245,7 +244,7 @@ export default function Settings() {
             <form onSubmit={handleSaveHomeAddress}>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
-                  <label htmlFor="streetNumber" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="streetNumber" className="block text-sm font-medium text-[var(--color-text)]">
                     Street number
                   </label>
                   <input
@@ -263,7 +262,7 @@ export default function Settings() {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label htmlFor="streetName" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="streetName" className="block text-sm font-medium text-[var(--color-text)]">
                     Street name
                   </label>
                   <input
@@ -280,7 +279,7 @@ export default function Settings() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="zipCode" className="block text-sm font-medium text-[var(--color-text)]">
                     Zip code
                   </label>
                   <input
@@ -310,7 +309,7 @@ export default function Settings() {
                 <button
                   type="submit"
                   disabled={savingHomeAddress}
-                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {savingHomeAddress ? 'Saving…' : 'Save address'}
                 </button>
@@ -359,7 +358,7 @@ export default function Settings() {
           </SettingsSection>
 
           <SettingsSection title="School">
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-semibold text-[var(--color-text)]">
               {loading ? 'Loading…' : (profile?.school ?? DEFAULT_SCHOOL)}
             </p>
             <p className="mt-2 text-sm text-gray-500">
@@ -367,12 +366,12 @@ export default function Settings() {
             </p>
           </SettingsSection>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <div className="kr-card p-6">
             <button
               type="button"
               onClick={handleSignOut}
               disabled={signingOut}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="btn-secondary"
             >
               {signingOut ? 'Signing out…' : 'Sign out'}
             </button>

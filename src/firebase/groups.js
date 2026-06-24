@@ -101,7 +101,7 @@ export const WALK_STATUS_LABELS = {
 }
 
 export const WALK_STATUS_STYLES = {
-  upcoming: 'bg-indigo-50 text-indigo-700',
-  'in progress': 'bg-green-50 text-green-700',
-  completed: 'bg-gray-100 text-gray-600',
+  upcoming: 'badge-walk-upcoming',
+  'in progress': 'badge-walk-active',
+  completed: 'badge-walk-upcoming',
 }

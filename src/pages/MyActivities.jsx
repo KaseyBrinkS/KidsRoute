@@ -28,8 +28,7 @@ import {
 } from '../firebase/sessions'
 import { subscribeToKids } from '../firebase/kids'
 
-const inputClass =
-  'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
+const inputClass = 'input-kr'
 
 function emptyForm(kids) {
   const childId = kids[0]?.id ?? ''
@@ -66,6 +65,33 @@ function formFromActivity(activity) {
 
 function activityTitle(activity) {
   return activity.className || activity.activityName
+}
+
+const LIST_SORT_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function earliestDayIndex(days) {
+  if (!days?.length) return LIST_SORT_WEEKDAYS.length
+  return Math.min(
+    ...days.map((day) => {
+      const index = LIST_SORT_WEEKDAYS.indexOf(day)
+      return index >= 0 ? index : LIST_SORT_WEEKDAYS.length
+    }),
+  )
+}
+
+function startTimeSortKey(startTime) {
+  if (!startTime) return Number.MAX_SAFE_INTEGER
+  const [hoursStr, minutesStr] = startTime.split(':')
+  const hours = Number(hoursStr)
+  const minutes = Number(minutesStr)
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return Number.MAX_SAFE_INTEGER
+  return hours * 60 + minutes
+}
+
+function compareActivitiesByDayAndTime(a, b) {
+  const dayDiff = earliestDayIndex(a.days) - earliestDayIndex(b.days)
+  if (dayDiff !== 0) return dayDiff
+  return startTimeSortKey(a.startTime) - startTimeSortKey(b.startTime)
 }
 
 export default function MyActivities() {
@@ -138,6 +164,10 @@ export default function MyActivities() {
           activities: [activity],
         })
       }
+    }
+
+    for (const entry of grouped.values()) {
+      entry.activities.sort(compareActivitiesByDayAndTime)
     }
 
     return Array.from(grouped.values())
@@ -266,17 +296,17 @@ export default function MyActivities() {
         description="After-school activities your kids are signed up for"
       />
 
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-sm font-medium text-gray-900">
+      <div className="kr-card p-6">
+        <h2 className="kr-section-title">
           {editingId ? 'Edit activity' : 'Add an activity'}
         </h2>
 
         {kidsLoading ? (
-          <p className="mt-4 text-sm text-gray-600">Loading children…</p>
+          <p className="mt-4 text-muted">Loading children…</p>
         ) : kids.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-600">
+          <p className="mt-4 text-muted">
             Add a child on the{' '}
-            <Link to="/my-kids" className="font-medium text-indigo-600 hover:text-indigo-700">
+            <Link to="/my-kids" className="font-semibold text-primary hover:underline">
               My Kids
             </Link>{' '}
             screen before adding activities.
@@ -284,7 +314,7 @@ export default function MyActivities() {
         ) : (
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div>
-              <label htmlFor="childId" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="childId" className="block text-sm font-medium text-[var(--color-text)]">
                 Child
               </label>
               <select
@@ -312,7 +342,7 @@ export default function MyActivities() {
             {locationSelected && (
               <>
                 <div>
-                  <label htmlFor="className" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="className" className="block text-sm font-medium text-[var(--color-text)]">
                     Class name
                   </label>
                   <input
@@ -328,7 +358,7 @@ export default function MyActivities() {
                 </div>
 
                 <div>
-                  <label htmlFor="grade" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="grade" className="block text-sm font-medium text-[var(--color-text)]">
                     Grade
                   </label>
                   <select
@@ -348,7 +378,7 @@ export default function MyActivities() {
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Sessions</p>
+                  <p className="text-sm font-medium text-[var(--color-text)]">Sessions</p>
                   <p className="mt-1 text-xs text-gray-500">
                     Select which session(s) this activity runs during. Class meets weekly on the
                     days you choose below.
@@ -359,10 +389,10 @@ export default function MyActivities() {
                       return (
                         <label
                           key={session.id}
-                          className={`flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2 ${
+                          className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2 ${
                             selected
-                              ? 'border-indigo-300 bg-indigo-50'
-                              : 'border-gray-200 bg-white'
+                              ? 'border-primary/40 bg-primary/5'
+                              : 'border-border bg-surface'
                           }`}
                         >
                           <input
@@ -372,7 +402,7 @@ export default function MyActivities() {
                             className="mt-0.5"
                           />
                           <span>
-                            <span className="block text-sm font-medium text-gray-900">
+                            <span className="block text-sm font-semibold text-[var(--color-text)]">
                               {session.label}
                             </span>
                             <span className="block text-xs text-gray-500">
@@ -390,7 +420,7 @@ export default function MyActivities() {
                     <div>
                       <label
                         htmlFor="summerStartDate"
-                        className="block text-sm font-medium text-gray-700"
+                        className="block text-sm font-medium text-[var(--color-text)]"
                       >
                         Summer camp start
                       </label>
@@ -407,7 +437,7 @@ export default function MyActivities() {
                     <div>
                       <label
                         htmlFor="summerEndDate"
-                        className="block text-sm font-medium text-gray-700"
+                        className="block text-sm font-medium text-[var(--color-text)]"
                       >
                         Summer camp end
                       </label>
@@ -425,7 +455,7 @@ export default function MyActivities() {
                 )}
 
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Days of the week</p>
+                  <p className="text-sm font-medium text-[var(--color-text)]">Days of the week</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {WEEKDAYS.map((day) => {
                       const selected = form.days.includes(day)
@@ -434,10 +464,10 @@ export default function MyActivities() {
                           key={day}
                           type="button"
                           onClick={() => toggleDay(day)}
-                          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                          className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors ${
                             selected
-                              ? 'bg-indigo-600 text-white'
-                              : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                              ? 'bg-primary text-white'
+                              : 'border border-border bg-surface text-muted hover:bg-bg-warm'
                           }`}
                         >
                           {day}
@@ -448,7 +478,7 @@ export default function MyActivities() {
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Start time</p>
+                  <p className="text-sm font-medium text-[var(--color-text)]">Start time</p>
                   <div className="mt-1 flex flex-wrap gap-2">
                     <select
                       name="hour"
@@ -504,7 +534,7 @@ export default function MyActivities() {
                   form.days.length === 0 ||
                   form.sessions.length === 0
                 }
-                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="btn-primary"
               >
                 {submitting
                   ? editingId
@@ -519,7 +549,7 @@ export default function MyActivities() {
                   type="button"
                   onClick={handleCancelEdit}
                   disabled={submitting}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="btn-secondary"
                 >
                   Cancel
                 </button>
@@ -529,17 +559,15 @@ export default function MyActivities() {
         )}
       </div>
 
-      {error && (
-        <p className="mt-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
-      )}
+      {error && <p className="alert-error mt-4">{error}</p>}
 
       <div className="mt-8">
-        <h2 className="text-sm font-medium text-gray-900">Your activities</h2>
+        <h2 className="kr-section-title">Your activities</h2>
 
         {loading ? (
-          <p className="mt-4 text-sm text-gray-600">Loading…</p>
+          <p className="mt-4 text-muted">Loading…</p>
         ) : activities.length === 0 ? (
-          <p className="mt-4 rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center text-sm text-gray-600">
+          <p className="kr-card-flat mt-4">
             No activities added yet. Use the form above to add your first activity.
           </p>
         ) : (
@@ -547,28 +575,28 @@ export default function MyActivities() {
             {activitiesByChild.map(({ kid, activities: childActivities }) =>
               childActivities.length === 0 ? null : (
                 <section key={kid.id}>
-                  <h3 className="text-sm font-medium text-gray-700">{kid.firstName}</h3>
-                  <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+                  <h3 className="text-lg font-bold text-primary">{kid.firstName}</h3>
+                  <ul className="kr-card mt-2 divide-y divide-border">
                     {childActivities.map((activity) => (
                       <li
                         key={activity.id}
-                        className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6"
+                        className="flex items-start justify-between gap-4 px-5 py-4"
                       >
                         <div>
-                          <p className="font-medium text-gray-900">{activityTitle(activity)}</p>
-                          <p className="mt-1 text-sm text-gray-600">
+                          <p className="font-semibold text-[var(--color-text)]">{activityTitle(activity)}</p>
+                          <p className="mt-1 text-sm text-muted">
                             {activity.location}
                             {activity.locationPendingReview && (
-                              <span className="ml-2 text-xs text-amber-700">
+                              <span className="ml-2 text-xs text-accent">
                                 (pending review)
                               </span>
                             )}
                           </p>
-                          <p className="mt-1 text-sm text-gray-500">
+                          <p className="mt-1 text-sm text-muted">
                             {activity.grade && `Grade ${activity.grade} · `}
                             {formatDays(activity.days)} · {formatStartTime(activity.startTime)}
                           </p>
-                          <p className="mt-1 text-sm text-gray-500">
+                          <p className="mt-1 text-sm text-muted">
                             {formatSessionLabels(activity.sessions)}
                           </p>
                         </div>
@@ -577,7 +605,7 @@ export default function MyActivities() {
                             type="button"
                             onClick={() => handleEdit(activity)}
                             disabled={Boolean(editingId) || deletingId === activity.id}
-                            className="rounded-md px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+                            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/10 disabled:opacity-50"
                           >
                             Edit
                           </button>
@@ -585,7 +613,7 @@ export default function MyActivities() {
                             type="button"
                             onClick={() => handleDelete(activity.id)}
                             disabled={deletingId === activity.id || editingId === activity.id}
-                            className="rounded-md px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            className="btn-danger"
                           >
                             {deletingId === activity.id ? 'Deleting…' : 'Delete'}
                           </button>

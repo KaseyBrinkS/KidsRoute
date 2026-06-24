@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import KidsRouteLogo from './KidsRouteLogo'
 import { logOut } from '../firebase/auth'
 
 const navLinks = [
@@ -19,20 +20,23 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
+    <div className="min-h-screen bg-bg">
+      <header className="border-b border-border bg-surface shadow-sm">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-          <span className="text-lg font-semibold text-indigo-600">KidsRoute</span>
+          <NavLink to="/dashboard" className="flex items-center gap-2.5">
+            <KidsRouteLogo className="h-9 w-9 text-primary" />
+            <span className="text-xl font-bold text-primary">KidsRoute</span>
+          </NavLink>
           <nav className="flex flex-wrap items-center gap-1">
             {navLinks.map(({ to, label }) => (
               <NavLink
                 key={to}
                 to={to}
                 className={({ isActive }) =>
-                  `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  `rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
                     isActive
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted hover:bg-bg-warm hover:text-[var(--color-text)]'
                   }`
                 }
               >
@@ -42,7 +46,7 @@ export default function AppLayout() {
             <button
               type="button"
               onClick={handleLogout}
-              className="ml-2 rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+              className="btn-ghost ml-1"
             >
               Logout
             </button>

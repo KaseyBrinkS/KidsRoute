@@ -279,6 +279,31 @@ export function subscribeToGroupAbsences(groupId, userId, onData, onError) {
   )
 }
 
+export function subscribeToUserActiveWalkSessions(userId, onData, onError) {
+  if (!userId) {
+    onData({})
+    return () => {}
+  }
+
+  return onSnapshot(
+    query(
+      collection(db, 'walkSessions'),
+      where('participantIds', 'array-contains', userId),
+    ),
+    (snapshot) => {
+      const sessionsByGroup = {}
+      for (const docSnap of snapshot.docs) {
+        const session = { id: docSnap.id, ...docSnap.data() }
+        if (session.status === 'started' && session.dateKey === todayKey()) {
+          sessionsByGroup[session.groupId] = session
+        }
+      }
+      onData(sessionsByGroup)
+    },
+    onError,
+  )
+}
+
 async function fetchGroupDocument(groupId) {
   const walkGroupSnap = await getDoc(doc(db, 'walkGroups', groupId))
   if (walkGroupSnap.exists()) {
