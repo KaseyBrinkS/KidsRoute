@@ -25,15 +25,24 @@ export function normalizeUserProfile(data) {
   }
 }
 
+export function isSetupComplete(profile) {
+  return profile?.welcomeCompleted === true
+}
+
 export function needsOnboarding(profile) {
-  return profile?.welcomeCompleted === false
+  return !isSetupComplete(profile)
 }
 
 /** @deprecated use needsOnboarding */
 export const needsWelcome = needsOnboarding
 
+export function shouldShowSetupReminder(profile, kidCount, activityCount) {
+  if (isSetupComplete(profile)) return false
+  return kidCount < 1 || activityCount < 1
+}
+
 export function getOnboardingRedirectPath(profile) {
-  if (!needsOnboarding(profile)) return null
+  if (isSetupComplete(profile)) return '/welcome'
   const step = profile.onboardingStep ?? 1
   const paths = {
     1: '/welcome',
@@ -42,6 +51,12 @@ export function getOnboardingRedirectPath(profile) {
     4: '/onboarding/activity',
   }
   return paths[step] ?? '/welcome'
+}
+
+export async function syncSetupCompletion(userId, kidCount, activityCount) {
+  if (kidCount >= 1 && activityCount >= 1) {
+    await completeOnboarding(userId)
+  }
 }
 
 export async function advanceOnboardingStep(userId, step) {
@@ -57,7 +72,11 @@ export const completeWelcome = completeOnboarding
 
 export async function getPostLoginPath(userId) {
   const profile = await getUserProfile(userId)
-  return getOnboardingRedirectPath(profile) ?? '/dashboard'
+  if (isSetupComplete(profile)) return '/dashboard'
+  if (profile.welcomeCompleted === false && (profile.onboardingStep ?? 1) === 1) {
+    return '/welcome'
+  }
+  return '/dashboard'
 }
 
 export async function saveUserProfile(user) {

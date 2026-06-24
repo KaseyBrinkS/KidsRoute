@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LocationSearch from '../../components/LocationSearch'
 import OnboardingShell from '../../components/onboarding/OnboardingShell'
-import { RequireOnboardingRoute } from '../../components/RequireOnboarded'
+import { OnboardingStepActions } from '../../components/onboarding/OnboardingStepActions'
 import { useAuth } from '../../context/AuthContext'
 import {
   addActivityAndFindMatches,
@@ -18,7 +18,7 @@ import {
 } from '../../firebase/activities'
 import { subscribeToKids } from '../../firebase/kids'
 import { defaultSessions } from '../../firebase/sessions'
-import { completeOnboarding } from '../../firebase/users'
+import { syncSetupCompletion } from '../../firebase/users'
 
 function emptyForm(kids) {
   const childId = kids[0]?.id ?? ''
@@ -136,6 +136,7 @@ export default function OnboardingActivity() {
         summerEndDate: null,
       })
       setForm(emptyForm(kids))
+      await syncSetupCompletion(user.uid, kids.length, activities.length + 1)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -145,14 +146,14 @@ export default function OnboardingActivity() {
 
   async function handleDone() {
     if (activities.length === 0) {
-      setError('Add at least one activity to finish setup.')
+      setError('Add at least one activity to finish, or skip for now.')
       return
     }
 
     setError(null)
     setFinishing(true)
     try {
-      await completeOnboarding(user.uid)
+      await syncSetupCompletion(user.uid, kids.length, activities.length)
       navigate('/dashboard')
     } catch (err) {
       setError(err.message)
@@ -163,8 +164,7 @@ export default function OnboardingActivity() {
   const locationSelected = Boolean(form.location)
 
   return (
-    <RequireOnboardingRoute minStep={4}>
-      <OnboardingShell
+    <OnboardingShell
         step={4}
         title="Add your first activity"
         description="Where does your child go after school? We'll use this to find families with the same schedule."
@@ -336,15 +336,13 @@ export default function OnboardingActivity() {
 
         {error && <p className="alert-error mt-4">{error}</p>}
 
-        <button
-          type="button"
-          onClick={handleDone}
-          disabled={finishing || loading || activities.length === 0}
-          className="btn-primary mt-6 w-full py-3"
-        >
-          {finishing ? 'Loading…' : 'Done'}
-        </button>
+        <OnboardingStepActions
+          primaryLabel="Done"
+          onPrimary={handleDone}
+          primaryDisabled={loading || activities.length === 0}
+          primaryBusy={finishing}
+          skipLabel="Do this later"
+        />
       </OnboardingShell>
-    </RequireOnboardingRoute>
   )
 }

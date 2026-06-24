@@ -5,14 +5,14 @@ import { useAuth } from '../context/AuthContext'
 import {
   advanceOnboardingStep,
   getOnboardingRedirectPath,
-  needsOnboarding,
+  isSetupComplete,
   subscribeToUserProfile,
 } from '../firebase/users'
 
 export default function Welcome() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [isNewUser, setIsNewUser] = useState(false)
+  const [setupIncomplete, setSetupIncomplete] = useState(false)
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -23,7 +23,7 @@ export default function Welcome() {
     const unsubscribe = subscribeToUserProfile(
       user.uid,
       (profile) => {
-        setIsNewUser(needsOnboarding(profile))
+        setSetupIncomplete(!isSetupComplete(profile))
         setOnboardingStep(profile.onboardingStep ?? 1)
         setLoading(false)
       },
@@ -37,7 +37,7 @@ export default function Welcome() {
     setBusy(true)
     try {
       if (onboardingStep > 1) {
-        navigate(getOnboardingRedirectPath({ welcomeCompleted: false, onboardingStep }) ?? '/onboarding/kids')
+        navigate(getOnboardingRedirectPath({ welcomeCompleted: false, onboardingStep }))
         return
       }
       await advanceOnboardingStep(user.uid, 2)
@@ -58,7 +58,7 @@ export default function Welcome() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10">
       <div className="kr-card w-full max-w-lg overflow-hidden p-0">
-        {isNewUser && (
+        {setupIncomplete && onboardingStep === 1 && (
           <p className="pt-6 text-center text-sm font-semibold text-primary">Step 1 of 4</p>
         )}
 
@@ -68,15 +68,24 @@ export default function Welcome() {
           <AboutDescription />
 
           <div className="flex flex-col gap-3">
-            {isNewUser ? (
-              <button
-                type="button"
-                onClick={handleGetStarted}
-                disabled={busy}
-                className="btn-primary w-full py-3.5"
-              >
-                {busy ? 'Loading…' : onboardingStep > 1 ? 'Continue setup' : 'Get Started'}
-              </button>
+            {setupIncomplete ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleGetStarted}
+                  disabled={busy}
+                  className="btn-primary w-full py-3.5"
+                >
+                  {busy ? 'Loading…' : onboardingStep > 1 ? 'Continue setup' : 'Get Started'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard')}
+                  className="btn-ghost w-full py-2"
+                >
+                  Skip for now
+                </button>
+              </>
             ) : (
               <button
                 type="button"

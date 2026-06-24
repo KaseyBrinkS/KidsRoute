@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ActivitiesWeekCalendar from '../components/ActivitiesWeekCalendar'
 import LocationSearch from '../components/LocationSearch'
 import PageHeader from '../components/PageHeader'
+import ViewToggle from '../components/ViewToggle'
 import { useAuth } from '../context/AuthContext'
 import {
   addActivityAndFindMatches,
@@ -26,6 +28,7 @@ import {
   validateSessionForm,
 } from '../firebase/sessions'
 import { subscribeToKids } from '../firebase/kids'
+import { startOfWeek } from '../utils/dates'
 
 const inputClass = 'input-kr'
 
@@ -108,6 +111,8 @@ export default function MyActivities() {
   const [editingId, setEditingId] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
+  const [viewMode, setViewMode] = useState('list')
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
 
   useEffect(() => {
     if (!user) return
@@ -297,6 +302,18 @@ export default function MyActivities() {
       <PageHeader
         title="My Activities"
         description="After-school activities your kids are signed up for"
+        actions={
+          !loading && activities.length > 0 ? (
+            <ViewToggle
+              value={viewMode}
+              onChange={setViewMode}
+              options={[
+                { value: 'list', label: 'List' },
+                { value: 'calendar', label: 'Calendar' },
+              ]}
+            />
+          ) : null
+        }
       />
 
       <div className="kr-card p-6">
@@ -573,6 +590,15 @@ export default function MyActivities() {
           <p className="kr-card-flat mt-4">
             No activities added yet. Use the form above to add your first activity.
           </p>
+        ) : viewMode === 'calendar' ? (
+          <div className="mt-4">
+            <ActivitiesWeekCalendar
+              activities={activities}
+              kids={kids}
+              weekStart={weekStart}
+              onWeekChange={setWeekStart}
+            />
+          </div>
         ) : (
           <div className="mt-4 space-y-6">
             {activitiesByChild.map(({ kid, activities: childActivities }) =>

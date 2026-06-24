@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
-import RequireOnboarded from './components/RequireOnboarded'
 import Dashboard from './pages/Dashboard'
 import GroupLeaderView from './pages/GroupLeaderView'
 import Groups from './pages/Groups'
@@ -24,17 +23,15 @@ export default function App() {
         <Route path="/onboarding/kids" element={<OnboardingKids />} />
         <Route path="/onboarding/details" element={<OnboardingDetails />} />
         <Route path="/onboarding/activity" element={<OnboardingActivity />} />
-        <Route element={<RequireOnboarded />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/my-kids" element={<MyKids />} />
-            <Route path="/my-activities" element={<MyActivities />} />
-            <Route path="/groups" element={<Groups />} />
-            <Route path="/groups/:groupId/leader" element={<GroupLeaderView />} />
-            <Route path="/history" element={<History />} />
-            <Route path="/settings" element={<Settings />} />
-          </Route>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route element={<AppLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/my-kids" element={<MyKids />} />
+          <Route path="/my-activities" element={<MyActivities />} />
+          <Route path="/groups" element={<Groups />} />
+          <Route path="/groups/:groupId/leader" element={<GroupLeaderView />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>
     </Routes>

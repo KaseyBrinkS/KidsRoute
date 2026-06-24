@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import OnboardingShell from '../../components/onboarding/OnboardingShell'
-import { RequireOnboardingRoute } from '../../components/RequireOnboarded'
+import { OnboardingStepActions } from '../../components/onboarding/OnboardingStepActions'
 import { useAuth } from '../../context/AuthContext'
 import { validateHomeAddressFields } from '../../firebase/buildingWalks'
 import { advanceOnboardingStep, subscribeToUserProfile, updateUserProfile } from '../../firebase/users'
@@ -39,7 +39,7 @@ export default function OnboardingDetails() {
   }, [user])
 
   async function handleNext(event) {
-    event.preventDefault()
+    event?.preventDefault?.()
     setError(null)
 
     const trimmedPhone = phoneNumber.trim()
@@ -75,16 +75,16 @@ export default function OnboardingDetails() {
   }
 
   return (
-    <RequireOnboardingRoute minStep={3}>
-      <OnboardingShell
-        step={3}
-        title="Your details"
-        description="Your phone number and home address help us find walking group matches nearby. This information is kept private and only shared with families in your confirmed walk groups."
-      >
-        {loading ? (
-          <p className="text-muted">Loading…</p>
-        ) : (
-          <form onSubmit={handleNext} className="space-y-4">
+    <OnboardingShell
+      step={3}
+      title="Your details"
+      description="Your phone number and home address help us find walking group matches nearby. This information is kept private and only shared with families in your confirmed walk groups."
+    >
+      {loading ? (
+        <p className="text-muted">Loading…</p>
+      ) : (
+        <>
+          <form id="onboarding-details-form" onSubmit={handleNext} className="space-y-4">
             <div>
               <label htmlFor="phoneNumber" className="block text-sm font-medium text-[var(--color-text)]">
                 Phone number
@@ -151,13 +151,16 @@ export default function OnboardingDetails() {
             </div>
 
             {error && <p className="alert-error">{error}</p>}
-
-            <button type="submit" disabled={submitting} className="btn-primary w-full py-3">
-              {submitting ? 'Saving…' : 'Next'}
-            </button>
           </form>
-        )}
-      </OnboardingShell>
-    </RequireOnboardingRoute>
+
+          <OnboardingStepActions
+            primaryLabel="Next"
+            onPrimary={handleNext}
+            primaryBusy={submitting}
+            skipLabel="Do this later"
+          />
+        </>
+      )}
+    </OnboardingShell>
   )
 }

@@ -38,6 +38,43 @@ export const CHILD_CALENDAR_COLORS = [
   { bg: '#f2ecea', border: '#a37870', text: '#73544e' },
 ]
 
+export const CALENDAR_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+export function startOfWeek(date = new Date()) {
+  const d = new Date(date)
+  d.setHours(12, 0, 0, 0)
+  d.setDate(d.getDate() - d.getDay())
+  return d
+}
+
+export function addWeeks(date, weeks) {
+  const d = new Date(date)
+  d.setDate(d.getDate() + weeks * 7)
+  return d
+}
+
+export function formatWeekRange(weekStart) {
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 6)
+  const startFmt = weekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const endFmt = weekEnd.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: weekStart.getFullYear() !== weekEnd.getFullYear() ? 'numeric' : undefined,
+  })
+  const yearSuffix =
+    weekStart.getFullYear() === weekEnd.getFullYear() ? `, ${weekStart.getFullYear()}` : ''
+  return `${startFmt} – ${endFmt}${yearSuffix}`
+}
+
+export function getWeekDays(weekStart) {
+  return CALENDAR_WEEKDAYS.map((label, index) => {
+    const date = new Date(weekStart)
+    date.setDate(date.getDate() + index)
+    return { label, date }
+  })
+}
+
 export function childColorIndex(childId, childIds) {
   const index = childIds.indexOf(childId)
   return index >= 0 ? index % CHILD_CALENDAR_COLORS.length : 0

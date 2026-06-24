@@ -138,6 +138,39 @@ export function defaultSessions() {
   return ['fall', 'spring']
 }
 
+const SESSION_PERIOD_LABELS = {
+  fall: 'Mid-September through January',
+  spring: 'February through June',
+  summer: 'July through August',
+}
+
+/** Current school session based on today's date. */
+export function getCurrentSession(referenceDate = new Date()) {
+  const month = referenceDate.getMonth()
+  const day = referenceDate.getDate()
+
+  if (month === 0) return 'fall'
+  if (month >= 1 && month <= 5) return 'spring'
+  if (month === 6 || month === 7) return 'summer'
+  if (month === 8) return day >= 15 ? 'fall' : 'summer'
+  return 'fall'
+}
+
+export function getCurrentSessionInfo(referenceDate = new Date()) {
+  const id = getCurrentSession(referenceDate)
+  const meta = SESSION_TYPES.find((session) => session.id === id)
+  return {
+    id,
+    label: meta?.label ?? id,
+    period: SESSION_PERIOD_LABELS[id] ?? meta?.description ?? '',
+  }
+}
+
+export function isActivityActiveInCurrentSession(activity, referenceDate = new Date()) {
+  const sessions = activity.sessions ?? defaultSessions()
+  return sessions.includes(getCurrentSession(referenceDate))
+}
+
 export function validateSessionForm(sessions, summerStartDate, summerEndDate) {
   if (!sessions?.length) {
     return 'Select at least one session.'

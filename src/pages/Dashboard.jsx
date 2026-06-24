@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import DaySelector, { todayWeekday } from '../components/DaySelector'
+import OnboardingReminderBanner from '../components/onboarding/OnboardingReminderBanner'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
+import { subscribeToActivities } from '../firebase/activities'
 import { getGroupWalkStatus } from '../firebase/groups'
 import {
   countOtherJoiningFamilies,
@@ -19,7 +21,14 @@ import {
   walkGroupHasMultipleFamilies,
 } from '../firebase/walkGroups'
 import { subscribeToUserActiveWalkSessions } from '../firebase/groupWalk'
-import { getUserProfile } from '../firebase/users'
+import { subscribeToKids } from '../firebase/kids'
+import {
+  getOnboardingRedirectPath,
+  getUserProfile,
+  shouldShowSetupReminder,
+  subscribeToUserProfile,
+  syncSetupCompletion,
+} from '../firebase/users'
 import { syncWalkGroupsForUser } from '../firebase/activities'
 import {
   walkStatusBadgeClass,
@@ -41,6 +50,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [respondingId, setRespondingId] = useState(null)
+  const [kidCount, setKidCount] = useState(0)
+  const [activityCount, setActivityCount] = useState(0)
+  const [profile, setProfile] = useState(null)
+  const [setupContinuePath, setSetupContinuePath] = useState('/welcome')
 
   useEffect(() => {
     if (!user) return undefined
@@ -67,11 +80,30 @@ export default function Dashboard() {
       (err) => setError(err.message),
     )
 
+    const unsubKids = subscribeToKids(user.uid, (kids) => setKidCount(kids.length))
+    const unsubActivities = subscribeToActivities(user.uid, (activities) =>
+      setActivityCount(activities.length),
+    )
+    const unsubProfile = subscribeToUserProfile(user.uid, (data) => {
+      setProfile(data)
+      setSetupContinuePath(getOnboardingRedirectPath(data))
+    })
+
     return () => {
       unsubGroups()
       unsubSessions()
+      unsubKids()
+      unsubActivities()
+      unsubProfile()
     }
   }, [user])
+
+  useEffect(() => {
+    if (!user || kidCount < 1 || activityCount < 1) return
+    syncSetupCompletion(user.uid, kidCount, activityCount).catch(() => {})
+  }, [user, kidCount, activityCount])
+
+  const showSetupReminder = shouldShowSetupReminder(profile, kidCount, activityCount)
 
   const dashboardWalkGroups = useMemo(
     () => walkGroups.filter(walkGroupHasMultipleFamilies),
@@ -141,6 +173,10 @@ export default function Dashboard() {
       />
 
       {error && <p className="alert-error">{error}</p>}
+
+      {showSetupReminder && (
+        <OnboardingReminderBanner continuePath={setupContinuePath} />
+      )}
 
       <DaySelector
         selectedDay={selectedDay}
