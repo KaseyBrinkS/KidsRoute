@@ -14,6 +14,7 @@ import {
 import { db } from './db'
 import { defaultSessions } from './sessions'
 import { processActivityMatching, syncMatchPartiesForActivity } from './matching'
+import { processActivityWalkGrouping, syncWalkGroupPartiesForActivity } from './walkGroups'
 
 export function activityMatchingPayload(activityData) {
   return {
@@ -101,6 +102,7 @@ export async function addActivityAndFindMatches(userId, activityData) {
 
   try {
     await processActivityMatching(userId, activityRef.id, activityMatchingPayload(activityData))
+    await processActivityWalkGrouping(userId, activityRef.id, activityMatchingPayload(activityData))
   } catch (err) {
     console.error('Activity saved but matching failed:', err)
     throw err
@@ -159,7 +161,9 @@ export async function updateActivityAndFindMatches(userId, activityId, activityD
 
   try {
     await syncMatchPartiesForActivity(userId, activityId, matchingPayload)
+    await syncWalkGroupPartiesForActivity(userId, activityId, matchingPayload)
     await processActivityMatching(userId, activityId, matchingPayload)
+    await processActivityWalkGrouping(userId, activityId, matchingPayload)
   } catch (err) {
     console.error('Activity updated but matching sync failed:', err)
     throw err

@@ -77,12 +77,12 @@ function formatTimeLabel(startTime) {
   return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
 }
 
-function timeToMinutes(startTime) {
+export function timeToMinutes(startTime) {
   const [hoursStr, minutesStr] = startTime.split(':')
   return Number(hoursStr) * 60 + Number(minutesStr)
 }
 
-function timesWithinWindow(timeA, timeB, windowMinutes = MATCH_WINDOW_MINUTES) {
+export function timesWithinWindow(timeA, timeB, windowMinutes = MATCH_WINDOW_MINUTES) {
   return Math.abs(timeToMinutes(timeA) - timeToMinutes(timeB)) <= windowMinutes
 }
 

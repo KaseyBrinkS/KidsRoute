@@ -23,6 +23,21 @@
         { "fieldPath": "participantIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "matchKey", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "walkGroups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "location", "order": "ASCENDING" },
+        { "fieldPath": "day", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "walkGroups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "participantIds", "arrayConfig": "CONTAINS" }
+      ]
     }
   ],
   "fieldOverrides": []

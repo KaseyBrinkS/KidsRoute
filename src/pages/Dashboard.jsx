@@ -7,7 +7,7 @@ import {
   formatMatchTitle,
   getOtherChildFirstName,
   getOtherParty,
-  getPartiesForUser,
+  getPartiesForUser as getMatchPartiesForUser,
   isActivityMatch,
   isSameFamilyMatch,
   matchIsConnectedForUser,
@@ -17,32 +17,92 @@ import {
   subscribeToMatches,
   userHasAccepted,
 } from '../firebase/matching'
+import {
+  countOtherJoiningFamilies,
+  formatWalkGroupDetails,
+  formatWalkGroupInvitation,
+  getActiveParties,
+  getPartiesForUser as getWalkGroupPartiesForUser,
+  respondToWalkGroup,
+  subscribeToWalkGroups,
+  walkGroupIsActiveForUser,
+  walkGroupIsDeclinedForUser,
+  walkGroupNeedsUserResponse,
+  walkGroupUserHasAccepted,
+} from '../firebase/walkGroups'
 import { getUserProfile } from '../firebase/users'
 
 export default function Dashboard() {
   const { user } = useAuth()
   const [matches, setMatches] = useState([])
+  const [walkGroups, setWalkGroups] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [respondingId, setRespondingId] = useState(null)
 
   useEffect(() => {
-    if (!user) return
+    if (!user) return undefined
 
-    const unsubscribe = subscribeToMatches(
+    let matchesLoaded = false
+    let groupsLoaded = false
+
+    function checkLoaded() {
+      if (matchesLoaded && groupsLoaded) setLoading(false)
+    }
+
+    const unsubMatches = subscribeToMatches(
       user.uid,
       (data) => {
         setMatches(data)
-        setLoading(false)
+        matchesLoaded = true
+        checkLoaded()
       },
       (err) => {
         setError(err.message)
-        setLoading(false)
+        matchesLoaded = true
+        checkLoaded()
       },
     )
 
-    return unsubscribe
+    const unsubWalkGroups = subscribeToWalkGroups(
+      user.uid,
+      (data) => {
+        setWalkGroups(data)
+        groupsLoaded = true
+        checkLoaded()
+      },
+      (err) => {
+        setError(err.message)
+        groupsLoaded = true
+        checkLoaded()
+      },
+    )
+
+    return () => {
+      unsubMatches()
+      unsubWalkGroups()
+    }
   }, [user])
+
+  const pendingWalkGroups = walkGroups.filter(
+    (group) => walkGroupNeedsUserResponse(group, user?.uid),
+  )
+
+  const waitingWalkGroups = walkGroups.filter(
+    (group) =>
+      !walkGroupIsDeclinedForUser(group, user?.uid) &&
+      group.status === 'open' &&
+      walkGroupUserHasAccepted(group, user?.uid) &&
+      countOtherJoiningFamilies(group, user?.uid) > 0,
+  )
+
+  const activeWalkGroups = walkGroups.filter(
+    (group) => walkGroupIsActiveForUser(group, user?.uid),
+  )
+
+  const declinedWalkGroups = walkGroups.filter(
+    (group) => walkGroupIsDeclinedForUser(group, user?.uid),
+  )
 
   const pendingMatches = matches.filter(
     (match) => isActivityMatch(match) && matchNeedsUserResponse(match, user.uid),
@@ -66,9 +126,26 @@ export default function Dashboard() {
     (match) => isActivityMatch(match) && matchIsDeclinedForUser(match, user.uid),
   )
 
-  async function handleResponse(matchId, response) {
+  async function handleWalkGroupResponse(groupId, response) {
     setError(null)
-    setRespondingId(matchId)
+    setRespondingId(`walkGroup:${groupId}`)
+    try {
+      const profile = await getUserProfile(user.uid)
+      const parentName = profile?.displayName || user.displayName || 'Parent'
+      const contactPhone =
+        profile?.phoneNumber || user.phoneNumber || user.email || 'Not provided'
+
+      await respondToWalkGroup(groupId, user.uid, response, contactPhone, parentName)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setRespondingId(null)
+    }
+  }
+
+  async function handleMatchResponse(matchId, response) {
+    setError(null)
+    setRespondingId(`match:${matchId}`)
     try {
       const profile = await getUserProfile(user.uid)
       const parentName = profile?.displayName || user.displayName || 'Parent'
@@ -83,11 +160,19 @@ export default function Dashboard() {
     }
   }
 
-  const hasActiveMatches =
+  const hasWalkGroupActivity =
+    pendingWalkGroups.length > 0 ||
+    waitingWalkGroups.length > 0 ||
+    activeWalkGroups.length > 0 ||
+    declinedWalkGroups.length > 0
+
+  const hasPairMatchActivity =
     pendingMatches.length > 0 ||
     waitingMatches.length > 0 ||
     connectedMatches.length > 0 ||
     declinedMatches.length > 0
+
+  const hasAnyActivity = hasWalkGroupActivity || hasPairMatchActivity
 
   return (
     <div>
@@ -101,14 +186,124 @@ export default function Dashboard() {
       )}
 
       <section>
-        <h2 className="text-sm font-medium text-gray-900">Group matches</h2>
+        <h2 className="text-sm font-medium text-gray-900">Walk groups</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Groups at your activity location within the same 75-minute window.
+        </p>
+
+        {loading ? (
+          <p className="mt-4 text-sm text-gray-600">Loading groups…</p>
+        ) : !hasWalkGroupActivity ? (
+          <p className="mt-4 rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center text-sm text-gray-600">
+            No walk groups yet. Add an activity on My Activities to find families
+            with the same schedule.
+          </p>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {pendingWalkGroups.map((group) => (
+              <div
+                key={group.id}
+                className="rounded-lg border border-indigo-200 bg-indigo-50 p-5"
+              >
+                <p className="font-medium text-gray-900">
+                  {formatWalkGroupInvitation(group, user.uid)}
+                </p>
+                <p className="mt-2 text-sm text-gray-600">{formatWalkGroupDetails(group)}</p>
+                <p className="mt-1 text-sm text-gray-600">
+                  Your children:{' '}
+                  {getWalkGroupPartiesForUser(group, user.uid)
+                    .map((party) => party.childFirstName)
+                    .join(', ')}
+                </p>
+                <div className="mt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleWalkGroupResponse(group.id, 'accepted')}
+                    disabled={respondingId === `walkGroup:${group.id}`}
+                    className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    Join group
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleWalkGroupResponse(group.id, 'declined')}
+                    disabled={respondingId === `walkGroup:${group.id}`}
+                    className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {waitingWalkGroups.map((group) => (
+              <div
+                key={group.id}
+                className="rounded-lg border border-gray-200 bg-white p-5"
+              >
+                <p className="font-medium text-gray-900">
+                  Waiting for {countOtherJoiningFamilies(group, user.uid)} other{' '}
+                  {countOtherJoiningFamilies(group, user.uid) === 1 ? 'family' : 'families'} to
+                  respond
+                </p>
+                <p className="mt-2 text-sm text-gray-600">{formatWalkGroupDetails(group)}</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  You joined this group for{' '}
+                  {getWalkGroupPartiesForUser(group, user.uid)
+                    .map((party) => party.childFirstName)
+                    .join(', ')}
+                  .
+                </p>
+              </div>
+            ))}
+
+            {activeWalkGroups.map((group) => {
+              const myParties = getWalkGroupPartiesForUser(group, user.uid)
+              const otherParties = getActiveParties(group).filter(
+                (party) => party.userId !== user.uid,
+              )
+
+              return (
+                <div
+                  key={group.id}
+                  className="rounded-lg border border-green-200 bg-green-50 p-5"
+                >
+                  <p className="font-medium text-gray-900">
+                    Active walk group at {group.location}
+                  </p>
+                  <p className="mt-2 text-sm text-gray-600">{formatWalkGroupDetails(group)}</p>
+                  {otherParties.length > 0 && (
+                    <div className="mt-3 space-y-1 text-sm text-gray-700">
+                      {otherParties.map((party) => (
+                        <p key={`${party.userId}_${party.childId}`}>
+                          <span className="font-medium">{party.childFirstName}</span>
+                          {' — '}
+                          {party.parentName || 'Parent'} · {party.contactPhone || 'Not provided'}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-2 text-xs text-gray-500">
+                    Your contact shared: {myParties[0]?.contactPhone || 'Not provided'}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-sm font-medium text-gray-900">Pair matches (legacy)</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Older two-family matches are still shown here while the new group system rolls out.
+        </p>
 
         {loading ? (
           <p className="mt-4 text-sm text-gray-600">Loading matches…</p>
-        ) : !hasActiveMatches ? (
+        ) : !hasPairMatchActivity ? (
           <p className="mt-4 rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center text-sm text-gray-600">
-            No group matches yet. Add an activity on My Activities to find kids
-            with the same schedule.
+            No pair matches.
           </p>
         ) : (
           <div className="mt-4 space-y-4">
@@ -130,16 +325,16 @@ export default function Dashboard() {
                   <div className="mt-4 flex gap-3">
                     <button
                       type="button"
-                      onClick={() => handleResponse(match.id, 'accepted')}
-                      disabled={respondingId === match.id}
+                      onClick={() => handleMatchResponse(match.id, 'accepted')}
+                      disabled={respondingId === `match:${match.id}`}
                       className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                     >
                       Accept
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleResponse(match.id, 'declined')}
-                      disabled={respondingId === match.id}
+                      onClick={() => handleMatchResponse(match.id, 'declined')}
+                      disabled={respondingId === `match:${match.id}`}
                       className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                     >
                       Decline
@@ -150,7 +345,7 @@ export default function Dashboard() {
             })}
 
             {waitingMatches.map((match) => {
-              const myParties = getPartiesForUser(match, user.uid)
+              const myParties = getMatchPartiesForUser(match, user.uid)
               const otherParty = getOtherParty(match, user.uid)
 
               return (
@@ -170,7 +365,7 @@ export default function Dashboard() {
             })}
 
             {connectedMatches.map((match) => {
-              const myParties = getPartiesForUser(match, user.uid)
+              const myParties = getMatchPartiesForUser(match, user.uid)
               const otherParty = getOtherParty(match, user.uid)
               const sameFamily = isSameFamilyMatch(match)
 
@@ -201,9 +396,39 @@ export default function Dashboard() {
         )}
       </section>
 
+      {!loading && declinedWalkGroups.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-sm font-medium text-gray-900">Declined walk groups</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Groups you left. The group continues for other families.
+          </p>
+          <div className="mt-4 space-y-4">
+            {declinedWalkGroups.map((group) => (
+              <div
+                key={group.id}
+                className="rounded-lg border border-gray-200 bg-white p-5"
+              >
+                <p className="font-medium text-gray-900">{formatWalkGroupDetails(group)}</p>
+                <p className="mt-2 text-sm text-gray-600">
+                  You declined this group. The group continues for other families.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleWalkGroupResponse(group.id, 'accepted')}
+                  disabled={respondingId === `walkGroup:${group.id}`}
+                  className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {respondingId === `walkGroup:${group.id}` ? 'Joining…' : 'Join group'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {!loading && declinedMatches.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-sm font-medium text-gray-900">Declined matches</h2>
+          <h2 className="text-sm font-medium text-gray-900">Declined pair matches</h2>
           <p className="mt-1 text-sm text-gray-500">
             Matches you declined or left. You can join again anytime.
           </p>
@@ -221,7 +446,7 @@ export default function Dashboard() {
                   )}
                   {isSameFamilyMatch(match) && (
                     <p className="font-medium text-gray-900">
-                      {getPartiesForUser(match, user.uid)
+                      {getMatchPartiesForUser(match, user.uid)
                         .map((party) => party.childFirstName)
                         .join(' and ')}
                     </p>
@@ -229,17 +454,23 @@ export default function Dashboard() {
                   <p className="mt-2 text-sm text-gray-600">{formatMatchDetails(match)}</p>
                   <button
                     type="button"
-                    onClick={() => handleResponse(match.id, 'accepted')}
-                    disabled={respondingId === match.id}
+                    onClick={() => handleMatchResponse(match.id, 'accepted')}
+                    disabled={respondingId === `match:${match.id}`}
                     className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                   >
-                    {respondingId === match.id ? 'Joining…' : 'Join group'}
+                    {respondingId === `match:${match.id}` ? 'Joining…' : 'Join group'}
                   </button>
                 </div>
               )
             })}
           </div>
         </section>
+      )}
+
+      {!loading && !hasAnyActivity && (
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Add an activity on My Activities to get started.
+        </p>
       )}
     </div>
   )
