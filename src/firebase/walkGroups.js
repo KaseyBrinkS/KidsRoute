@@ -124,6 +124,11 @@ export function countWalkGroupFamilies(group) {
   return new Set(getNonDeclinedParties(group).map((party) => party.userId)).size
 }
 
+/** True when the group has children from at least two different families (non-declined). */
+export function walkGroupHasMultipleFamilies(group) {
+  return countWalkGroupFamilies(group) >= 2
+}
+
 export function countOtherJoiningFamilies(group, userId) {
   const userIds = new Set()
   for (const party of getNonDeclinedParties(group)) {

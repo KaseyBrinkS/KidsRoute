@@ -13,6 +13,7 @@ import {
   walkGroupIsDeclinedForUser,
   walkGroupNeedsUserResponse,
   walkGroupUserHasAccepted,
+  walkGroupHasMultipleFamilies,
 } from '../firebase/walkGroups'
 import { getUserProfile } from '../firebase/users'
 import { syncWalkGroupsForUser } from '../firebase/activities'
@@ -46,11 +47,13 @@ export default function Dashboard() {
     return unsubscribe
   }, [user])
 
-  const pendingWalkGroups = walkGroups.filter(
+  const dashboardWalkGroups = walkGroups.filter(walkGroupHasMultipleFamilies)
+
+  const pendingWalkGroups = dashboardWalkGroups.filter(
     (group) => walkGroupNeedsUserResponse(group, user?.uid),
   )
 
-  const waitingWalkGroups = walkGroups.filter(
+  const waitingWalkGroups = dashboardWalkGroups.filter(
     (group) =>
       !walkGroupIsDeclinedForUser(group, user?.uid) &&
       group.status === 'open' &&
@@ -58,11 +61,11 @@ export default function Dashboard() {
       countOtherJoiningFamilies(group, user?.uid) > 0,
   )
 
-  const activeWalkGroups = walkGroups.filter(
+  const activeWalkGroups = dashboardWalkGroups.filter(
     (group) => walkGroupIsActiveForUser(group, user?.uid),
   )
 
-  const declinedWalkGroups = walkGroups.filter(
+  const declinedWalkGroups = dashboardWalkGroups.filter(
     (group) => walkGroupIsDeclinedForUser(group, user?.uid),
   )
 
@@ -71,12 +74,13 @@ export default function Dashboard() {
     console.log('[Dashboard] walkGroups filter results', {
       uid: user.uid,
       totalFromQuery: walkGroups.length,
+      withMultipleFamilies: dashboardWalkGroups.length,
       pending: pendingWalkGroups.length,
       waiting: waitingWalkGroups.length,
       active: activeWalkGroups.length,
       declined: declinedWalkGroups.length,
     })
-  }, [loading, user, walkGroups, pendingWalkGroups, waitingWalkGroups, activeWalkGroups, declinedWalkGroups])
+  }, [loading, user, walkGroups, dashboardWalkGroups, pendingWalkGroups, waitingWalkGroups, activeWalkGroups, declinedWalkGroups])
 
   const hasActivity =
     pendingWalkGroups.length > 0 ||
