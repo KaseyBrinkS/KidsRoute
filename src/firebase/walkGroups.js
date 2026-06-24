@@ -18,6 +18,14 @@ import { getUserProfile } from './users'
 
 export const MAX_WALK_GROUP_FAMILIES = 20
 
+const DEBUG_WALK_GROUPS = true
+
+function debugLog(...args) {
+  if (DEBUG_WALK_GROUPS) {
+    console.log('[walkGroups]', ...args)
+  }
+}
+
 function partyScheduleFields(source) {
   return {
     days: source.days ?? [],
@@ -209,6 +217,16 @@ async function createWalkGroup(userId, activityId, activity, day) {
     updatedAt: serverTimestamp(),
   })
 
+  debugLog('created walkGroup', {
+    groupId: groupRef.id,
+    userId,
+    activityId,
+    day,
+    location: activity.location,
+    startTime: activity.startTime,
+    participantIds: [userId],
+  })
+
   return groupRef.id
 }
 
@@ -245,32 +263,76 @@ async function addFamilyToWalkGroup(groupId, userId, activityId, activity) {
     updatedAt: serverTimestamp(),
   })
 
+  debugLog('added family to walkGroup', {
+    groupId,
+    userId,
+    activityId,
+    participantIds,
+    partyCount: parties.length,
+  })
+
   return 'added'
 }
 
 export async function processActivityWalkGrouping(userId, activityId, activity) {
   const profile = await getUserProfile(userId)
-  if (profile.matchingOptOut) return
+  if (profile.matchingOptOut) {
+    debugLog('processActivityWalkGrouping skipped — matchingOptOut', { userId, activityId })
+    return
+  }
+
+  debugLog('processActivityWalkGrouping', {
+    userId,
+    activityId,
+    child: activity.childFirstName,
+    location: activity.location,
+    days: activity.days,
+    startTime: activity.startTime,
+  })
+
+  if (!Array.isArray(activity.days) || activity.days.length === 0) {
+    debugLog('processActivityWalkGrouping skipped — no days on activity', { userId, activityId })
+    return
+  }
 
   for (const day of activity.days) {
     const existingGroup = await findWalkGroupForActivity(activity.location, day, activity.startTime)
 
     if (existingGroup) {
+      debugLog('found existing walkGroup for day', {
+        day,
+        existingGroupId: existingGroup.id,
+        status: existingGroup.status,
+        participantIds: existingGroup.participantIds,
+      })
       const result = await addFamilyToWalkGroup(existingGroup.id, userId, activityId, activity)
+      debugLog('addFamilyToWalkGroup result', { day, result })
       if (result === 'full') {
         await createWalkGroup(userId, activityId, activity, day)
       }
     } else {
+      debugLog('no existing walkGroup — creating new group', { day, location: activity.location })
       await createWalkGroup(userId, activityId, activity, day)
     }
   }
 }
 
 export function subscribeToWalkGroups(userId, onData, onError) {
+  if (!userId) {
+    debugLog('subscribeToWalkGroups — no userId')
+    onData([])
+    return () => {}
+  }
+
   const groupsQuery = query(
     collection(db, 'walkGroups'),
     where('participantIds', 'array-contains', userId),
   )
+
+  debugLog('subscribeToWalkGroups — listening', {
+    userId,
+    query: 'walkGroups where participantIds array-contains userId',
+  })
 
   return onSnapshot(
     groupsQuery,
@@ -278,9 +340,32 @@ export function subscribeToWalkGroups(userId, onData, onError) {
       const groups = snapshot.docs
         .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
         .sort((a, b) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0))
+
+      debugLog('subscribeToWalkGroups — snapshot', {
+        userId,
+        count: groups.length,
+        groups: groups.map((group) => ({
+          id: group.id,
+          status: group.status,
+          location: group.location,
+          day: group.day,
+          participantIds: group.participantIds,
+          parties: group.parties?.map((party) => ({
+            userId: party.userId,
+            child: party.childFirstName,
+            response: party.response,
+          })),
+          needsResponse: walkGroupNeedsUserResponse(group, userId),
+          visibleOnGroups: walkGroupIsVisibleOnGroupsPage(group, userId),
+        })),
+      })
+
       onData(groups)
     },
-    onError,
+    (error) => {
+      console.error('[walkGroups] subscribeToWalkGroups error', { userId, error })
+      onError?.(error)
+    },
   )
 }
 

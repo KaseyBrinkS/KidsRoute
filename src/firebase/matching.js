@@ -13,6 +13,7 @@ import {
 import { db } from './db'
 import { deleteAllActivitySlots, fetchUserActivities } from './activities'
 import { getActiveSession } from './groupWalk'
+import { processActivityWalkGrouping } from './walkGroups'
 import { defaultSessions } from './sessions'
 import { getUserProfile } from './users'
 
@@ -544,7 +545,7 @@ export async function syncUserMatchingOptOut(userId, optedOut) {
 
   const activities = await fetchUserActivities(userId)
   for (const activity of activities) {
-    await processActivityMatching(userId, activity.id, {
+    await processActivityWalkGrouping(userId, activity.id, {
       childId: activity.childId,
       childFirstName: activity.childFirstName,
       location: activity.location,

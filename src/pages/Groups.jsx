@@ -27,7 +27,7 @@ import {
   subscribeToBuildingWalkSlots,
   userHasBuildingWalkSlot,
 } from '../firebase/buildingWalks'
-import { subscribeToActivities } from '../firebase/activities'
+import { subscribeToActivities, syncWalkGroupsForUser } from '../firebase/activities'
 import { formatDisplayDate, getPartyUpcomingScheduledDates } from '../firebase/sessions'
 
 const selectClass =
@@ -506,12 +506,29 @@ export default function Groups() {
   useEffect(() => {
     if (!user) return
 
+    syncWalkGroupsForUser(user.uid).catch((err) => {
+      console.error('[Groups] syncWalkGroupsForUser failed', err)
+    })
+
     const unsubscribeWalkGroups = subscribeToWalkGroups(
       user.uid,
       (walkGroups) => {
-        setGroups(
-          walkGroups.filter((group) => walkGroupIsVisibleOnGroupsPage(group, user.uid)),
+        const visible = walkGroups.filter((group) =>
+          walkGroupIsVisibleOnGroupsPage(group, user.uid),
         )
+        console.log('[Groups] walkGroups query results', {
+          uid: user.uid,
+          totalFromQuery: walkGroups.length,
+          visibleOnGroupsPage: visible.length,
+          groups: walkGroups.map((group) => ({
+            id: group.id,
+            status: group.status,
+            participantIds: group.participantIds,
+            uidInParticipantIds: group.participantIds?.includes(user.uid),
+            accepted: walkGroupIsVisibleOnGroupsPage(group, user.uid),
+          })),
+        })
+        setGroups(visible)
         setActivityGroupsLoading(false)
       },
       (err) => {

@@ -15,6 +15,7 @@ import {
   walkGroupUserHasAccepted,
 } from '../firebase/walkGroups'
 import { getUserProfile } from '../firebase/users'
+import { syncWalkGroupsForUser } from '../firebase/activities'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -25,6 +26,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return undefined
+
+    syncWalkGroupsForUser(user.uid).catch((err) => {
+      console.error('[Dashboard] syncWalkGroupsForUser failed', err)
+    })
 
     const unsubscribe = subscribeToWalkGroups(
       user.uid,
@@ -60,6 +65,18 @@ export default function Dashboard() {
   const declinedWalkGroups = walkGroups.filter(
     (group) => walkGroupIsDeclinedForUser(group, user?.uid),
   )
+
+  useEffect(() => {
+    if (loading || !user) return
+    console.log('[Dashboard] walkGroups filter results', {
+      uid: user.uid,
+      totalFromQuery: walkGroups.length,
+      pending: pendingWalkGroups.length,
+      waiting: waitingWalkGroups.length,
+      active: activeWalkGroups.length,
+      declined: declinedWalkGroups.length,
+    })
+  }, [loading, user, walkGroups, pendingWalkGroups, waitingWalkGroups, activeWalkGroups, declinedWalkGroups])
 
   const hasActivity =
     pendingWalkGroups.length > 0 ||

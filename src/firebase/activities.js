@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './db'
 import { defaultSessions } from './sessions'
+import { getUserProfile } from './users'
 import { processActivityWalkGrouping, syncWalkGroupPartiesForActivity } from './walkGroups'
 
 export function activityMatchingPayload(activityData) {
@@ -94,6 +95,36 @@ export function addActivity(userId, {
     summerEndDate: summerEndDate ?? null,
     createdAt: serverTimestamp(),
   })
+}
+
+export async function syncWalkGroupsForUser(userId) {
+  const profile = await getUserProfile(userId)
+  if (profile.matchingOptOut) {
+    console.log('[walkGroups] syncWalkGroupsForUser skipped — matchingOptOut', { userId })
+    return { synced: 0, skipped: 'matchingOptOut' }
+  }
+
+  const activities = await fetchUserActivities(userId)
+  console.log('[walkGroups] syncWalkGroupsForUser starting', {
+    userId,
+    activityCount: activities.length,
+    activities: activities.map((activity) => ({
+      id: activity.id,
+      child: activity.childFirstName,
+      location: activity.location,
+      days: activity.days,
+      startTime: activity.startTime,
+    })),
+  })
+
+  let synced = 0
+  for (const activity of activities) {
+    await processActivityWalkGrouping(userId, activity.id, activityMatchingPayload(activity))
+    synced += 1
+  }
+
+  console.log('[walkGroups] syncWalkGroupsForUser complete', { userId, synced })
+  return { synced, skipped: null }
 }
 
 export async function addActivityAndFindMatches(userId, activityData) {
