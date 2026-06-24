@@ -483,12 +483,85 @@ export async function getActiveSession(groupId, userId, options = {}) {
 }
 
 function isActiveSessionChild(child) {
-  return child.walkStatus !== 'absent' && child.walkStatus !== 'off_day'
+  return child.walkStatus !== 'absent'
 }
 
 export function isWalkSessionComplete(children) {
-  const active = children.filter(isActiveSessionChild)
-  return active.length > 0 && active.every((child) => child.walkStatus === 'dropped_off')
+  const walking = children.filter(isActiveSessionChild)
+  if (walking.length === 0) return true
+  return walking.every((child) => child.walkStatus === 'dropped_off')
+}
+
+export function mergeWalkSessionChildren(sessionChildren, walkParties) {
+  const sessionByKey = new Map(
+    sessionChildren.map((child) => [`${child.userId}_${child.childId}`, child]),
+  )
+  const partyKeys = new Set()
+
+  const merged = walkParties.map((party) => {
+    const key = `${party.userId}_${party.childId}`
+    partyKeys.add(key)
+    const existing = sessionByKey.get(key)
+    if (existing) return existing
+
+    return {
+      ...normalizeParty(party),
+      id: childDocId(party.userId, party.childId),
+      walkStatus: 'waiting_arrival',
+      pickedUpAt: null,
+      droppedOffAt: null,
+      historyId: null,
+      _missingFromSession: true,
+    }
+  })
+
+  for (const child of sessionChildren) {
+    const key = `${child.userId}_${child.childId}`
+    if (!partyKeys.has(key)) {
+      merged.push(child)
+    }
+  }
+
+  return merged
+}
+
+export async function ensureSessionChildRecord(sessionId, party, session) {
+  const docId = childDocId(party.userId, party.childId)
+  const childRef = doc(db, 'walkSessions', sessionId, 'children', docId)
+  const childSnap = await getDoc(childRef)
+  if (childSnap.exists()) {
+    return { childRef, childSnap, resolvedChildDocId: docId }
+  }
+
+  const usePerKidArrival = session.groupSource === 'walkGroup'
+  const walkStatus = usePerKidArrival ? 'waiting_arrival' : 'confirmed'
+
+  await setDoc(childRef, {
+    userId: party.userId,
+    childId: party.childId,
+    childFirstName: party.childFirstName,
+    parentName: party.parentName || 'Parent',
+    contactPhone: party.contactPhone || 'Not provided',
+    walkStatus,
+    historyId: null,
+    pickedUpAt: walkStatus === 'confirmed' ? serverTimestamp() : null,
+    droppedOffAt: null,
+  })
+
+  const createdSnap = await getDoc(childRef)
+  return { childRef, childSnap: createdSnap, resolvedChildDocId: docId }
+}
+
+export async function completeWalkSession(sessionId) {
+  if (!sessionId) {
+    throw new Error('No active walk session.')
+  }
+
+  const sessionRef = doc(db, 'walkSessions', sessionId)
+  await updateDoc(sessionRef, {
+    status: 'completed',
+    completedAt: serverTimestamp(),
+  })
 }
 
 async function loadSessionChildren(sessionId) {
@@ -622,11 +695,8 @@ export async function startGroupWalk(groupId, leaderId, { group: prefetchedGroup
 
     for (const party of walkParties) {
       const absent = isAbsentOnDate(absences, party.userId, party.childId, today)
-      const scheduledToday = isPartyScheduledOnDate(party, today, group.day)
-      let walkStatus = 'off_day'
-      if (absent) {
-        walkStatus = 'absent'
-      } else if (scheduledToday) {
+      let walkStatus = 'absent'
+      if (!absent) {
         walkStatus = usePerKidArrival ? 'waiting_arrival' : 'confirmed'
       }
 
@@ -714,14 +784,11 @@ export async function markChildArrived(sessionId, userId, childId, childDocKey =
     const { childRef, childSnap } = located
     const child = childSnap.data()
 
-    if (child.walkStatus === 'absent' || child.walkStatus === 'off_day') {
+    if (child.walkStatus === 'absent') {
       throw new Error(`${child.childFirstName || 'This child'} is not walking today.`)
     }
     if (child.walkStatus === 'confirmed' || child.walkStatus === 'dropped_off') {
       return { alreadyArrived: true, sessionId, groupId: session.groupId }
-    }
-    if (child.walkStatus !== 'waiting_arrival') {
-      throw new Error('This child cannot be marked as arrived in their current state.')
     }
 
     const pickedUpAt = serverTimestamp()
@@ -786,9 +853,6 @@ export async function markChildDroppedOff(sessionId, userId, childId, childDocKe
     if (child.walkStatus === 'absent') {
       throw new Error(`${child.childFirstName || 'This child'} is marked absent and cannot be dropped off.`)
     }
-    if (child.walkStatus === 'waiting_arrival' && !child.pickedUpAt) {
-      throw new Error(`${child.childFirstName || 'This child'} must be marked arrived before drop-off.`)
-    }
     if (child.walkStatus === 'dropped_off') {
       const children = await loadSessionChildren(sessionId)
       const completed = await ensureSessionCompleted(sessionId, session, children)
@@ -811,10 +875,14 @@ export async function markChildDroppedOff(sessionId, userId, childId, childDocKe
 
     const droppedOffAt = serverTimestamp()
     const batch = writeBatch(db)
-    batch.update(childRef, {
+    const childUpdate = {
       walkStatus: 'dropped_off',
       droppedOffAt,
-    })
+    }
+    if (!child.pickedUpAt) {
+      childUpdate.pickedUpAt = droppedOffAt
+    }
+    batch.update(childRef, childUpdate)
     if (allDroppedOff) {
       batch.update(sessionRef, {
         status: 'completed',
