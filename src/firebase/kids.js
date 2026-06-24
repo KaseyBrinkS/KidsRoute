@@ -33,22 +33,30 @@ export function subscribeToKids(userId, onData, onError) {
   )
 }
 
-export function addKid(userId, { firstName, grade, school }) {
-  return addDoc(kidsCollection(userId), {
+export function addKid(userId, { firstName, grade, school, colorKey }) {
+  const payload = {
     firstName: firstName.trim(),
     grade,
     school,
     createdAt: serverTimestamp(),
-  })
+  }
+  if (typeof colorKey === 'number') {
+    payload.colorKey = colorKey
+  }
+  return addDoc(kidsCollection(userId), payload)
 }
 
-export function updateKid(userId, kidId, { firstName, grade, school }) {
-  return updateDoc(doc(db, 'users', userId, 'children', kidId), {
+export function updateKid(userId, kidId, { firstName, grade, school, colorKey }) {
+  const payload = {
     firstName: firstName.trim(),
     grade,
     school,
     updatedAt: serverTimestamp(),
-  })
+  }
+  if (typeof colorKey === 'number') {
+    payload.colorKey = colorKey
+  }
+  return updateDoc(doc(db, 'users', userId, 'children', kidId), payload)
 }
 
 export function deleteKid(userId, kidId) {

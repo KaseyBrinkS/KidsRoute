@@ -1,18 +1,15 @@
 import { Link } from 'react-router-dom'
+import { ChildNameWithDot } from './ChildColorDot'
 import { getGroupWalkStatus } from '../firebase/groups'
 import { formatWalkGroupDetails } from '../firebase/walkGroups'
-import {
-  CALENDAR_WEEKDAYS,
-  CHILD_CALENDAR_COLORS,
-  childColorIndex,
-} from '../utils/dates'
+import { CALENDAR_WEEKDAYS, getChildColorById } from '../utils/dates'
 import {
   walkStatusBadgeClass,
   walkStatusLabel,
 } from '../utils/walkStatus'
 
-function childColorStyle(childId, childIds) {
-  const color = CHILD_CALENDAR_COLORS[childColorIndex(childId, childIds)]
+function childColorStyle(childId, kids) {
+  const color = getChildColorById(childId, kids)
   return {
     background: color.bg,
     borderColor: color.border,
@@ -23,7 +20,7 @@ function childColorStyle(childId, childIds) {
 export default function DashboardWeekView({
   groupsByDay,
   activeSessions,
-  childIds,
+  kids,
   selectedDay,
 }) {
   function cardStatus(group) {
@@ -57,11 +54,17 @@ export default function DashboardWeekView({
                     <li
                       key={`${group.id}_${group._childId}`}
                       className="rounded-xl border p-3"
-                      style={childColorStyle(group._childId, childIds)}
+                      style={childColorStyle(group._childId, kids)}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold">{group._childName}</p>
+                          <p className="text-sm font-semibold">
+                            <ChildNameWithDot
+                              name={group._childName}
+                              childId={group._childId}
+                              kids={kids}
+                            />
+                          </p>
                           <p className="mt-0.5 truncate text-xs opacity-80">{group.location}</p>
                           <p className="mt-0.5 text-xs opacity-80">
                             {formatWalkGroupDetails(group)}

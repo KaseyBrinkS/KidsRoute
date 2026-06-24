@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ActivitiesWeekCalendar from '../components/ActivitiesWeekCalendar'
+import { ChildNameWithDot } from '../components/ChildColorDot'
 import LocationSearch from '../components/LocationSearch'
 import PageHeader from '../components/PageHeader'
 import ViewToggle from '../components/ViewToggle'
@@ -603,7 +604,9 @@ export default function MyActivities() {
             {activitiesByChild.map(({ kid, activities: childActivities }) =>
               childActivities.length === 0 ? null : (
                 <section key={kid.id}>
-                  <h3 className="text-lg font-bold text-primary">{kid.firstName}</h3>
+                  <h3 className="text-lg font-bold text-primary">
+                    <ChildNameWithDot child={kid} kids={kids} />
+                  </h3>
                   <ul className="kr-card mt-2 divide-y divide-border">
                     {childActivities.map((activity) => (
                       <li

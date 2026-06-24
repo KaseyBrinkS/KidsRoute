@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ChildColorDot from '../../components/ChildColorDot'
+import ChildColorPicker from '../../components/ChildColorPicker'
 import OnboardingShell from '../../components/onboarding/OnboardingShell'
 import { OnboardingStepActions } from '../../components/onboarding/OnboardingStepActions'
 import { useAuth } from '../../context/AuthContext'
 import { advanceOnboardingStep } from '../../firebase/users'
 import { addKid, GRADES, SCHOOLS, subscribeToKids } from '../../firebase/kids'
+import { defaultColorKeyForNewChild } from '../../utils/dates'
 
-const emptyForm = { firstName: '', grade: 'K', school: SCHOOLS[0] }
+const emptyForm = { firstName: '', grade: 'K', school: SCHOOLS[0], colorKey: 0 }
 
 export default function OnboardingKids() {
   const navigate = useNavigate()
@@ -49,7 +52,12 @@ export default function OnboardingKids() {
     setSubmitting(true)
     try {
       await addKid(user.uid, form)
-      setForm(emptyForm)
+      setForm({
+        ...emptyForm,
+        colorKey: defaultColorKeyForNewChild(
+          Array.from({ length: kids.length + 1 }, (_, index) => ({ id: String(index) })),
+        ),
+      })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -134,6 +142,10 @@ export default function OnboardingKids() {
             </select>
           </div>
         </div>
+        <ChildColorPicker
+          value={form.colorKey ?? defaultColorKeyForNewChild(kids)}
+          onChange={(colorKey) => setForm((prev) => ({ ...prev, colorKey }))}
+        />
         <button type="submit" disabled={submitting} className="btn-secondary w-full">
           {submitting ? 'Adding…' : 'Add child'}
         </button>
@@ -143,7 +155,10 @@ export default function OnboardingKids() {
         <ul className="mt-6 divide-y divide-border rounded-xl border border-border bg-bg-warm">
           {kids.map((kid) => (
             <li key={kid.id} className="px-4 py-3 text-sm">
-              <span className="font-semibold text-[var(--color-text)]">{kid.firstName}</span>
+              <span className="inline-flex items-center gap-2 font-semibold text-[var(--color-text)]">
+                <ChildColorDot child={kid} kids={kids} size="md" />
+                {kid.firstName}
+              </span>
               <span className="text-muted">
                 {' '}
                 · {kid.grade === 'K' ? 'Kindergarten' : `Grade ${kid.grade}`} · {kid.school}

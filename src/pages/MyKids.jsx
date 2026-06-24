@@ -1,15 +1,26 @@
 import { useEffect, useState } from 'react'
+import ChildColorDot from '../components/ChildColorDot'
+import ChildColorPicker from '../components/ChildColorPicker'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
 import { addKid, deleteKid, GRADES, SCHOOLS, subscribeToKids, updateKid } from '../firebase/kids'
+import { defaultColorKeyForNewChild, getChildColorKey } from '../utils/dates'
 
-const emptyForm = { firstName: '', grade: 'K', school: SCHOOLS[0] }
+const emptyForm = { firstName: '', grade: 'K', school: SCHOOLS[0], colorKey: 0 }
 
-function formFromKid(kid) {
+function formFromKid(kid, kids) {
   return {
     firstName: kid.firstName,
     grade: kid.grade,
     school: kid.school,
+    colorKey: getChildColorKey(kid, kids),
+  }
+}
+
+function newChildForm(kids) {
+  return {
+    ...emptyForm,
+    colorKey: defaultColorKeyForNewChild(kids),
   }
 }
 
@@ -59,7 +70,7 @@ export default function MyKids() {
       } else {
         await addKid(user.uid, form)
       }
-      setForm(emptyForm)
+      setForm(newChildForm(kids))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -70,13 +81,13 @@ export default function MyKids() {
   function handleEdit(kid) {
     setError(null)
     setEditingId(kid.id)
-    setForm(formFromKid(kid))
+    setForm(formFromKid(kid, kids))
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function handleCancelEdit() {
     setEditingId(null)
-    setForm(emptyForm)
+    setForm(newChildForm(kids))
   }
 
   async function handleDelete(kidId) {
@@ -86,7 +97,7 @@ export default function MyKids() {
       await deleteKid(user.uid, kidId)
       if (editingId === kidId) {
         setEditingId(null)
-        setForm(emptyForm)
+        setForm(newChildForm(kids.filter((kid) => kid.id !== kidId)))
       }
     } catch (err) {
       setError(err.message)
@@ -160,7 +171,11 @@ export default function MyKids() {
               ))}
             </select>
           </div>
-          <div className="flex flex-wrap items-end gap-2">
+          <ChildColorPicker
+            value={form.colorKey}
+            onChange={(colorKey) => setForm((prev) => ({ ...prev, colorKey }))}
+          />
+          <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-4">
             <button
               type="submit"
               disabled={submitting}
@@ -207,7 +222,10 @@ export default function MyKids() {
                 className="flex items-center justify-between gap-4 px-5 py-4"
               >
                 <div>
-                  <p className="font-semibold text-[var(--color-text)]">{kid.firstName}</p>
+                  <p className="inline-flex items-center gap-2 font-semibold text-[var(--color-text)]">
+                    <ChildColorDot child={kid} kids={kids} size="md" />
+                    {kid.firstName}
+                  </p>
                   <p className="mt-1 text-sm text-muted">
                     {kid.grade === 'K' ? 'Kindergarten' : `Grade ${kid.grade}`} · {kid.school}
                   </p>

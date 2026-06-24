@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import HistoryCalendar from '../components/HistoryCalendar'
+import { ChildNameWithDot } from '../components/ChildColorDot'
 import PageHeader from '../components/PageHeader'
 import ViewToggle from '../components/ViewToggle'
 import { useAuth } from '../context/AuthContext'
+import { subscribeToKids } from '../firebase/kids'
 import {
   formatHistoryDate,
   formatHistoryTime,
@@ -14,6 +16,7 @@ import { historyWalkStatus, walkStatusBadgeClass, walkStatusCardClass } from '..
 export default function History() {
   const { user } = useAuth()
   const [entries, setEntries] = useState([])
+  const [kids, setKids] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [viewMode, setViewMode] = useState('calendar')
@@ -33,7 +36,12 @@ export default function History() {
       },
     )
 
-    return unsubscribe
+    const unsubKids = subscribeToKids(user.uid, setKids)
+
+    return () => {
+      unsubscribe()
+      unsubKids()
+    }
   }, [user])
 
   const entriesByChild = useMemo(() => {
@@ -79,12 +87,14 @@ export default function History() {
           starts a walk and marks drop-offs.
         </p>
       ) : viewMode === 'calendar' ? (
-        <HistoryCalendar entries={entries} />
+        <HistoryCalendar entries={entries} kids={kids} />
       ) : (
         <div className="space-y-8">
           {entriesByChild.map(({ childId, childName, walks }) => (
             <section key={childId}>
-              <h2 className="text-xl font-bold text-primary">{childName}</h2>
+              <h2 className="text-xl font-bold text-primary">
+                <ChildNameWithDot name={childName} childId={childId} kids={kids} />
+              </h2>
               <div className="mt-4 space-y-4">
                 {walks.map((walk) => {
                   const status = historyWalkStatus(walk)

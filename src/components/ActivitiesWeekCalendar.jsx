@@ -1,11 +1,11 @@
 import { useMemo } from 'react'
 import { formatStartTime } from '../firebase/activities'
 import { getCurrentSessionInfo, isActivityActiveInCurrentSession } from '../firebase/sessions'
+import { ChildNameWithDot } from './ChildColorDot'
 import {
   addWeeks,
   CALENDAR_WEEKDAYS,
-  CHILD_CALENDAR_COLORS,
-  childColorIndex,
+  getChildColor,
   formatWeekRange,
   getWeekDays,
   startOfWeek,
@@ -28,11 +28,6 @@ export default function ActivitiesWeekCalendar({
 }) {
   const today = useMemo(() => new Date(), [])
   const sessionInfo = useMemo(() => getCurrentSessionInfo(today), [today])
-
-  const childIds = useMemo(
-    () => kids.map((kid) => kid.id),
-    [kids],
-  )
 
   const childNames = useMemo(() => {
     const map = new Map()
@@ -105,21 +100,17 @@ export default function ActivitiesWeekCalendar({
         </button>
       </div>
 
-      {childIds.length > 0 && (
+      {kids.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-3">
-          {childIds.map((childId) => {
-            const color = CHILD_CALENDAR_COLORS[childColorIndex(childId, childIds)]
+          {kids.map((kid) => {
+            const color = getChildColor(kid, kids)
             return (
               <span
-                key={childId}
+                key={kid.id}
                 className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"
                 style={{ background: color.bg, color: color.text }}
               >
-                <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ background: color.border }}
-                />
-                {childNames.get(childId) ?? 'Child'}
+                <ChildNameWithDot child={kid} kids={kids} />
               </span>
             )
           })}
@@ -165,10 +156,8 @@ export default function ActivitiesWeekCalendar({
                     <div className="min-h-[48px] rounded-lg border border-dashed border-border/60" />
                   ) : (
                     dayActivities.map((activity) => {
-                      const color =
-                        CHILD_CALENDAR_COLORS[
-                          childColorIndex(activity.childId, childIds)
-                        ]
+                      const kid = kids.find((entry) => entry.id === activity.childId)
+                      const color = getChildColor(kid ?? { id: activity.childId }, kids)
                       return (
                         <div
                           key={`${activity.id}_${label}`}

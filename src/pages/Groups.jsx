@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import GroupsWeekCalendar from '../components/GroupsWeekCalendar'
+import { ChildNameWithDot } from '../components/ChildColorDot'
 import PageHeader from '../components/PageHeader'
 import ViewToggle from '../components/ViewToggle'
 import { useAuth } from '../context/AuthContext'
@@ -35,6 +36,7 @@ import {
   userHasBuildingWalkSlot,
 } from '../firebase/buildingWalks'
 import { subscribeToActivities, syncWalkGroupsForUser } from '../firebase/activities'
+import { subscribeToKids } from '../firebase/kids'
 import { formatDisplayDate, getPartyUpcomingScheduledDates } from '../firebase/sessions'
 import { WEEKDAYS } from '../utils/dates'
 import {
@@ -91,6 +93,7 @@ function buildGroupsByDay(groups, userId, activeSessions) {
       if (result[group.day]) {
         result[group.day].push({
           ...group,
+          _childId: party.childId,
           _childName: party.childFirstName,
           _displayStatus: displayStatus,
         })
@@ -540,6 +543,7 @@ export default function Groups() {
   const [buildingSlots, setBuildingSlots] = useState([])
   const [activities, setActivities] = useState([])
   const [activeSessions, setActiveSessions] = useState({})
+  const [kids, setKids] = useState([])
   const [viewMode, setViewMode] = useState('list')
   const [activityGroupsLoading, setActivityGroupsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -586,6 +590,8 @@ export default function Groups() {
       setError(err.message)
     })
 
+    const unsubKids = subscribeToKids(user.uid, setKids, (err) => setError(err.message))
+
     const unsubSessions = subscribeToUserActiveWalkSessions(
       user.uid,
       setActiveSessions,
@@ -597,6 +603,7 @@ export default function Groups() {
       unsubscribeMatches()
       unsubSlots()
       unsubActivities()
+      unsubKids()
       unsubSessions()
     }
   }, [user])
@@ -679,13 +686,23 @@ export default function Groups() {
             </p>
           ) : viewMode === 'calendar' ? (
             <div className="mt-4">
-              <GroupsWeekCalendar groupsByDay={groupsByDay} activeSessions={activeSessions} />
+              <GroupsWeekCalendar
+                groupsByDay={groupsByDay}
+                activeSessions={activeSessions}
+                kids={kids}
+              />
             </div>
           ) : (
             <div className="mt-6 space-y-8">
               {groupsByChild.map(({ childId, childName, byDay }) => (
                 <div key={childId}>
-                  <h3 className="text-xl font-bold text-primary">{childName}</h3>
+                  <h3 className="text-xl font-bold text-primary">
+                    <ChildNameWithDot
+                      name={childName}
+                      childId={childId}
+                      kids={kids}
+                    />
+                  </h3>
                   {WEEKDAYS.filter((day) => byDay[day]?.length).map((day) => (
                     <div key={day} className="mt-4">
                       <h4 className="kr-section-title">{day}</h4>

@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom'
-import { WEEKDAYS } from '../utils/dates'
+import { ChildNameWithDot } from './ChildColorDot'
+import { WEEKDAYS, getChildColorById } from '../utils/dates'
 import { formatGroupTimes } from '../firebase/groups'
 import {
   walkStatusBadgeClass,
-  walkStatusCardClass,
   walkStatusLabel,
 } from '../utils/walkStatus'
 
-export default function GroupsWeekCalendar({ groupsByDay, activeSessions }) {
+export default function GroupsWeekCalendar({ groupsByDay, activeSessions, kids = [] }) {
   function cardStatus(group) {
     if (activeSessions[group.id]) return 'in progress'
     return group._displayStatus ?? 'upcoming'
@@ -26,15 +26,25 @@ export default function GroupsWeekCalendar({ groupsByDay, activeSessions }) {
               <ul className="mt-3 space-y-3">
                 {dayGroups.map((group) => {
                   const status = cardStatus(group)
+                  const color = getChildColorById(group._childId, kids)
                   return (
                     <li
                       key={group.id}
-                      className={`p-3 ${walkStatusCardClass(status)}`}
+                      className="rounded-xl border p-3"
+                      style={{
+                        background: color.bg,
+                        borderColor: color.border,
+                        color: color.text,
+                      }}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-[var(--color-text)]">
-                            {group._childName ?? group.location}
+                          <p className="text-sm font-semibold">
+                            <ChildNameWithDot
+                              name={group._childName ?? group.location}
+                              childId={group._childId}
+                              kids={kids}
+                            />
                           </p>
                           <p className="mt-0.5 truncate text-xs text-muted">
                             {group.location}

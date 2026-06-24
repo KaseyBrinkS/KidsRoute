@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import DashboardWeekView, { buildDashboardWeekGroups } from '../components/DashboardWeekView'
+import { ChildNameWithDot } from '../components/ChildColorDot'
 import DaySelector, { todayWeekday } from '../components/DaySelector'
 import OnboardingReminderBanner from '../components/onboarding/OnboardingReminderBanner'
 import PageHeader from '../components/PageHeader'
@@ -26,13 +27,10 @@ import {
   syncSetupCompletion,
 } from '../firebase/users'
 import { syncWalkGroupsForUser } from '../firebase/activities'
-import {
-  CHILD_CALENDAR_COLORS,
-  childColorIndex,
-} from '../utils/dates'
+import { getChildColorById } from '../utils/dates'
 
-function invitationAccentStyle(childId, childIds) {
-  const color = CHILD_CALENDAR_COLORS[childColorIndex(childId, childIds)]
+function invitationAccentStyle(childId, kids) {
+  const color = getChildColorById(childId, kids)
   return {
     borderLeftColor: 'var(--color-accent)',
     background: `linear-gradient(to right, var(--color-accent-soft) 0%, ${color.bg} 48%, var(--color-surface) 100%)`,
@@ -105,8 +103,6 @@ export default function Dashboard() {
   }, [user, kidCount, activityCount])
 
   const showSetupReminder = shouldShowSetupReminder(profile, kidCount, activityCount)
-
-  const childIds = useMemo(() => kids.map((kid) => kid.id), [kids])
 
   const dashboardWalkGroups = useMemo(
     () => walkGroups.filter(walkGroupHasMultipleFamilies),
@@ -191,7 +187,7 @@ export default function Dashboard() {
                   className="kr-card-invite p-6 ring-2 ring-accent/25"
                   style={
                     primaryChildId
-                      ? invitationAccentStyle(primaryChildId, childIds)
+                      ? invitationAccentStyle(primaryChildId, kids)
                       : undefined
                   }
                 >
@@ -202,7 +198,16 @@ export default function Dashboard() {
                   <p className="mt-2 text-sm text-muted">{formatWalkGroupDetails(group)}</p>
                   <p className="mt-1 text-sm text-muted">
                     Your children:{' '}
-                    {myParties.map((party) => party.childFirstName).join(', ')}
+                    {myParties.map((party, index) => (
+                      <span key={party.childId}>
+                        {index > 0 && ', '}
+                        <ChildNameWithDot
+                          name={party.childFirstName}
+                          childId={party.childId}
+                          kids={kids}
+                        />
+                      </span>
+                    ))}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-3">
                     <button
@@ -253,7 +258,7 @@ export default function Dashboard() {
             <DashboardWeekView
               groupsByDay={weekGroupsByDay}
               activeSessions={activeSessions}
-              childIds={childIds}
+              kids={kids}
               selectedDay={selectedDay}
             />
           </div>

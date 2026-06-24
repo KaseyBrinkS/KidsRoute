@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
+import { ChildNameWithDot } from './ChildColorDot'
 import {
-  CHILD_CALENDAR_COLORS,
-  childColorIndex,
   formatDateKey,
+  getChildColorById,
   getMonthDays,
 } from '../utils/dates'
 import { historyWalkStatus } from '../utils/walkStatus'
@@ -25,7 +25,7 @@ function statusBlockStyle(status, childColor) {
   }
 }
 
-export default function HistoryCalendar({ entries }) {
+export default function HistoryCalendar({ entries, kids = [] }) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
@@ -90,18 +90,19 @@ export default function HistoryCalendar({ entries }) {
         <div className="mb-4 flex flex-wrap gap-3">
           {childIds.map((childId) => {
             const entry = entries.find((e) => e.childId === childId)
-            const color = CHILD_CALENDAR_COLORS[childColorIndex(childId, childIds)]
+            const color = getChildColorById(childId, kids, childIds)
             return (
               <span
                 key={childId}
                 className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"
                 style={{ background: color.bg, color: color.text }}
               >
-                <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ background: color.border }}
+                <ChildNameWithDot
+                  name={entry?.childFirstName}
+                  childId={childId}
+                  kids={kids}
+                  fallbackChildIds={childIds}
                 />
-                {entry?.childFirstName ?? 'Child'}
               </span>
             )
           })}
@@ -146,8 +147,7 @@ export default function HistoryCalendar({ entries }) {
                 <div className="mt-1 space-y-0.5">
                   {dayEntries.map((entry) => {
                     const status = historyWalkStatus(entry)
-                    const color =
-                      CHILD_CALENDAR_COLORS[childColorIndex(entry.childId, childIds)]
+                    const color = getChildColorById(entry.childId, kids, childIds)
                     const blockStyle = statusBlockStyle(status, color)
                     return (
                       <div
@@ -156,11 +156,18 @@ export default function HistoryCalendar({ entries }) {
                         style={blockStyle}
                         title={`${entry.childFirstName} · ${entry.location}`}
                       >
-                        {entry.childFirstName}
-                        {status === 'in progress' && ' · en route'}
-                        {status === 'completed' &&
-                          entry.droppedOffAt &&
-                          ` · ${formatHistoryTime(entry.droppedOffAt)}`}
+                        <ChildNameWithDot
+                          name={
+                            status === 'in progress'
+                              ? `${entry.childFirstName} · en route`
+                              : status === 'completed' && entry.droppedOffAt
+                                ? `${entry.childFirstName} · ${formatHistoryTime(entry.droppedOffAt)}`
+                                : entry.childFirstName
+                          }
+                          childId={entry.childId}
+                          kids={kids}
+                          fallbackChildIds={childIds}
+                        />
                       </div>
                     )
                   })}
