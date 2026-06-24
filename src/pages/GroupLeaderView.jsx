@@ -8,6 +8,7 @@ import { formatFirestoreError } from '../firebase/errors'
 import { matchIsConnectedForUser } from '../firebase/matching'
 import {
   getChildWalkStatus,
+  isWalkSessionComplete,
   markChildDroppedOff,
   mergePartiesWithScheduleStatus,
   startGroupWalk,
@@ -15,18 +16,11 @@ import {
   subscribeToGroup,
   subscribeToGroupAbsences,
   subscribeToWalkSessionChildren,
+  verifyDropOffSaved,
 } from '../firebase/groupWalk'
 import { formatHistoryTime } from '../firebase/walkHistory'
 
-const DROP_OFF_TIMEOUT_MS = 30000
-
-function withTimeout(promise, ms, message) {
-  let timeoutId
-  const timeout = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(message)), ms)
-  })
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId))
-}
+const SUCCESS_DISMISS_MS = 4000
 
 export default function GroupLeaderView() {
   const { groupId } = useParams()
@@ -38,7 +32,14 @@ export default function GroupLeaderView() {
   const [groupLoaded, setGroupLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
   const [actionId, setActionId] = useState(null)
+
+  useEffect(() => {
+    if (!successMessage) return undefined
+    const timeoutId = setTimeout(() => setSuccessMessage(null), SUCCESS_DISMISS_MS)
+    return () => clearTimeout(timeoutId)
+  }, [successMessage])
 
   useEffect(() => {
     if (!user || !groupId) return
@@ -99,6 +100,7 @@ export default function GroupLeaderView() {
     && Array.isArray(group.parties)
     && group.parties.length > 0
   const walkInProgress = Boolean(activeSession)
+  const walkComplete = walkInProgress && isWalkSessionComplete(sessionChildren)
   const children = useMemo(() => {
     if (walkInProgress) return sessionChildren
     return mergePartiesWithScheduleStatus(group?.parties ?? [], absences, group?.day)
@@ -130,8 +132,11 @@ export default function GroupLeaderView() {
     }
 
     const dropOffId = child.id ?? `${child.userId}_${child.childId}`
+    const previousWalkStatus = child.walkStatus
+    const previousDroppedOffAt = child.droppedOffAt ?? null
 
     setError(null)
+    setSuccessMessage(null)
     setActionId(dropOffId)
 
     const optimisticDroppedOffAt = new Date()
@@ -144,25 +149,54 @@ export default function GroupLeaderView() {
       ),
     )
 
+    const showDropOffSuccess = (firstName, completed) => {
+      setError(null)
+      setSuccessMessage(
+        completed
+          ? `All children dropped off — walk complete.`
+          : `${firstName} marked as dropped off.`,
+      )
+    }
+
     try {
-      const result = await withTimeout(
-        markChildDroppedOff(activeSession.id, child.userId, child.childId, child.id),
-        DROP_OFF_TIMEOUT_MS,
-        'Drop-off timed out after 30 seconds. Check your connection and try again.',
+      const result = await markChildDroppedOff(
+        activeSession.id,
+        child.userId,
+        child.childId,
+        child.id,
       )
 
-      if (result?.completed) {
-        setActiveSession(null)
-      }
+      showDropOffSuccess(child.childFirstName, Boolean(result?.completed))
     } catch (err) {
+      try {
+        const verification = await verifyDropOffSaved(
+          activeSession.id,
+          child.userId,
+          child.childId,
+          child.id,
+        )
+
+        if (verification.saved) {
+          showDropOffSuccess(child.childFirstName, verification.walkComplete)
+          return
+        }
+      } catch (verifyError) {
+        console.warn('[dropOff] verification failed after error', verifyError)
+      }
+
       setSessionChildren((current) =>
         current.map((entry) =>
           entry.id === child.id
           || (entry.userId === child.userId && entry.childId === child.childId)
-            ? { ...entry, walkStatus: child.walkStatus, droppedOffAt: child.droppedOffAt ?? null }
+            ? {
+                ...entry,
+                walkStatus: previousWalkStatus,
+                droppedOffAt: previousDroppedOffAt,
+              }
             : entry,
         ),
       )
+      setSuccessMessage(null)
       setError(formatFirestoreError(err, 'Could not save drop-off. Please try again.'))
     } finally {
       setActionId(null)
@@ -223,8 +257,14 @@ export default function GroupLeaderView() {
                 : `${group.day} · ${formatGroupTimes(group)}`}
             </p>
           </div>
-          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-            {walkInProgress ? 'Walk in progress' : 'Ready to start'}
+          <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+            walkComplete
+              ? 'bg-green-50 text-green-700'
+              : walkInProgress
+                ? 'bg-amber-50 text-amber-800'
+                : 'bg-gray-100 text-gray-700'
+          }`}>
+            {walkComplete ? 'Walk complete' : walkInProgress ? 'Walk in progress' : 'Ready to start'}
           </span>
         </div>
 
@@ -250,7 +290,7 @@ export default function GroupLeaderView() {
           </>
         )}
 
-        {walkInProgress && (
+        {walkInProgress && !walkComplete && (
           <>
             <p className="mt-4 text-sm text-gray-600">
               {pickupLabel}: {formatHistoryTime(activeSession.startedAt)}
@@ -258,7 +298,17 @@ export default function GroupLeaderView() {
             <p className="mt-2 text-sm text-gray-600">{dropOffLabel}</p>
           </>
         )}
+
+        {walkComplete && (
+          <p className="mt-4 text-sm text-green-700">
+            All children have been dropped off. This walk is complete.
+          </p>
+        )}
       </div>
+
+      {successMessage && (
+        <p className="mb-4 rounded-md bg-green-50 px-4 py-3 text-sm text-green-700">{successMessage}</p>
+      )}
 
       {error && (
         <p className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
@@ -271,6 +321,7 @@ export default function GroupLeaderView() {
           const dropOffId = child.id ?? `${child.userId}_${child.childId}`
           const canDropOff =
             walkInProgress &&
+            !walkComplete &&
             child.walkStatus !== 'absent' &&
             child.walkStatus !== 'dropped_off'
 

@@ -265,6 +265,19 @@ function participantIdsMatch(serverIds, derivedIds) {
   return left.every((id) => rightSet.has(id))
 }
 
+function logStartWalkPreWrite(attempt, leaderId, groupId, match, extra = {}) {
+  const matchParticipantIds = match.participantIds ?? []
+  console.log('[startWalk] pre-write context', {
+    attempt,
+    uid: leaderId,
+    groupId,
+    matchDocumentId: groupId,
+    matchParticipantIds,
+    uidInMatchParticipantIds: matchParticipantIds.includes(leaderId),
+    ...extra,
+  })
+}
+
 async function ensureMatchParticipantIds(groupId, match, leaderId) {
   const derivedIds = resolveMatchParticipantIds(match)
 
@@ -337,9 +350,45 @@ export async function getActiveSession(groupId, userId) {
   }
 }
 
-function shouldCompleteWalk(children) {
+export function isWalkSessionComplete(children) {
   const active = children.filter((child) => child.walkStatus !== 'absent')
   return active.length > 0 && active.every((child) => child.walkStatus === 'dropped_off')
+}
+
+async function loadSessionChildren(sessionId) {
+  const childrenSnap = await getDocs(collection(db, 'walkSessions', sessionId, 'children'))
+  return childrenSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+}
+
+async function ensureSessionCompleted(sessionId, sessionData, children) {
+  if (sessionData.status === 'completed') return true
+  if (!isWalkSessionComplete(children)) return false
+
+  const sessionRef = doc(db, 'walkSessions', sessionId)
+  await updateDoc(sessionRef, {
+    status: 'completed',
+    completedAt: serverTimestamp(),
+  })
+  return true
+}
+
+export async function verifyDropOffSaved(sessionId, userId, childId, childDocKey = null) {
+  const located = await findSessionChild(sessionId, userId, childId, childDocKey)
+  if (!located) {
+    return { saved: false, walkComplete: false, sessionComplete: false }
+  }
+
+  const child = located.childSnap.data()
+  const sessionSnap = await getDoc(doc(db, 'walkSessions', sessionId))
+  const session = sessionSnap.exists() ? sessionSnap.data() : null
+  const children = await loadSessionChildren(sessionId)
+  const walkComplete = isWalkSessionComplete(children)
+
+  return {
+    saved: child.walkStatus === 'dropped_off',
+    walkComplete,
+    sessionComplete: session?.status === 'completed' || walkComplete,
+  }
 }
 
 function resolveWalkStatus(absent, scheduledToday) {
@@ -389,6 +438,7 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
     const absences = await fetchGroupAbsences(groupId, leaderId)
 
     const sessionRef = doc(collection(db, 'walkSessions'))
+    const sessionPath = `walkSessions/${sessionRef.id}`
     const sessionData = {
       groupId,
       participantIds: sessionParticipantIds,
@@ -402,14 +452,25 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
       createdAt: serverTimestamp(),
     }
 
+    logStartWalkPreWrite(attempt, leaderId, groupId, match, {
+      sessionParticipantIds,
+      writePath: sessionPath,
+    })
+
     try {
       await setDoc(sessionRef, sessionData)
     } catch (error) {
-      console.error('[startWalk] create walk session failed', { groupId, sessionId: sessionRef.id, error })
+      console.error('[startWalk] create walk session failed', {
+        groupId,
+        sessionId: sessionRef.id,
+        writePath: sessionPath,
+        error,
+      })
       throw error
     }
 
     const batch = writeBatch(db)
+    const batchWritePaths = []
 
     for (const party of match.parties.map(normalizeParty)) {
       const absent = isAbsentOnDate(absences, party.userId, party.childId, today)
@@ -420,6 +481,7 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
       if (walkStatus === 'confirmed') {
         const historyRef = doc(collection(db, 'walkHistory'))
         historyId = historyRef.id
+        batchWritePaths.push(`walkHistory/${historyRef.id}`)
         batch.set(historyRef, {
           userId: party.userId,
           childId: party.childId,
@@ -435,6 +497,8 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
         })
       }
 
+      const childPath = `walkSessions/${sessionRef.id}/children/${childDocId(party.userId, party.childId)}`
+      batchWritePaths.push(childPath)
       batch.set(
         doc(db, 'walkSessions', sessionRef.id, 'children', childDocId(party.userId, party.childId)),
         {
@@ -451,12 +515,18 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
       )
     }
 
+    logStartWalkPreWrite(attempt, leaderId, groupId, match, {
+      sessionParticipantIds,
+      writePaths: batchWritePaths,
+    })
+
     try {
       await batch.commit()
     } catch (error) {
       console.error('[startWalk] create children/walkHistory failed', {
         groupId,
         sessionId: sessionRef.id,
+        writePaths: batchWritePaths,
         error,
       })
       throw error
@@ -500,7 +570,14 @@ export async function markChildDroppedOff(sessionId, userId, childId, childDocKe
       throw new Error(`${child.childFirstName || 'This child'} is marked absent and cannot be dropped off.`)
     }
     if (child.walkStatus === 'dropped_off') {
-      return { alreadyDroppedOff: true, sessionId, groupId: session.groupId }
+      const children = await loadSessionChildren(sessionId)
+      const completed = await ensureSessionCompleted(sessionId, session, children)
+      return {
+        alreadyDroppedOff: true,
+        sessionId,
+        groupId: session.groupId,
+        completed,
+      }
     }
 
     const childrenSnap = await getDocs(collection(db, 'walkSessions', sessionId, 'children'))
@@ -510,7 +587,7 @@ export async function markChildDroppedOff(sessionId, userId, childId, childDocKe
       }
       return docSnap.data()
     })
-    const allDroppedOff = shouldCompleteWalk(children)
+    const allDroppedOff = isWalkSessionComplete(children)
 
     const droppedOffAt = serverTimestamp()
     const batch = writeBatch(db)
