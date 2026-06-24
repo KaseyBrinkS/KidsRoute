@@ -8,7 +8,6 @@ import {
   ACTIVITY_GRADES,
   DEFAULT_TIME,
   deleteActivity,
-  formatDays,
   formatStartTime,
   from24HourTime,
   gradeFromKid,
@@ -92,6 +91,10 @@ function compareActivitiesByDayAndTime(a, b) {
   const dayDiff = earliestDayIndex(a.days) - earliestDayIndex(b.days)
   if (dayDiff !== 0) return dayDiff
   return startTimeSortKey(a.startTime) - startTimeSortKey(b.startTime)
+}
+
+function formatActivityDays(days) {
+  return LIST_SORT_WEEKDAYS.filter((day) => days?.includes(day)).join(', ')
 }
 
 export default function MyActivities() {
@@ -583,18 +586,23 @@ export default function MyActivities() {
                         className="flex items-start justify-between gap-4 px-5 py-4"
                       >
                         <div>
-                          <p className="font-semibold text-[var(--color-text)]">{activityTitle(activity)}</p>
-                          <p className="mt-1 text-sm text-muted">
+                          <p className="text-lg font-semibold text-[var(--color-text)]">
                             {activity.location}
                             {activity.locationPendingReview && (
-                              <span className="ml-2 text-xs text-accent">
+                              <span className="ml-2 text-xs font-normal text-accent">
                                 (pending review)
                               </span>
                             )}
                           </p>
+                          <p className="mt-1 text-base font-bold text-primary">
+                            {formatActivityDays(activity.days)}
+                          </p>
+                          {activityTitle(activity) && (
+                            <p className="mt-0.5 text-sm text-muted">{activityTitle(activity)}</p>
+                          )}
                           <p className="mt-1 text-sm text-muted">
                             {activity.grade && `Grade ${activity.grade} · `}
-                            {formatDays(activity.days)} · {formatStartTime(activity.startTime)}
+                            {formatStartTime(activity.startTime)}
                           </p>
                           <p className="mt-1 text-sm text-muted">
                             {formatSessionLabels(activity.sessions)}
