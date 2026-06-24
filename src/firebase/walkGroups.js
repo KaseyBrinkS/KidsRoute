@@ -11,6 +11,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './db'
+import { getActiveSession } from './groupWalk'
 import { MATCH_WINDOW_MINUTES, timesWithinWindow } from './matching'
 import { defaultSessions } from './sessions'
 import { getUserProfile } from './users'
@@ -60,6 +61,51 @@ export function getPartiesForUser(group, userId) {
 
 export function getActiveParties(group) {
   return (group.parties ?? []).filter((party) => party.response === 'accepted')
+}
+
+export function getAllGroupChildNames(group) {
+  return getActiveParties(group).map((party) => party.childFirstName).join(', ')
+}
+
+export function resolveWalkGroupParticipantIds(group) {
+  const acceptedUserIds = [...new Set(getActiveParties(group).map((party) => party.userId))]
+  if (group.participantIds?.length > 0) {
+    return group.participantIds.filter((id) => acceptedUserIds.includes(id))
+  }
+  return acceptedUserIds
+}
+
+export function walkGroupIsReadyForWalk(group, userId) {
+  if (walkGroupIsDeclinedForUser(group, userId)) return false
+  if (!walkGroupUserHasAccepted(group, userId)) return false
+  if (group.status !== 'active') return false
+  return getActiveParties(group).length > 0
+}
+
+export function subscribeToWalkGroup(groupId, onData, onError) {
+  return onSnapshot(
+    doc(db, 'walkGroups', groupId),
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        onData(null)
+        return
+      }
+      onData({ id: snapshot.id, source: 'walkGroup', ...snapshot.data() })
+    },
+    onError,
+  )
+}
+
+export async function leaveWalkGroup(groupId, userId) {
+  if (await getActiveSession(groupId, userId)) {
+    throw new Error('Cannot leave group while a walk is in progress.')
+  }
+  await respondToWalkGroup(groupId, userId, 'declined', '', '')
+}
+
+export function walkGroupIsVisibleOnGroupsPage(group, userId) {
+  if (walkGroupIsDeclinedForUser(group, userId)) return false
+  return walkGroupUserHasAccepted(group, userId) && (group.status === 'active' || group.status === 'open')
 }
 
 function getNonDeclinedParties(group) {

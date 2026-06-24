@@ -14,11 +14,12 @@ import {
   getUpcomingAbsences,
   markAbsentDateRange,
   markAbsentSingleDate,
-  resolveMatchParticipantIds,
+  resolveGroupParticipantIds,
   subscribeToActiveWalkSession,
   subscribeToGroupAbsences,
 } from '../firebase/groupWalk'
-import { getPartiesForUser, leaveGroup, matchIsConnectedForUser, subscribeToMatches, isActivityMatch } from '../firebase/matching'
+import { getPartiesForUser, leaveWalkGroup, subscribeToWalkGroups, walkGroupIsVisibleOnGroupsPage } from '../firebase/walkGroups'
+import { getPartiesForUser as getMatchPartiesForUser, subscribeToMatches } from '../firebase/matching'
 import {
   BUILDING_WALK_TYPES,
   joinBuildingWalk,
@@ -64,7 +65,7 @@ function PartyAbsenceControls({ party, group, userId, absences, walkInProgress }
   }, [scheduledDates])
 
   const participantIds = useMemo(
-    () => resolveMatchParticipantIds(group),
+    () => resolveGroupParticipantIds(group),
     [group],
   )
 
@@ -248,8 +249,6 @@ function GroupCard({ group, userId }) {
   const [leaving, setLeaving] = useState(false)
   const [error, setError] = useState(null)
 
-  const partnerLeft = group.status === 'partner_left'
-
   useEffect(() => {
     const unsubSession = subscribeToActiveWalkSession(group.id, userId, setActiveSession)
     const unsubAbsences = subscribeToGroupAbsences(group.id, userId, setAbsences)
@@ -257,21 +256,17 @@ function GroupCard({ group, userId }) {
       unsubSession()
       unsubAbsences()
     }
-  }, [group.id])
+  }, [group.id, userId])
 
   const walkInProgress = Boolean(activeSession)
   const myParties = getPartiesForUser(group, userId)
-  const displayWalkStatus = walkInProgress
-    ? 'in progress'
-    : partnerLeft
-      ? 'partner left'
-      : getGroupWalkStatus(group)
+  const displayWalkStatus = walkInProgress ? 'in progress' : getGroupWalkStatus(group)
 
   async function handleLeaveGroup() {
     setError(null)
     setLeaving(true)
     try {
-      await leaveGroup(group.id, userId)
+      await leaveWalkGroup(group.id, userId)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -289,13 +284,7 @@ function GroupCard({ group, userId }) {
             {group.day} · {formatGroupTimes(group)}
           </p>
 
-          {partnerLeft && (
-            <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              The other family has left this group. You can find a new match on the Dashboard.
-            </p>
-          )}
-
-          {!walkInProgress && !partnerLeft && myParties.length > 0 && (
+          {!walkInProgress && myParties.length > 0 && (
             <div className="mt-3 space-y-2">
               {myParties.map((party) => (
                 <PartyAbsenceControls
@@ -319,29 +308,21 @@ function GroupCard({ group, userId }) {
 
         <span
           className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
-            partnerLeft
-              ? 'bg-amber-50 text-amber-700'
-              : (WALK_STATUS_STYLES[displayWalkStatus] ?? WALK_STATUS_STYLES.upcoming)
+            WALK_STATUS_STYLES[displayWalkStatus] ?? WALK_STATUS_STYLES.upcoming
           }`}
         >
-          {walkInProgress
-            ? 'In progress'
-            : partnerLeft
-              ? 'Partner left'
-              : WALK_STATUS_LABELS[displayWalkStatus]}
+          {walkInProgress ? 'In progress' : WALK_STATUS_LABELS[displayWalkStatus]}
         </span>
       </div>
-      {!partnerLeft && (
-        <p className="mt-3">
-          <Link
-            to={`/groups/${group.id}/leader`}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
-          >
-            Group leader view →
-          </Link>
-        </p>
-      )}
-      {!walkInProgress && !partnerLeft && (
+      <p className="mt-3">
+        <Link
+          to={`/groups/${group.id}/leader`}
+          className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+        >
+          Group leader view →
+        </Link>
+      </p>
+      {!walkInProgress && (
         <button
           type="button"
           onClick={handleLeaveGroup}
@@ -375,7 +356,7 @@ function BuildingWalkGroupCard({ group, userId, onLeave }) {
   }, [group.id])
 
   const walkInProgress = Boolean(activeSession)
-  const myParties = getPartiesForUser(group, userId)
+  const myParties = getMatchPartiesForUser(group, userId)
   const displayWalkStatus = walkInProgress
     ? 'in progress'
     : partnerLeft
@@ -525,30 +506,29 @@ export default function Groups() {
   useEffect(() => {
     if (!user) return
 
-    const unsubscribeMatches = subscribeToMatches(
+    const unsubscribeWalkGroups = subscribeToWalkGroups(
       user.uid,
-      (matches) => {
-        const activityMatches = matches.filter(isActivityMatch)
-        const buildingMatches = matches.filter((match) => match.matchType === 'building')
-
-        const connected = activityMatches.filter((match) => matchIsConnectedForUser(match, user.uid))
-        const partnerLeft = activityMatches.filter(
-          (match) =>
-            match.status === 'partner_left' &&
-            getPartiesForUser(match, user.uid).some((party) => party.response === 'accepted'),
+      (walkGroups) => {
+        setGroups(
+          walkGroups.filter((group) => walkGroupIsVisibleOnGroupsPage(group, user.uid)),
         )
-        setGroups([...connected, ...partnerLeft])
-
-        const myBuildingGroups = buildingMatches.filter((match) =>
-          match.participantIds?.includes(user.uid),
-        )
-        setBuildingGroups(myBuildingGroups)
         setActivityGroupsLoading(false)
       },
       (err) => {
         setError(err.message)
         setActivityGroupsLoading(false)
       },
+    )
+
+    const unsubscribeMatches = subscribeToMatches(
+      user.uid,
+      (matches) => {
+        const buildingMatches = matches.filter((match) => match.matchType === 'building')
+        setBuildingGroups(
+          buildingMatches.filter((match) => match.participantIds?.includes(user.uid)),
+        )
+      },
+      (err) => setError(err.message),
     )
 
     const unsubSlots = subscribeToBuildingWalkSlots(user.uid, setBuildingSlots, (err) => {
@@ -560,6 +540,7 @@ export default function Groups() {
     })
 
     return () => {
+      unsubscribeWalkGroups()
       unsubscribeMatches()
       unsubSlots()
       unsubActivities()
@@ -614,13 +595,12 @@ export default function Groups() {
 
       <div className="space-y-8">
           <section>
-            <h2 className="text-sm font-medium text-gray-900">Activity groups</h2>
+            <h2 className="text-sm font-medium text-gray-900">Walk groups</h2>
             {activityGroupsLoading ? (
               <p className="mt-4 text-sm text-gray-600">Loading activity groups…</p>
             ) : groups.length === 0 ? (
               <p className="mt-4 rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center text-sm text-gray-600">
-                No confirmed activity groups yet. Accept a match on the Dashboard to form a
-                walking group.
+                No walk groups yet. Join a group on the Dashboard after adding an activity.
               </p>
             ) : (
               <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">

@@ -16,8 +16,12 @@ function daysUntilWalkDay(today, walkDay) {
   return (dayIndex - todayIndex + 7) % 7
 }
 
-export function getPartyStartTimes(match) {
-  return match.parties.map((party) => party.startTime).filter(Boolean)
+export function getPartyStartTimes(group) {
+  const parties =
+    group.source === 'walkGroup'
+      ? (group.parties ?? []).filter((party) => party.response === 'accepted')
+      : (group.parties ?? [])
+  return parties.map((party) => party.startTime).filter(Boolean)
 }
 
 export function getWalkStatus(day, startTimes, options = {}) {
@@ -72,8 +76,14 @@ export function getGroupWalkStatus(group) {
   return getWalkStatus(group.day, getPartyStartTimes(group))
 }
 
-export function formatGroupChildNames(match) {
-  return match.parties.map((party) => party.childFirstName).join(', ')
+export function formatGroupChildNames(group) {
+  if (group.source === 'walkGroup') {
+    const names = (group.parties ?? [])
+      .filter((party) => party.response === 'accepted')
+      .map((party) => party.childFirstName)
+    return names.join(', ')
+  }
+  return group.parties.map((party) => party.childFirstName).join(', ')
 }
 
 export function formatGroupTimes(match) {

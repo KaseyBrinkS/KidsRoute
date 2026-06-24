@@ -13,7 +13,6 @@ import {
 } from 'firebase/firestore'
 import { db } from './db'
 import { defaultSessions } from './sessions'
-import { processActivityMatching, syncMatchPartiesForActivity } from './matching'
 import { processActivityWalkGrouping, syncWalkGroupPartiesForActivity } from './walkGroups'
 
 export function activityMatchingPayload(activityData) {
@@ -101,7 +100,6 @@ export async function addActivityAndFindMatches(userId, activityData) {
   const activityRef = await addActivity(userId, activityData)
 
   try {
-    await processActivityMatching(userId, activityRef.id, activityMatchingPayload(activityData))
     await processActivityWalkGrouping(userId, activityRef.id, activityMatchingPayload(activityData))
   } catch (err) {
     console.error('Activity saved but matching failed:', err)
@@ -160,9 +158,7 @@ export async function updateActivityAndFindMatches(userId, activityId, activityD
   const matchingPayload = activityMatchingPayload(activityData)
 
   try {
-    await syncMatchPartiesForActivity(userId, activityId, matchingPayload)
     await syncWalkGroupPartiesForActivity(userId, activityId, matchingPayload)
-    await processActivityMatching(userId, activityId, matchingPayload)
     await processActivityWalkGrouping(userId, activityId, matchingPayload)
   } catch (err) {
     console.error('Activity updated but matching sync failed:', err)

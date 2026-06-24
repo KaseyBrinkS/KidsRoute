@@ -32,17 +32,43 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid in participantIds;
     }
 
-    // Walk sessions: create validates against match; ongoing access uses session participantIds.
+    function walkGroupDoc(groupId) {
+      return get(/databases/$(database)/documents/walkGroups/$(groupId));
+    }
+
+    function walkGroupExists(groupId) {
+      return exists(/databases/$(database)/documents/walkGroups/$(groupId));
+    }
+
+    function walkGroupParticipantIds(groupId) {
+      return walkGroupDoc(groupId).data.get('participantIds', []);
+    }
+
+    function isWalkGroupParticipant(groupId) {
+      return isSignedIn()
+        && walkGroupExists(groupId)
+        && request.auth.uid in walkGroupParticipantIds(groupId);
+    }
+
+    // Walk sessions: create validates against walk group or match; ongoing access uses session participantIds.
     function canCreateWalkSession() {
       let groupId = request.resource.data.groupId;
       return isSignedIn()
         && groupId is string
         && isInParticipantList(request.resource.data.get('participantIds', []))
-        && matchExists(groupId)
         && (
-          request.auth.uid in matchParticipantIds(groupId)
-          || matchParticipantIds(groupId).size() == 0
-          || userHasBuildingWalkSlot(matchDoc(groupId).data)
+          (
+            walkGroupExists(groupId)
+            && isWalkGroupParticipant(groupId)
+          )
+          || (
+            matchExists(groupId)
+            && (
+              request.auth.uid in matchParticipantIds(groupId)
+              || matchParticipantIds(groupId).size() == 0
+              || userHasBuildingWalkSlot(matchDoc(groupId).data)
+            )
+          )
         );
     }
 
@@ -53,6 +79,11 @@ service cloud.firestore {
     function canUpdateWalkHistory() {
       return isSignedIn() && (
         request.auth.uid in resource.data.get('participantIds', [])
+        || (
+          resource.data.groupId is string
+          && walkGroupExists(resource.data.groupId)
+          && request.auth.uid in walkGroupParticipantIds(resource.data.groupId)
+        )
         || (
           resource.data.groupId is string
           && matchExists(resource.data.groupId)

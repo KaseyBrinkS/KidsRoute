@@ -8,16 +8,19 @@ import { formatFirestoreError } from '../firebase/errors'
 import { matchIsConnectedForUser } from '../firebase/matching'
 import {
   getChildWalkStatus,
+  getGroupWalkParties,
   isWalkSessionComplete,
+  markChildArrived,
   markChildDroppedOff,
   mergePartiesWithScheduleStatus,
   startGroupWalk,
   subscribeToActiveWalkSession,
-  subscribeToGroup,
+  subscribeToGroupDocument,
   subscribeToGroupAbsences,
   subscribeToWalkSessionChildren,
   verifyDropOffSaved,
 } from '../firebase/groupWalk'
+import { walkGroupIsReadyForWalk } from '../firebase/walkGroups'
 import { formatHistoryTime } from '../firebase/walkHistory'
 
 const SUCCESS_DISMISS_MS = 4000
@@ -44,7 +47,7 @@ export default function GroupLeaderView() {
   useEffect(() => {
     if (!user || !groupId) return
 
-    const unsubGroup = subscribeToGroup(
+    const unsubGroup = subscribeToGroupDocument(
       groupId,
       (data) => {
         setGroup(data)
@@ -84,29 +87,33 @@ export default function GroupLeaderView() {
     return unsubscribe
   }, [activeSession?.id])
 
+  const isBuildingWalk = isBuildingWalkMatch(group)
+  const isWalkGroup = group?.source === 'walkGroup'
   const isParticipant = group?.participantIds?.includes(user?.uid)
     || group?.parties?.some((party) => party.userId === user?.uid)
-  const resolvedParticipantIds =
-    group?.participantIds?.length > 0
-      ? group.participantIds
-      : [...new Set((group?.parties ?? []).map((party) => party.userId))]
-  const groupReadyForWalk =
-    groupLoaded
-    && Boolean(group)
-    && isParticipant
-    && matchIsConnectedForUser(group, user?.uid)
-    && resolvedParticipantIds.includes(user?.uid)
-    && resolvedParticipantIds.length > 0
-    && Array.isArray(group.parties)
-    && group.parties.length > 0
+
+  const groupReadyForWalk = useMemo(() => {
+    if (!groupLoaded || !group || !isParticipant || !user?.uid) return false
+    if (isWalkGroup) return walkGroupIsReadyForWalk(group, user.uid)
+    return (
+      matchIsConnectedForUser(group, user.uid)
+      && getGroupWalkParties(group).length > 0
+    )
+  }, [groupLoaded, group, isParticipant, user?.uid, isWalkGroup])
+
   const walkInProgress = Boolean(activeSession)
   const walkComplete = walkInProgress && isWalkSessionComplete(sessionChildren)
+
+  const preWalkParties = useMemo(
+    () => getGroupWalkParties(group ?? {}).map((party) => normalizePartyForDisplay(party)),
+    [group],
+  )
+
   const children = useMemo(() => {
     if (walkInProgress) return sessionChildren
-    return mergePartiesWithScheduleStatus(group?.parties ?? [], absences, group?.day)
-  }, [walkInProgress, sessionChildren, group?.parties, group?.day, absences])
+    return mergePartiesWithScheduleStatus(preWalkParties, absences, group?.day)
+  }, [walkInProgress, sessionChildren, preWalkParties, group?.day, absences])
 
-  const isBuildingWalk = isBuildingWalkMatch(group)
   const buildingWalkConfig = isBuildingWalk
     ? BUILDING_WALK_TYPES[group.buildingWalkType]
     : null
@@ -117,9 +124,40 @@ export default function GroupLeaderView() {
     setError(null)
     setActionId('start')
     try {
-      await startGroupWalk(groupId, user.uid, { match: group })
+      await startGroupWalk(groupId, user.uid, { group })
     } catch (err) {
       setError(formatFirestoreError(err, 'Could not start the walk.'))
+    } finally {
+      setActionId(null)
+    }
+  }
+
+  async function handleArrival(child) {
+    if (!activeSession?.id) {
+      setError('No walk is in progress. Refresh the page and try again.')
+      return
+    }
+
+    const arrivalId = `arrive_${child.id ?? `${child.userId}_${child.childId}`}`
+    setError(null)
+    setSuccessMessage(null)
+    setActionId(arrivalId)
+
+    setSessionChildren((current) =>
+      current.map((entry) =>
+        entry.id === child.id
+        || (entry.userId === child.userId && entry.childId === child.childId)
+          ? { ...entry, walkStatus: 'confirmed', pickedUpAt: new Date() }
+          : entry,
+      ),
+    )
+
+    try {
+      await markChildArrived(activeSession.id, child.userId, child.childId, child.id)
+      setError(null)
+      setSuccessMessage(`${child.childFirstName} marked as arrived.`)
+    } catch (err) {
+      setError(formatFirestoreError(err, 'Could not save arrival. Please try again.'))
     } finally {
       setActionId(null)
     }
@@ -212,7 +250,11 @@ export default function GroupLeaderView() {
     )
   }
 
-  if (!group || !isParticipant || !matchIsConnectedForUser(group, user?.uid)) {
+  const hasAccess = group && isParticipant && (
+    isWalkGroup ? walkGroupIsReadyForWalk(group, user?.uid) : matchIsConnectedForUser(group, user?.uid)
+  )
+
+  if (!hasAccess) {
     return (
       <div>
         <PageHeader title="Group Leader View" description="Manage your walking group" />
@@ -228,17 +270,17 @@ export default function GroupLeaderView() {
 
   const pickupLabel = isBuildingWalk
     ? group.buildingWalkType === 'morning_to_school'
-      ? 'Picked up from home'
+      ? 'Walk started from home'
       : group.buildingWalkType === 'afternoon_from_school'
-        ? 'Picked up from school'
-        : 'Picked up from activity'
-    : 'Picked up from school'
+        ? 'Walk started from school'
+        : 'Walk started from activity'
+    : 'Walk started'
 
   const dropOffLabel = isBuildingWalk
     ? group.buildingWalkType === 'morning_to_school'
-      ? 'Mark each child as dropped off at school.'
-      : 'Mark each child as dropped off at home.'
-    : 'Mark each child as dropped off at their activity.'
+      ? 'Mark arrival and drop-off for each child.'
+      : 'Mark arrival and drop-off for each child at home.'
+    : 'Mark arrival and drop-off for each child at their activity.'
 
   return (
     <div>
@@ -256,6 +298,11 @@ export default function GroupLeaderView() {
                 ? `${buildingWalkConfig?.route} · ${buildingWalkConfig?.scheduleLabel}`
                 : `${group.day} · ${formatGroupTimes(group)}`}
             </p>
+            {isWalkGroup && (
+              <p className="mt-1 text-sm text-gray-500">
+                {preWalkParties.length} children in this group
+              </p>
+            )}
           </div>
           <span className={`rounded-full px-3 py-1 text-xs font-medium ${
             walkComplete
@@ -271,9 +318,11 @@ export default function GroupLeaderView() {
         {!walkInProgress && (
           <>
             <p className="mt-4 text-sm text-gray-600">
-              {isBuildingWalk
-                ? 'Children are automatically confirmed on weekdays. They show as absent only when a parent has marked them absent for today.'
-                : 'Children are automatically confirmed on scheduled class days. They show as absent only when a parent has marked them absent for today.'}
+              {isWalkGroup
+                ? 'All accepted children in the group appear below. Mark each child as arrived when they join the walk, then dropped off at their destination.'
+                : isBuildingWalk
+                  ? 'Children are automatically confirmed on weekdays. They show as absent only when a parent has marked them absent for today.'
+                  : 'Children are automatically confirmed on scheduled class days. They show as absent only when a parent has marked them absent for today.'}
             </p>
             <button
               type="button"
@@ -318,15 +367,20 @@ export default function GroupLeaderView() {
       <ul className="mt-3 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
         {children.map((child) => {
           const status = getChildWalkStatus(child)
-          const dropOffId = child.id ?? `${child.userId}_${child.childId}`
+          const childKey = child.id ?? `${child.userId}_${child.childId}`
+          const arrivalId = `arrive_${childKey}`
+          const canArrive =
+            walkInProgress &&
+            !walkComplete &&
+            isWalkGroup &&
+            child.walkStatus === 'waiting_arrival'
           const canDropOff =
             walkInProgress &&
             !walkComplete &&
-            child.walkStatus !== 'absent' &&
-            child.walkStatus !== 'dropped_off'
+            child.walkStatus === 'confirmed'
 
           return (
-            <li key={dropOffId} className="px-4 py-4 sm:px-6">
+            <li key={childKey} className="px-4 py-4 sm:px-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3">
@@ -339,7 +393,7 @@ export default function GroupLeaderView() {
                   <p className="text-sm text-gray-600">Phone: {child.contactPhone}</p>
                   {child.pickedUpAt && (
                     <p className="mt-2 text-sm text-gray-500">
-                      Picked up: {formatHistoryTime(child.pickedUpAt)}
+                      Arrived: {formatHistoryTime(child.pickedUpAt)}
                     </p>
                   )}
                   {child.droppedOffAt && (
@@ -349,16 +403,28 @@ export default function GroupLeaderView() {
                   )}
                 </div>
 
-                {canDropOff && (
-                  <button
-                    type="button"
-                    onClick={() => handleDropOff(child)}
-                    disabled={actionId === dropOffId}
-                    className="shrink-0 rounded-md border border-indigo-600 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
-                  >
-                    {actionId === dropOffId ? 'Saving…' : 'Dropped off'}
-                  </button>
-                )}
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  {canArrive && (
+                    <button
+                      type="button"
+                      onClick={() => handleArrival(child)}
+                      disabled={actionId === arrivalId}
+                      className="rounded-md border border-green-600 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
+                    >
+                      {actionId === arrivalId ? 'Saving…' : 'Arrived'}
+                    </button>
+                  )}
+                  {canDropOff && (
+                    <button
+                      type="button"
+                      onClick={() => handleDropOff(child)}
+                      disabled={actionId === childKey}
+                      className="rounded-md border border-indigo-600 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+                    >
+                      {actionId === childKey ? 'Saving…' : 'Dropped off'}
+                    </button>
+                  )}
+                </div>
               </div>
             </li>
           )
@@ -372,4 +438,12 @@ export default function GroupLeaderView() {
       </p>
     </div>
   )
+}
+
+function normalizePartyForDisplay(party) {
+  return {
+    ...party,
+    parentName: party.parentName || 'Parent',
+    contactPhone: party.contactPhone || 'Not provided',
+  }
 }

@@ -14,8 +14,13 @@ import {
 } from 'firebase/firestore'
 import { db } from './db'
 import { isPartyScheduledOnDate, todayKey } from './sessions'
-import { syncWalkHistoryDropOff } from './walkHistory'
+import { syncWalkHistoryDropOff, createWalkHistoryEntry } from './walkHistory'
 import { isFirestorePermissionError } from './errors'
+import {
+  getActiveParties as getWalkGroupActiveParties,
+  resolveWalkGroupParticipantIds,
+} from './walkGroups'
+import { getActiveParties as getMatchActiveParties } from './matching'
 
 const START_WALK_MAX_ATTEMPTS = 3
 const START_WALK_RETRY_MS = 1000
@@ -44,7 +49,8 @@ async function withPermissionRetries(operation, label, maxAttempts = 3, delayMs 
 }
 
 export const CHILD_WALK_STATUSES = {
-  confirmed: { label: 'Confirmed', style: 'bg-green-50 text-green-700' },
+  waiting_arrival: { label: 'Not arrived', style: 'bg-yellow-50 text-yellow-800' },
+  confirmed: { label: 'Arrived', style: 'bg-green-50 text-green-700' },
   absent: { label: 'Absent', style: 'bg-gray-100 text-gray-600' },
   off_day: { label: 'No class today', style: 'bg-slate-50 text-slate-600' },
   dropped_off: { label: 'Dropped off', style: 'bg-indigo-50 text-indigo-700' },
@@ -183,17 +189,45 @@ export function getUpcomingAbsences(absences, userId, childId, fromDateKey = tod
 }
 
 export function subscribeToGroup(groupId, onData, onError) {
-  return onSnapshot(
-    doc(db, 'matches', groupId),
-    (snapshot) => {
-      if (!snapshot.exists()) {
-        onData(null)
+  return subscribeToGroupDocument(groupId, onData, onError)
+}
+
+export function subscribeToGroupDocument(groupId, onData, onError) {
+  let matchUnsubscribe = null
+
+  const walkGroupUnsubscribe = onSnapshot(
+    doc(db, 'walkGroups', groupId),
+    (walkGroupSnap) => {
+      if (walkGroupSnap.exists()) {
+        if (matchUnsubscribe) {
+          matchUnsubscribe()
+          matchUnsubscribe = null
+        }
+        onData({ id: walkGroupSnap.id, source: 'walkGroup', ...walkGroupSnap.data() })
         return
       }
-      onData({ id: snapshot.id, ...snapshot.data() })
+
+      if (!matchUnsubscribe) {
+        matchUnsubscribe = onSnapshot(
+          doc(db, 'matches', groupId),
+          (matchSnap) => {
+            if (!matchSnap.exists()) {
+              onData(null)
+              return
+            }
+            onData({ id: matchSnap.id, source: 'match', ...matchSnap.data() })
+          },
+          onError,
+        )
+      }
     },
     onError,
   )
+
+  return () => {
+    walkGroupUnsubscribe()
+    if (matchUnsubscribe) matchUnsubscribe()
+  }
 }
 
 export function subscribeToActiveWalkSession(groupId, userId, onData, onError) {
@@ -245,10 +279,33 @@ export function subscribeToGroupAbsences(groupId, userId, onData, onError) {
   )
 }
 
-async function fetchGroup(groupId) {
-  const snapshot = await getDoc(doc(db, 'matches', groupId))
-  if (!snapshot.exists()) return null
-  return { id: snapshot.id, ...snapshot.data() }
+async function fetchGroupDocument(groupId) {
+  const walkGroupSnap = await getDoc(doc(db, 'walkGroups', groupId))
+  if (walkGroupSnap.exists()) {
+    return { id: walkGroupSnap.id, source: 'walkGroup', ...walkGroupSnap.data() }
+  }
+
+  const matchSnap = await getDoc(doc(db, 'matches', groupId))
+  if (matchSnap.exists()) {
+    return { id: matchSnap.id, source: 'match', ...matchSnap.data() }
+  }
+
+  return null
+}
+
+export function resolveGroupParticipantIds(group) {
+  if (!group) return []
+  if (group.source === 'walkGroup') return resolveWalkGroupParticipantIds(group)
+  return resolveMatchParticipantIds(group)
+}
+
+export function getGroupWalkParties(group) {
+  if (!group) return []
+  if (group.source === 'walkGroup') return getWalkGroupActiveParties(group)
+  if (group.matchType === 'building') {
+    return (group.parties ?? []).filter((party) => party.response === 'accepted')
+  }
+  return getMatchActiveParties(group)
 }
 
 export function resolveMatchParticipantIds(match) {
@@ -276,6 +333,43 @@ function logStartWalkPreWrite(attempt, leaderId, groupId, match, extra = {}) {
     uidInMatchParticipantIds: matchParticipantIds.includes(leaderId),
     ...extra,
   })
+}
+
+async function ensureWalkGroupParticipantIds(groupId, group, leaderId) {
+  const derivedIds = resolveWalkGroupParticipantIds(group)
+
+  if (participantIdsMatch(group.participantIds, derivedIds)) {
+    return derivedIds
+  }
+
+  if (derivedIds.length === 0) {
+    console.warn('[startWalk] no participantIds derived from walk group', { groupId })
+    return derivedIds
+  }
+
+  if (!derivedIds.includes(leaderId)) {
+    return derivedIds
+  }
+
+  const groupRef = doc(db, 'walkGroups', groupId)
+  try {
+    await updateDoc(groupRef, { participantIds: derivedIds })
+    console.log('[startWalk] synced walkGroup.participantIds', { groupId, participantIds: derivedIds })
+  } catch (error) {
+    console.warn('[startWalk] sync walkGroup.participantIds failed (continuing with derived list)', {
+      groupId,
+      error,
+    })
+  }
+
+  return derivedIds
+}
+
+async function ensureGroupParticipantIds(groupId, group, leaderId) {
+  if (group.source === 'walkGroup') {
+    return ensureWalkGroupParticipantIds(groupId, group, leaderId)
+  }
+  return ensureMatchParticipantIds(groupId, group, leaderId)
 }
 
 async function ensureMatchParticipantIds(groupId, match, leaderId) {
@@ -350,8 +444,12 @@ export async function getActiveSession(groupId, userId) {
   }
 }
 
+function isActiveSessionChild(child) {
+  return child.walkStatus !== 'absent' && child.walkStatus !== 'off_day'
+}
+
 export function isWalkSessionComplete(children) {
-  const active = children.filter((child) => child.walkStatus !== 'absent')
+  const active = children.filter(isActiveSessionChild)
   return active.length > 0 && active.every((child) => child.walkStatus === 'dropped_off')
 }
 
@@ -410,19 +508,19 @@ export function mergePartiesWithScheduleStatus(parties, absences, matchDay, date
   })
 }
 
-export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch = null } = {}) {
+export async function startGroupWalk(groupId, leaderId, { group: prefetchedGroup = null } = {}) {
   return withPermissionRetries(async (attempt) => {
-    const match =
-      attempt === 1 && prefetchedMatch ? prefetchedMatch : await fetchGroup(groupId)
-    if (!match) {
+    const group =
+      attempt === 1 && prefetchedGroup ? prefetchedGroup : await fetchGroupDocument(groupId)
+    if (!group) {
       throw new Error('Group not found. Refresh the page and try again.')
     }
 
     let sessionParticipantIds
     try {
-      sessionParticipantIds = await ensureMatchParticipantIds(groupId, match, leaderId)
+      sessionParticipantIds = await ensureGroupParticipantIds(groupId, group, leaderId)
     } catch (error) {
-      console.error('[startWalk] ensureMatchParticipantIds failed', { groupId, leaderId, error })
+      console.error('[startWalk] ensureGroupParticipantIds failed', { groupId, leaderId, error })
       throw error
     }
 
@@ -436,14 +534,20 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
 
     const today = todayKey()
     const absences = await fetchGroupAbsences(groupId, leaderId)
+    const walkParties = getGroupWalkParties(group).map(normalizeParty)
+
+    if (walkParties.length === 0) {
+      throw new Error('No accepted children in this group yet.')
+    }
 
     const sessionRef = doc(collection(db, 'walkSessions'))
     const sessionPath = `walkSessions/${sessionRef.id}`
     const sessionData = {
       groupId,
+      groupSource: group.source ?? 'match',
       participantIds: sessionParticipantIds,
-      location: match.location,
-      scheduleDay: match.day,
+      location: group.location,
+      scheduleDay: group.day,
       dateKey: today,
       status: 'started',
       startedAt: serverTimestamp(),
@@ -452,7 +556,7 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
       createdAt: serverTimestamp(),
     }
 
-    logStartWalkPreWrite(attempt, leaderId, groupId, match, {
+    logStartWalkPreWrite(attempt, leaderId, groupId, group, {
       sessionParticipantIds,
       writePath: sessionPath,
     })
@@ -471,13 +575,21 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
 
     const batch = writeBatch(db)
     const batchWritePaths = []
+    const usePerKidArrival = group.source === 'walkGroup'
 
-    for (const party of match.parties.map(normalizeParty)) {
+    for (const party of walkParties) {
       const absent = isAbsentOnDate(absences, party.userId, party.childId, today)
-      const walkStatus = absent ? 'absent' : 'confirmed'
-      const pickedUpAt = walkStatus === 'confirmed' ? serverTimestamp() : null
+      const scheduledToday = isPartyScheduledOnDate(party, today, group.day)
+      let walkStatus = 'off_day'
+      if (absent) {
+        walkStatus = 'absent'
+      } else if (scheduledToday) {
+        walkStatus = usePerKidArrival ? 'waiting_arrival' : 'confirmed'
+      }
 
+      const pickedUpAt = walkStatus === 'confirmed' ? serverTimestamp() : null
       let historyId = null
+
       if (walkStatus === 'confirmed') {
         const historyRef = doc(collection(db, 'walkHistory'))
         historyId = historyRef.id
@@ -489,8 +601,8 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
           groupId,
           sessionId: sessionRef.id,
           participantIds: sessionParticipantIds,
-          location: match.location,
-          scheduleDay: match.day,
+          location: group.location,
+          scheduleDay: group.day,
           pickedUpAt: pickedUpAt ?? serverTimestamp(),
           droppedOffAt: null,
           createdAt: serverTimestamp(),
@@ -515,7 +627,7 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
       )
     }
 
-    logStartWalkPreWrite(attempt, leaderId, groupId, match, {
+    logStartWalkPreWrite(attempt, leaderId, groupId, group, {
       sessionParticipantIds,
       writePaths: batchWritePaths,
     })
@@ -534,6 +646,68 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
 
     return sessionRef.id
   }, 'startWalk', START_WALK_MAX_ATTEMPTS, START_WALK_RETRY_MS)
+}
+
+export async function markChildArrived(sessionId, userId, childId, childDocKey = null) {
+  return withPermissionRetries(async () => {
+    if (!sessionId) {
+      throw new Error('No active walk session. Refresh the page and try again.')
+    }
+
+    const sessionRef = doc(db, 'walkSessions', sessionId)
+    const sessionSnap = await getDoc(sessionRef)
+    if (!sessionSnap.exists()) {
+      throw new Error('This walk session no longer exists. Refresh the page and try again.')
+    }
+
+    const session = sessionSnap.data()
+    const located = await findSessionChild(sessionId, userId, childId, childDocKey)
+    if (!located) {
+      throw new Error(
+        'This child is not part of the active walk session. Refresh the page and try again.',
+      )
+    }
+
+    const { childRef, childSnap } = located
+    const child = childSnap.data()
+
+    if (child.walkStatus === 'absent' || child.walkStatus === 'off_day') {
+      throw new Error(`${child.childFirstName || 'This child'} is not walking today.`)
+    }
+    if (child.walkStatus === 'confirmed' || child.walkStatus === 'dropped_off') {
+      return { alreadyArrived: true, sessionId, groupId: session.groupId }
+    }
+    if (child.walkStatus !== 'waiting_arrival') {
+      throw new Error('This child cannot be marked as arrived in their current state.')
+    }
+
+    const pickedUpAt = serverTimestamp()
+    let historyId = child.historyId ?? null
+
+    if (!historyId) {
+      const historyRef = await createWalkHistoryEntry({
+        userId: child.userId ?? userId,
+        childId: child.childId ?? childId,
+        childFirstName: child.childFirstName,
+        groupId: session.groupId,
+        sessionId,
+        participantIds: session.participantIds ?? [],
+        location: session.location,
+        scheduleDay: session.scheduleDay,
+        pickedUpAt,
+        droppedOffAt: null,
+      })
+      historyId = historyRef.id
+    }
+
+    await updateDoc(childRef, {
+      walkStatus: 'confirmed',
+      pickedUpAt,
+      historyId,
+    })
+
+    return { alreadyArrived: false, sessionId, groupId: session.groupId }
+  }, 'arrival', DROP_OFF_MAX_ATTEMPTS, DROP_OFF_RETRY_MS)
 }
 
 export async function markChildDroppedOff(sessionId, userId, childId, childDocKey = null) {
@@ -568,6 +742,9 @@ export async function markChildDroppedOff(sessionId, userId, childId, childDocKe
 
     if (child.walkStatus === 'absent') {
       throw new Error(`${child.childFirstName || 'This child'} is marked absent and cannot be dropped off.`)
+    }
+    if (child.walkStatus === 'waiting_arrival') {
+      throw new Error(`${child.childFirstName || 'This child'} must be marked arrived before drop-off.`)
     }
     if (child.walkStatus === 'dropped_off') {
       const children = await loadSessionChildren(sessionId)
