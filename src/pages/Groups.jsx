@@ -14,6 +14,7 @@ import {
   getUpcomingAbsences,
   markAbsentDateRange,
   markAbsentSingleDate,
+  resolveMatchParticipantIds,
   subscribeToActiveWalkSession,
   subscribeToGroupAbsences,
 } from '../firebase/groupWalk'
@@ -62,6 +63,11 @@ function PartyAbsenceControls({ party, group, userId, absences, walkInProgress }
     setRangeEnd((current) => current || scheduledDates[0])
   }, [scheduledDates])
 
+  const participantIds = useMemo(
+    () => resolveMatchParticipantIds(group),
+    [group],
+  )
+
   async function handleMarkAbsent() {
     if (scheduledDates.length === 0) return
 
@@ -77,6 +83,7 @@ function PartyAbsenceControls({ party, group, userId, absences, walkInProgress }
           childFirstName: party.childFirstName,
           activityId: party.activityId,
           dateKey: singleDate,
+          participantIds,
         })
       } else {
         if (!rangeStart || !rangeEnd) throw new Error('Select a date range.')
@@ -88,6 +95,7 @@ function PartyAbsenceControls({ party, group, userId, absences, walkInProgress }
           activityId: party.activityId,
           startDateKey: rangeStart,
           endDateKey: rangeEnd,
+          participantIds,
         })
       }
     } catch (err) {
@@ -243,8 +251,8 @@ function GroupCard({ group, userId }) {
   const partnerLeft = group.status === 'partner_left'
 
   useEffect(() => {
-    const unsubSession = subscribeToActiveWalkSession(group.id, setActiveSession)
-    const unsubAbsences = subscribeToGroupAbsences(group.id, setAbsences)
+    const unsubSession = subscribeToActiveWalkSession(group.id, userId, setActiveSession)
+    const unsubAbsences = subscribeToGroupAbsences(group.id, userId, setAbsences)
     return () => {
       unsubSession()
       unsubAbsences()
@@ -358,8 +366,8 @@ function BuildingWalkGroupCard({ group, userId, onLeave }) {
   const partnerLeft = group.status === 'partner_left'
 
   useEffect(() => {
-    const unsubSession = subscribeToActiveWalkSession(group.id, setActiveSession)
-    const unsubAbsences = subscribeToGroupAbsences(group.id, setAbsences)
+    const unsubSession = subscribeToActiveWalkSession(group.id, userId, setActiveSession)
+    const unsubAbsences = subscribeToGroupAbsences(group.id, userId, setAbsences)
     return () => {
       unsubSession()
       unsubAbsences()

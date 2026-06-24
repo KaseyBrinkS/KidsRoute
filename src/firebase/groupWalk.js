@@ -196,9 +196,14 @@ export function subscribeToGroup(groupId, onData, onError) {
   )
 }
 
-export function subscribeToActiveWalkSession(groupId, onData, onError) {
+export function subscribeToActiveWalkSession(groupId, userId, onData, onError) {
+  if (!groupId || !userId) {
+    onData(null)
+    return () => {}
+  }
+
   return onSnapshot(
-    query(collection(db, 'walkSessions'), where('groupId', '==', groupId)),
+    walkSessionsQuery(groupId, userId),
     (snapshot) => {
       const session =
         snapshot.docs
@@ -225,9 +230,14 @@ export function subscribeToWalkSessionChildren(sessionId, onData, onError) {
   )
 }
 
-export function subscribeToGroupAbsences(groupId, onData, onError) {
+export function subscribeToGroupAbsences(groupId, userId, onData, onError) {
+  if (!groupId || !userId) {
+    onData([])
+    return () => {}
+  }
+
   return onSnapshot(
-    query(collection(db, 'groupAbsences'), where('groupId', '==', groupId)),
+    groupAbsencesQuery(groupId, userId),
     (snapshot) => {
       onData(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })))
     },
@@ -241,15 +251,52 @@ async function fetchGroup(groupId) {
   return { id: snapshot.id, ...snapshot.data() }
 }
 
-export async function getActiveSession(groupId) {
-  const snapshot = await getDocs(
-    query(collection(db, 'walkSessions'), where('groupId', '==', groupId)),
+export function resolveMatchParticipantIds(match) {
+  if (!match) return []
+  if (match.participantIds?.length > 0) return match.participantIds
+  return [...new Set((match.parties ?? []).map((party) => party.userId))]
+}
+
+function walkSessionsQuery(groupId, userId) {
+  return query(
+    collection(db, 'walkSessions'),
+    where('groupId', '==', groupId),
+    where('participantIds', 'array-contains', userId),
   )
-  return (
-    snapshot.docs
-      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
-      .find(isActiveTodaySession) ?? null
+}
+
+function groupAbsencesQuery(groupId, userId) {
+  return query(
+    collection(db, 'groupAbsences'),
+    where('groupId', '==', groupId),
+    where('participantIds', 'array-contains', userId),
   )
+}
+
+async function fetchGroupAbsences(groupId, userId) {
+  try {
+    const snapshot = await getDocs(groupAbsencesQuery(groupId, userId))
+    return snapshot.docs.map((docSnap) => docSnap.data())
+  } catch (error) {
+    if (isFirestorePermissionError(error)) return []
+    throw error
+  }
+}
+
+export async function getActiveSession(groupId, userId) {
+  if (!groupId || !userId) return null
+
+  try {
+    const snapshot = await getDocs(walkSessionsQuery(groupId, userId))
+    return (
+      snapshot.docs
+        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        .find(isActiveTodaySession) ?? null
+    )
+  } catch (error) {
+    if (isFirestorePermissionError(error)) return null
+    throw error
+  }
 }
 
 function shouldCompleteWalk(children) {
@@ -284,24 +331,18 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
       throw new Error('Group not found. Refresh the page and try again.')
     }
 
-    const sessionParticipantIds =
-      match.participantIds?.length > 0
-        ? match.participantIds
-        : [...new Set(match.parties.map((party) => party.userId))]
+    const sessionParticipantIds = resolveMatchParticipantIds(match)
 
     if (!sessionParticipantIds.includes(leaderId)) {
       throw new Error('You are not a participant in this group. Refresh the page and try again.')
     }
 
-    if (await getActiveSession(groupId)) {
+    if (await getActiveSession(groupId, leaderId)) {
       throw new Error('A walk is already in progress for this group.')
     }
 
     const today = todayKey()
-    const absencesSnap = await getDocs(
-      query(collection(db, 'groupAbsences'), where('groupId', '==', groupId)),
-    )
-    const absences = absencesSnap.docs.map((docSnap) => docSnap.data())
+    const absences = await fetchGroupAbsences(groupId, leaderId)
 
     const sessionRef = doc(collection(db, 'walkSessions'))
     const batch = writeBatch(db)
@@ -334,6 +375,7 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
           childFirstName: party.childFirstName,
           groupId,
           sessionId: sessionRef.id,
+          participantIds: sessionParticipantIds,
           location: match.location,
           scheduleDay: match.day,
           pickedUpAt: pickedUpAt ?? serverTimestamp(),
@@ -434,6 +476,7 @@ export async function markChildDroppedOff(sessionId, userId, childId, childDocKe
         childFirstName: child.childFirstName,
         groupId: session.groupId,
         sessionId,
+        participantIds: session.participantIds ?? [],
         location: session.location,
         scheduleDay: session.scheduleDay,
         pickedUpAt: child.pickedUpAt ?? session.startedAt,
@@ -453,8 +496,9 @@ export async function markAbsentSingleDate({
   childFirstName,
   activityId,
   dateKey,
+  participantIds = [],
 }) {
-  if (await getActiveSession(groupId)) {
+  if (await getActiveSession(groupId, userId)) {
     throw new Error('Cannot mark absent while a walk is in progress.')
   }
 
@@ -466,6 +510,7 @@ export async function markAbsentSingleDate({
       childId,
       childFirstName,
       activityId,
+      participantIds,
       type: 'single',
       dateKey,
       createdAt: serverTimestamp(),
@@ -481,8 +526,9 @@ export async function markAbsentDateRange({
   activityId,
   startDateKey,
   endDateKey,
+  participantIds = [],
 }) {
-  if (await getActiveSession(groupId)) {
+  if (await getActiveSession(groupId, userId)) {
     throw new Error('Cannot mark absent while a walk is in progress.')
   }
 
@@ -502,6 +548,7 @@ export async function markAbsentDateRange({
       childId,
       childFirstName,
       activityId,
+      participantIds,
       type: 'range',
       startDateKey,
       endDateKey,

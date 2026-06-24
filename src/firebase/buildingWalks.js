@@ -382,7 +382,7 @@ export async function leaveBuildingWalk(userId, walkType, { activityId = null } 
   const matchKey = buildMatchKey(walkType, buildingMatchKey, school, activityLocation)
 
   const existingMatch = await findMatchByKey(matchKey)
-  if (existingMatch && (await getActiveSession(existingMatch.id))) {
+  if (existingMatch && (await getActiveSession(existingMatch.id, userId))) {
     throw new Error('Cannot leave while a walk is in progress.')
   }
 

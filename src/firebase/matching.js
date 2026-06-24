@@ -448,7 +448,7 @@ export async function leaveGroup(matchId, userId) {
   const matchSnap = await getDoc(matchRef)
   if (!matchSnap.exists()) return
 
-  if (await getActiveSession(matchId)) {
+  if (await getActiveSession(matchId, userId)) {
     throw new Error('Cannot leave group while a walk is in progress.')
   }
 

@@ -38,7 +38,25 @@ service cloud.firestore {
         && request.resource.data.groupId is string
         && isInParticipantList(request.resource.data.get('participantIds', []))
         && matchExists(request.resource.data.groupId)
-        && request.auth.uid in matchParticipantIds(request.resource.data.groupId);
+        && (
+          request.auth.uid in matchParticipantIds(request.resource.data.groupId)
+          || matchParticipantIds(request.resource.data.groupId).size() == 0
+        );
+    }
+
+    function canWriteWalkHistory() {
+      return isSignedIn() && request.auth.uid in request.resource.data.get('participantIds', []);
+    }
+
+    function canUpdateWalkHistory() {
+      return isSignedIn() && (
+        request.auth.uid in resource.data.get('participantIds', [])
+        || (
+          resource.data.groupId is string
+          && matchExists(resource.data.groupId)
+          && request.auth.uid in matchParticipantIds(resource.data.groupId)
+        )
+      );
     }
 
     function canAccessWalkSession() {
@@ -50,11 +68,14 @@ service cloud.firestore {
       return isInParticipantList(session.get('participantIds', []));
     }
 
-    function canWriteWalkHistory(groupId) {
+    function canReadGroupAbsence() {
+      return isSignedIn() && request.auth.uid in resource.data.get('participantIds', []);
+    }
+
+    function canCreateGroupAbsence() {
       return isSignedIn()
-        && groupId is string
-        && matchExists(groupId)
-        && request.auth.uid in matchParticipantIds(groupId);
+        && request.resource.data.userId == request.auth.uid
+        && request.auth.uid in request.resource.data.get('participantIds', []);
     }
 
     function buildingWalkSlotPath(walkType, activityId) {
@@ -70,7 +91,7 @@ service cloud.firestore {
     }
 
     function canReadMatch() {
-      return isSignedIn() && request.auth.uid in resource.data.participantIds;
+      return isSignedIn() && request.auth.uid in resource.data.get('participantIds', []);
     }
 
     function canCreateMatch() {
@@ -136,23 +157,16 @@ service cloud.firestore {
 
     // Absences — parent creates; match participants can read.
     match /groupAbsences/{absenceId} {
-      allow read: if isSignedIn() && (
-        resource.data.userId == request.auth.uid
-        || isMatchParticipant(resource.data.groupId)
-      );
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid
-        && matchExists(request.resource.data.groupId)
-        && isMatchParticipant(request.resource.data.groupId);
+      allow read: if canReadGroupAbsence();
+      allow create: if canCreateGroupAbsence();
       allow update, delete: if isSignedIn()
         && resource.data.userId == request.auth.uid;
     }
 
-    // Walk history — parent reads; match participants write.
     match /walkHistory/{historyId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if canWriteWalkHistory(request.resource.data.groupId);
-      allow update: if canWriteWalkHistory(resource.data.groupId);
+      allow create: if canWriteWalkHistory();
+      allow update: if canUpdateWalkHistory();
       allow delete: if isSignedIn()
         && resource.data.userId == request.auth.uid;
     }

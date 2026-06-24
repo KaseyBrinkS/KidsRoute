@@ -56,8 +56,8 @@ export default function GroupLeaderView() {
         setLoading(false)
       },
     )
-    const unsubSession = subscribeToActiveWalkSession(groupId, setActiveSession)
-    const unsubAbsences = subscribeToGroupAbsences(groupId, setAbsences)
+    const unsubSession = subscribeToActiveWalkSession(groupId, user.uid, setActiveSession)
+    const unsubAbsences = subscribeToGroupAbsences(groupId, user.uid, setAbsences)
 
     return () => {
       unsubGroup()
