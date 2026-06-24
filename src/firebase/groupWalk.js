@@ -21,6 +21,7 @@ import {
   resolveWalkGroupParticipantIds,
 } from './walkGroups'
 import { getActiveParties as getMatchActiveParties } from './matching'
+import { isUserActiveLeader } from './groupLeaders'
 
 const START_WALK_MAX_ATTEMPTS = 3
 const START_WALK_RETRY_MS = 1000
@@ -230,14 +231,16 @@ export function subscribeToGroupDocument(groupId, onData, onError) {
   }
 }
 
-export function subscribeToActiveWalkSession(groupId, userId, onData, onError) {
+export function subscribeToActiveWalkSession(groupId, userId, onData, onError, options = {}) {
   if (!groupId || !userId) {
     onData(null)
     return () => {}
   }
 
+  const leaderAccess = options.leaderAccess === true
+
   return onSnapshot(
-    walkSessionsQuery(groupId, userId),
+    walkSessionsQuery(groupId, userId, { leaderAccess }),
     (snapshot) => {
       const session =
         snapshot.docs
@@ -264,14 +267,16 @@ export function subscribeToWalkSessionChildren(sessionId, onData, onError) {
   )
 }
 
-export function subscribeToGroupAbsences(groupId, userId, onData, onError) {
+export function subscribeToGroupAbsences(groupId, userId, onData, onError, options = {}) {
   if (!groupId || !userId) {
     onData([])
     return () => {}
   }
 
+  const leaderAccess = options.leaderAccess === true
+
   return onSnapshot(
-    groupAbsencesQuery(groupId, userId),
+    groupAbsencesQuery(groupId, userId, { leaderAccess }),
     (snapshot) => {
       onData(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })))
     },
@@ -427,7 +432,10 @@ async function ensureMatchParticipantIds(groupId, match, leaderId) {
   return derivedIds
 }
 
-function walkSessionsQuery(groupId, userId) {
+function walkSessionsQuery(groupId, userId, { leaderAccess = false } = {}) {
+  if (leaderAccess) {
+    return query(collection(db, 'walkSessions'), where('groupId', '==', groupId))
+  }
   return query(
     collection(db, 'walkSessions'),
     where('groupId', '==', groupId),
@@ -435,7 +443,10 @@ function walkSessionsQuery(groupId, userId) {
   )
 }
 
-function groupAbsencesQuery(groupId, userId) {
+function groupAbsencesQuery(groupId, userId, { leaderAccess = false } = {}) {
+  if (leaderAccess) {
+    return query(collection(db, 'groupAbsences'), where('groupId', '==', groupId))
+  }
   return query(
     collection(db, 'groupAbsences'),
     where('groupId', '==', groupId),
@@ -443,9 +454,9 @@ function groupAbsencesQuery(groupId, userId) {
   )
 }
 
-async function fetchGroupAbsences(groupId, userId) {
+async function fetchGroupAbsences(groupId, userId, options = {}) {
   try {
-    const snapshot = await getDocs(groupAbsencesQuery(groupId, userId))
+    const snapshot = await getDocs(groupAbsencesQuery(groupId, userId, options))
     return snapshot.docs.map((docSnap) => docSnap.data())
   } catch (error) {
     if (isFirestorePermissionError(error)) return []
@@ -453,11 +464,11 @@ async function fetchGroupAbsences(groupId, userId) {
   }
 }
 
-export async function getActiveSession(groupId, userId) {
+export async function getActiveSession(groupId, userId, options = {}) {
   if (!groupId || !userId) return null
 
   try {
-    const snapshot = await getDocs(walkSessionsQuery(groupId, userId))
+    const snapshot = await getDocs(walkSessionsQuery(groupId, userId, options))
     return (
       snapshot.docs
         .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
@@ -549,16 +560,21 @@ export async function startGroupWalk(groupId, leaderId, { group: prefetchedGroup
       throw error
     }
 
-    if (!sessionParticipantIds.includes(leaderId)) {
-      throw new Error('You are not a participant in this group. Refresh the page and try again.')
+    const leaderAccess = group.source === 'walkGroup' && isUserActiveLeader(group, leaderId)
+    if (!sessionParticipantIds.includes(leaderId) && !leaderAccess) {
+      throw new Error('You are not authorized to lead this group. Refresh the page and try again.')
     }
 
-    if (await getActiveSession(groupId, leaderId)) {
+    if (leaderAccess && !sessionParticipantIds.includes(leaderId)) {
+      sessionParticipantIds = [...sessionParticipantIds, leaderId]
+    }
+
+    if (await getActiveSession(groupId, leaderId, { leaderAccess })) {
       throw new Error('A walk is already in progress for this group.')
     }
 
     const today = todayKey()
-    const absences = await fetchGroupAbsences(groupId, leaderId)
+    const absences = await fetchGroupAbsences(groupId, leaderId, { leaderAccess })
     const walkParties = getGroupWalkParties(group).map(normalizeParty)
 
     if (walkParties.length === 0) {

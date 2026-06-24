@@ -72,6 +72,7 @@ export const completeWelcome = completeOnboarding
 
 export async function getPostLoginPath(userId) {
   const profile = await getUserProfile(userId)
+  if (profile.accountType === 'external_leader') return '/leader'
   if (isSetupComplete(profile)) return '/dashboard'
   if (profile.welcomeCompleted === false && (profile.onboardingStep ?? 1) === 1) {
     return '/welcome'

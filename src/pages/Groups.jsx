@@ -19,12 +19,14 @@ import {
   subscribeToGroupAbsences,
   subscribeToUserActiveWalkSessions,
 } from '../firebase/groupWalk'
+import GroupLeaderControls from '../components/GroupLeaderControls'
 import {
   getPartiesForUser,
   leaveWalkGroup,
   subscribeToWalkGroups,
   walkGroupIsVisibleOnGroupsPage,
 } from '../firebase/walkGroups'
+import { isUserActiveLeader } from '../firebase/groupLeaders'
 import { getPartiesForUser as getMatchPartiesForUser, subscribeToMatches } from '../firebase/matching'
 import {
   BUILDING_WALK_TYPES,
@@ -313,6 +315,7 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
   }, [group.id, userId])
 
   const walkInProgress = Boolean(activeSession)
+  const isLeader = isUserActiveLeader(group, userId)
   const myParties = getPartiesForUser(group, userId)
   const displayWalkStatus =
     displayStatusProp ?? (walkInProgress ? 'in progress' : getGroupWalkStatus(group))
@@ -363,6 +366,8 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
               Absences can be updated again after today&apos;s walk is completed.
             </p>
           )}
+
+          <GroupLeaderControls group={group} userId={userId} />
         </div>
 
         <span className={walkStatusBadgeClass(displayWalkStatus)}>
@@ -370,9 +375,11 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
         </span>
       </div>
 
-      <Link to={`/groups/${group.id}/leader`} className="btn-leader">
-        Group Leader View
-      </Link>
+      {(isLeader || !walkInProgress) && (
+        <Link to={`/groups/${group.id}/leader`} className="btn-leader">
+          Group Leader View
+        </Link>
+      )}
 
       {!walkInProgress && (
         <button

@@ -21,6 +21,7 @@ import {
   verifyDropOffSaved,
 } from '../firebase/groupWalk'
 import { walkGroupIsReadyForWalk } from '../firebase/walkGroups'
+import { isUserActiveLeader } from '../firebase/groupLeaders'
 import { formatHistoryTime } from '../firebase/walkHistory'
 
 const SUCCESS_DISMISS_MS = 4000
@@ -60,15 +61,37 @@ export default function GroupLeaderView() {
         setLoading(false)
       },
     )
-    const unsubSession = subscribeToActiveWalkSession(groupId, user.uid, setActiveSession)
-    const unsubAbsences = subscribeToGroupAbsences(groupId, user.uid, setAbsences)
 
     return () => {
       unsubGroup()
+    }
+  }, [user, groupId])
+
+  const isLeader = isUserActiveLeader(group, user?.uid)
+
+  useEffect(() => {
+    if (!user || !groupId) return
+
+    const unsubSession = subscribeToActiveWalkSession(
+      groupId,
+      user.uid,
+      setActiveSession,
+      (err) => setError(err.message),
+      { leaderAccess: isLeader },
+    )
+    const unsubAbsences = subscribeToGroupAbsences(
+      groupId,
+      user.uid,
+      setAbsences,
+      (err) => setError(err.message),
+      { leaderAccess: isLeader },
+    )
+
+    return () => {
       unsubSession()
       unsubAbsences()
     }
-  }, [user, groupId])
+  }, [user, groupId, isLeader])
 
   useEffect(() => {
     if (!activeSession?.id) {
@@ -93,13 +116,16 @@ export default function GroupLeaderView() {
     || group?.parties?.some((party) => party.userId === user?.uid)
 
   const groupReadyForWalk = useMemo(() => {
-    if (!groupLoaded || !group || !isParticipant || !user?.uid) return false
+    if (!groupLoaded || !group || !user?.uid) return false
+    if (isWalkGroup && isUserActiveLeader(group, user.uid)) {
+      return group.status === 'active' && getGroupWalkParties(group).length > 0
+    }
     if (isWalkGroup) return walkGroupIsReadyForWalk(group, user.uid)
     return (
       matchIsConnectedForUser(group, user.uid)
       && getGroupWalkParties(group).length > 0
     )
-  }, [groupLoaded, group, isParticipant, user?.uid, isWalkGroup])
+  }, [groupLoaded, group, user?.uid, isWalkGroup])
 
   const walkInProgress = Boolean(activeSession)
   const walkComplete = walkInProgress && isWalkSessionComplete(sessionChildren)
@@ -250,8 +276,13 @@ export default function GroupLeaderView() {
     )
   }
 
-  const hasAccess = group && isParticipant && (
-    isWalkGroup ? walkGroupIsReadyForWalk(group, user?.uid) : matchIsConnectedForUser(group, user?.uid)
+  const hasAccess = group && (
+    isUserActiveLeader(group, user?.uid)
+    || (
+      isParticipant && (
+        isWalkGroup ? walkGroupIsReadyForWalk(group, user?.uid) : matchIsConnectedForUser(group, user?.uid)
+      )
+    )
   )
 
   if (!hasAccess) {
@@ -411,7 +442,7 @@ export default function GroupLeaderView() {
                       disabled={actionId === arrivalId}
                       className="rounded-xl border border-[var(--color-walk-green)] px-3 py-1.5 text-sm font-semibold text-[var(--color-walk-green)] hover:bg-[var(--color-walk-green-bg)] disabled:opacity-50"
                     >
-                      {actionId === arrivalId ? 'Saving…' : 'Arrived'}
+                      {actionId === arrivalId ? 'Saving…' : 'Mark as arrived'}
                     </button>
                   )}
                   {canDropOff && (
@@ -421,7 +452,7 @@ export default function GroupLeaderView() {
                       disabled={actionId === childKey}
                       className="btn-primary py-1.5"
                     >
-                      {actionId === childKey ? 'Saving…' : 'Dropped off'}
+                      {actionId === childKey ? 'Saving…' : 'Mark as dropped off'}
                     </button>
                   )}
                 </div>
@@ -431,9 +462,12 @@ export default function GroupLeaderView() {
         })}
       </ul>
 
-      <p className="mt-6">
+      <p className="mt-6 flex flex-wrap gap-4">
+        <Link to="/leader" className="text-sm font-semibold text-primary hover:underline">
+          ← All leader groups
+        </Link>
         <Link to="/groups" className="text-sm font-semibold text-primary hover:underline">
-          ← Back to Groups
+          Back to Groups
         </Link>
       </p>
     </div>

@@ -3,6 +3,7 @@ import AppLayout from './components/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import Dashboard from './pages/Dashboard'
 import GroupLeaderView from './pages/GroupLeaderView'
+import GroupLeaderHome from './pages/GroupLeaderHome'
 import Groups from './pages/Groups'
 import History from './pages/History'
 import Login from './pages/Login'
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/my-kids" element={<MyKids />} />
           <Route path="/my-activities" element={<MyActivities />} />
           <Route path="/groups" element={<Groups />} />
+          <Route path="/leader" element={<GroupLeaderHome />} />
           <Route path="/groups/:groupId/leader" element={<GroupLeaderView />} />
           <Route path="/history" element={<History />} />
           <Route path="/settings" element={<Settings />} />

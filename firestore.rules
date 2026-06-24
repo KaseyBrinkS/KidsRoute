@@ -50,7 +50,48 @@ service cloud.firestore {
         && request.auth.uid in walkGroupParticipantIds(groupId);
     }
 
-    // Walk sessions: create validates against walk group or match; ongoing access uses session participantIds.
+    function isWalkGroupLeader(groupId) {
+      return isSignedIn()
+        && walkGroupExists(groupId)
+        && request.auth.uid in walkGroupDoc(groupId).data.get('leaderUserIds', []);
+    }
+
+    function isExternalLeaderAccount() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('accountType', '') == 'external_leader';
+    }
+
+    function canReadWalkGroup() {
+      return isSignedIn() && (
+        !isExternalLeaderAccount()
+        || request.auth.uid in resource.data.get('leaderUserIds', [])
+      );
+    }
+
+    function canUpdateWalkGroupLeaders() {
+      return isSignedIn() && request.auth.uid in resource.data.get('participantIds', []);
+    }
+
+    function sessionGroupId(sessionId) {
+      return get(/databases/$(database)/documents/walkSessions/$(sessionId)).data.groupId;
+    }
+
+    function canAccessWalkSessionAsLeader(sessionId) {
+      let groupId = sessionGroupId(sessionId);
+      return groupId is string && isWalkGroupLeader(groupId);
+    }
+
+    function canAccessWalkSession() {
+      return isInParticipantList(resource.data.get('participantIds', []))
+        || (resource.data.groupId is string && isWalkGroupLeader(resource.data.groupId));
+    }
+
+    function canAccessWalkSessionChildren(sessionId) {
+      let session = get(/databases/$(database)/documents/walkSessions/$(sessionId)).data;
+      return isInParticipantList(session.get('participantIds', []))
+        || (session.groupId is string && isWalkGroupLeader(session.groupId));
+    }
+
     function canCreateWalkSession() {
       let groupId = request.resource.data.groupId;
       return isSignedIn()
@@ -59,7 +100,10 @@ service cloud.firestore {
         && (
           (
             walkGroupExists(groupId)
-            && isWalkGroupParticipant(groupId)
+            && (
+              isWalkGroupParticipant(groupId)
+              || isWalkGroupLeader(groupId)
+            )
           )
           || (
             matchExists(groupId)
@@ -70,6 +114,13 @@ service cloud.firestore {
             )
           )
         );
+    }
+
+    function canReadGroupAbsence() {
+      return isSignedIn() && (
+        request.auth.uid in resource.data.get('participantIds', [])
+        || (resource.data.groupId is string && isWalkGroupLeader(resource.data.groupId))
+      );
     }
 
     function canWriteWalkHistory() {
@@ -86,23 +137,15 @@ service cloud.firestore {
         )
         || (
           resource.data.groupId is string
+          && walkGroupExists(resource.data.groupId)
+          && isWalkGroupLeader(resource.data.groupId)
+        )
+        || (
+          resource.data.groupId is string
           && matchExists(resource.data.groupId)
           && request.auth.uid in matchParticipantIds(resource.data.groupId)
         )
       );
-    }
-
-    function canAccessWalkSession() {
-      return isInParticipantList(resource.data.get('participantIds', []));
-    }
-
-    function canAccessWalkSessionChildren(sessionId) {
-      let session = get(/databases/$(database)/documents/walkSessions/$(sessionId)).data;
-      return isInParticipantList(session.get('participantIds', []));
-    }
-
-    function canReadGroupAbsence() {
-      return isSignedIn() && request.auth.uid in resource.data.get('participantIds', []);
     }
 
     function canCreateGroupAbsence() {
@@ -160,6 +203,11 @@ service cloud.firestore {
       match /activities/{activityId} {
         allow read, create, update, delete: if isOwner(userId);
       }
+
+      match /notifications/{notificationId} {
+        allow read, update, delete: if isOwner(userId);
+        allow create: if isSignedIn();
+      }
     }
 
     // Activity matching index — readable by all signed-in users; writable by slot owner.
@@ -193,10 +241,20 @@ service cloud.firestore {
     }
 
     match /walkGroups/{groupId} {
-      allow read: if isSignedIn();
+      allow read: if canReadWalkGroup();
       allow create: if canCreateWalkGroup();
-      allow update: if canUpdateWalkGroup();
+      allow update: if canUpdateWalkGroup() || canUpdateWalkGroupLeaders();
       allow delete: if isSignedIn() && request.auth.uid in resource.data.get('participantIds', []);
+    }
+
+    match /leaderInvites/{token} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.auth.uid in walkGroupParticipantIds(request.resource.data.groupId);
+      allow update: if isSignedIn()
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'claimed'
+        && request.resource.data.claimedBy == request.auth.uid;
     }
 
     // Walk sessions — match participants can create, read, and update.

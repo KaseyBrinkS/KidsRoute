@@ -2,18 +2,45 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import KidsRouteLogo from './KidsRouteLogo'
 import { logOut } from '../firebase/auth'
+import { useAuth } from '../context/AuthContext'
+import { subscribeToUserProfile } from '../firebase/users'
 
 const navLinks = [
   { to: '/dashboard', label: 'Dashboard', mobileLabel: 'Home' },
   { to: '/my-kids', label: 'My Kids', mobileLabel: 'Kids' },
   { to: '/my-activities', label: 'Activities', mobileLabel: 'Activities' },
   { to: '/groups', label: 'Groups', mobileLabel: 'Groups' },
+  { to: '/leader', label: 'Leader', mobileLabel: 'Leader' },
   { to: '/history', label: 'History', mobileLabel: 'History' },
+  { to: '/settings', label: 'Settings', mobileLabel: 'Settings' },
+]
+
+const externalLeaderLinks = [
+  { to: '/leader', label: 'Leader', mobileLabel: 'Leader' },
   { to: '/settings', label: 'Settings', mobileLabel: 'Settings' },
 ]
 
 const mobilePrimaryLinks = navLinks.slice(0, 4)
 const mobileMoreLinks = navLinks.slice(4)
+
+function useLayoutNavLinks() {
+  const { user } = useAuth()
+  const [isExternalLeader, setIsExternalLeader] = useState(false)
+
+  useEffect(() => {
+    if (!user) return undefined
+    return subscribeToUserProfile(
+      user.uid,
+      (profile) => setIsExternalLeader(profile.accountType === 'external_leader'),
+      () => setIsExternalLeader(false),
+    )
+  }, [user])
+
+  return {
+    links: isExternalLeader ? externalLeaderLinks : navLinks,
+    isExternalLeader,
+  }
+}
 
 function NavItem({ to, label, compact = false }) {
   return (
@@ -105,6 +132,9 @@ function MobileMoreMenu({ links, onLogout }) {
 
 export default function AppLayout() {
   const navigate = useNavigate()
+  const { links: layoutLinks, isExternalLeader } = useLayoutNavLinks()
+  const mobilePrimary = isExternalLeader ? layoutLinks : layoutLinks.slice(0, 4)
+  const mobileMore = isExternalLeader ? [] : layoutLinks.slice(4)
 
   async function handleLogout() {
     await logOut()
@@ -121,7 +151,7 @@ export default function AppLayout() {
           </NavLink>
 
           <nav className="hidden flex-wrap items-center gap-1 sm:flex">
-            {navLinks.map(({ to, label }) => (
+            {layoutLinks.map(({ to, label }) => (
               <NavItem key={to} to={to} label={label} />
             ))}
             <button type="button" onClick={handleLogout} className="btn-ghost ml-1">
@@ -137,10 +167,20 @@ export default function AppLayout() {
 
       <nav className="kr-nav-bar fixed inset-x-0 bottom-0 z-10 sm:hidden">
         <div className="flex items-stretch px-1 py-1.5">
-          {mobilePrimaryLinks.map(({ to, mobileLabel }) => (
-            <NavItem key={to} to={to} label={mobileLabel} compact />
+          {mobilePrimary.map(({ to, mobileLabel, label }) => (
+            <NavItem key={to} to={to} label={mobileLabel ?? label} compact />
           ))}
-          <MobileMoreMenu links={mobileMoreLinks} onLogout={handleLogout} />
+          {mobileMore.length > 0 ? (
+            <MobileMoreMenu links={mobileMore} onLogout={handleLogout} />
+          ) : (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="kr-nav-link-mobile kr-nav-link-inactive min-w-0 flex-1"
+            >
+              Logout
+            </button>
+          )}
         </div>
       </nav>
     </div>

@@ -36,7 +36,28 @@
       "collectionGroup": "walkGroups",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "leaderUserIds", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "walkGroups",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "participantIds", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "walkSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "groupAbsences",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "order": "ASCENDING" }
       ]
     }
   ],

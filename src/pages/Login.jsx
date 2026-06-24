@@ -1,22 +1,49 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { completeGoogleRedirectSignIn, signInWithGoogle } from '../firebase/auth'
+import { claimLeaderInvite, syncLeaderProfileFromInvite } from '../firebase/groupLeaders'
 import { getPostLoginPath, saveUserProfile } from '../firebase/users'
 import KidsRouteLogo from '../components/KidsRouteLogo'
 
 export default function Login() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const [error, setError] = useState(null)
   const [signingIn, setSigningIn] = useState(false)
 
   useEffect(() => {
-    if (!user) return
+    const inviteToken = searchParams.get('invite')
+    if (inviteToken) {
+      sessionStorage.setItem('leaderInvite', inviteToken)
+    }
+  }, [searchParams])
 
-    getPostLoginPath(user.uid)
-      .then((path) => navigate(path, { replace: true }))
-      .catch(() => navigate('/dashboard', { replace: true }))
+  async function finishLogin(userId) {
+    const inviteToken =
+      searchParams.get('invite') || sessionStorage.getItem('leaderInvite')
+
+    if (inviteToken) {
+      try {
+        const invite = await claimLeaderInvite(inviteToken, userId)
+        await syncLeaderProfileFromInvite(userId, invite)
+        sessionStorage.removeItem('leaderInvite')
+        navigate('/leader', { replace: true })
+        return
+      } catch (err) {
+        setError(err.message)
+        return
+      }
+    }
+
+    const path = await getPostLoginPath(userId)
+    navigate(path, { replace: true })
+  }
+
+  useEffect(() => {
+    if (!user) return
+    finishLogin(user.uid).catch(() => navigate('/dashboard', { replace: true }))
   }, [user, navigate])
 
   useEffect(() => {
@@ -28,8 +55,7 @@ export default function Login() {
         if (cancelled || !result) return
 
         await saveUserProfile(result.user)
-        const path = await getPostLoginPath(result.user.uid)
-        navigate(path, { replace: true })
+        await finishLogin(result.user.uid)
       } catch (err) {
         if (!cancelled) setError(err.message)
       }
@@ -49,8 +75,7 @@ export default function Login() {
       if (!result) return
 
       await saveUserProfile(result.user)
-      const path = await getPostLoginPath(result.user.uid)
-      navigate(path)
+      await finishLogin(result.user.uid)
     } catch (err) {
       setError(err.message)
     } finally {
