@@ -57,20 +57,24 @@ export default function Welcome() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10">
-      <div className="kr-card w-full max-w-xl overflow-hidden p-0">
+    <div className="min-h-screen bg-bg px-4 py-10">
+      <div className="kr-card mx-auto w-full max-w-xl p-0">
         {setupIncomplete && onboardingStep === 1 && (
           <p className="pt-6 text-center text-sm font-semibold text-primary">Step 1 of 4</p>
         )}
 
-        <AboutHero logoClassName="h-[140px] w-[140px] min-h-[100px] min-w-[100px]" />
+        <div className="overflow-hidden">
+          <AboutHero logoClassName="h-[140px] w-[140px] min-h-[100px] min-w-[100px]" />
+        </div>
 
         <div className="space-y-6 px-8 pb-10 pt-2">
           <AboutDescription />
 
-          <WelcomeNavGrid />
+          <section aria-label="App navigation" className="border-t border-border pt-6">
+            <WelcomeNavGrid />
+          </section>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 border-t border-border pt-6">
             {setupIncomplete ? (
               <>
                 <button

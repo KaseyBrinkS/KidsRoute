@@ -95,10 +95,10 @@ function NavIcon({ children }) {
 
 export default function WelcomeNavGrid() {
   return (
-    <nav aria-label="App sections">
-      <p className="font-heading mb-3 text-center text-sm font-semibold text-muted">
+    <div aria-label="App sections">
+      <h2 className="font-heading mb-3 text-center text-sm font-semibold uppercase tracking-wide text-muted">
         Go anywhere
-      </p>
+      </h2>
       <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         {navItems.map(({ to, label, icon }) => (
           <li key={to}>
@@ -112,6 +112,6 @@ export default function WelcomeNavGrid() {
           </li>
         ))}
       </ul>
-    </nav>
+    </div>
   )
 }
