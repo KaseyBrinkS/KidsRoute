@@ -257,6 +257,44 @@ export function resolveMatchParticipantIds(match) {
   return [...new Set((match.parties ?? []).map((party) => party.userId))]
 }
 
+function participantIdsMatch(serverIds, derivedIds) {
+  const left = serverIds ?? []
+  const right = derivedIds ?? []
+  if (left.length !== right.length) return false
+  const rightSet = new Set(right)
+  return left.every((id) => rightSet.has(id))
+}
+
+async function ensureMatchParticipantIds(groupId, match, leaderId) {
+  const derivedIds = resolveMatchParticipantIds(match)
+
+  if (participantIdsMatch(match.participantIds, derivedIds)) {
+    return derivedIds
+  }
+
+  if (derivedIds.length === 0) {
+    console.warn('[startWalk] no participantIds derived from match', { groupId })
+    return derivedIds
+  }
+
+  if (!derivedIds.includes(leaderId)) {
+    return derivedIds
+  }
+
+  const matchRef = doc(db, 'matches', groupId)
+  try {
+    await updateDoc(matchRef, { participantIds: derivedIds })
+    console.log('[startWalk] synced match.participantIds', { groupId, participantIds: derivedIds })
+  } catch (error) {
+    console.warn('[startWalk] sync match.participantIds failed (continuing with derived list)', {
+      groupId,
+      error,
+    })
+  }
+
+  return derivedIds
+}
+
 function walkSessionsQuery(groupId, userId) {
   return query(
     collection(db, 'walkSessions'),
@@ -331,7 +369,13 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
       throw new Error('Group not found. Refresh the page and try again.')
     }
 
-    const sessionParticipantIds = resolveMatchParticipantIds(match)
+    let sessionParticipantIds
+    try {
+      sessionParticipantIds = await ensureMatchParticipantIds(groupId, match, leaderId)
+    } catch (error) {
+      console.error('[startWalk] ensureMatchParticipantIds failed', { groupId, leaderId, error })
+      throw error
+    }
 
     if (!sessionParticipantIds.includes(leaderId)) {
       throw new Error('You are not a participant in this group. Refresh the page and try again.')
@@ -345,9 +389,7 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
     const absences = await fetchGroupAbsences(groupId, leaderId)
 
     const sessionRef = doc(collection(db, 'walkSessions'))
-    const batch = writeBatch(db)
-
-    batch.set(sessionRef, {
+    const sessionData = {
       groupId,
       participantIds: sessionParticipantIds,
       location: match.location,
@@ -358,7 +400,16 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
       completedAt: null,
       leaderId,
       createdAt: serverTimestamp(),
-    })
+    }
+
+    try {
+      await setDoc(sessionRef, sessionData)
+    } catch (error) {
+      console.error('[startWalk] create walk session failed', { groupId, sessionId: sessionRef.id, error })
+      throw error
+    }
+
+    const batch = writeBatch(db)
 
     for (const party of match.parties.map(normalizeParty)) {
       const absent = isAbsentOnDate(absences, party.userId, party.childId, today)
@@ -400,7 +451,17 @@ export async function startGroupWalk(groupId, leaderId, { match: prefetchedMatch
       )
     }
 
-    await batch.commit()
+    try {
+      await batch.commit()
+    } catch (error) {
+      console.error('[startWalk] create children/walkHistory failed', {
+        groupId,
+        sessionId: sessionRef.id,
+        error,
+      })
+      throw error
+    }
+
     return sessionRef.id
   }, 'startWalk', START_WALK_MAX_ATTEMPTS, START_WALK_RETRY_MS)
 }

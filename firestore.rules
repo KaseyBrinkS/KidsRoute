@@ -34,13 +34,15 @@ service cloud.firestore {
 
     // Walk sessions: create validates against match; ongoing access uses session participantIds.
     function canCreateWalkSession() {
+      let groupId = request.resource.data.groupId;
       return isSignedIn()
-        && request.resource.data.groupId is string
+        && groupId is string
         && isInParticipantList(request.resource.data.get('participantIds', []))
-        && matchExists(request.resource.data.groupId)
+        && matchExists(groupId)
         && (
-          request.auth.uid in matchParticipantIds(request.resource.data.groupId)
-          || matchParticipantIds(request.resource.data.groupId).size() == 0
+          request.auth.uid in matchParticipantIds(groupId)
+          || matchParticipantIds(groupId).size() == 0
+          || userHasBuildingWalkSlot(matchDoc(groupId).data)
         );
     }
 
@@ -91,7 +93,10 @@ service cloud.firestore {
     }
 
     function canReadMatch() {
-      return isSignedIn() && request.auth.uid in resource.data.get('participantIds', []);
+      return isSignedIn() && (
+        request.auth.uid in resource.data.get('participantIds', [])
+        || userHasBuildingWalkSlot(resource.data)
+      );
     }
 
     function canCreateMatch() {
@@ -105,6 +110,7 @@ service cloud.firestore {
         && (
           request.auth.uid in resource.data.participantIds
           || userHasBuildingWalkSlot(resource.data)
+          || resource.data.get('participantIds', []).size() == 0
         );
     }
 
