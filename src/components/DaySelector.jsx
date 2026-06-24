@@ -13,10 +13,10 @@ export default function DaySelector({ selectedDay, onSelectDay, className = '' }
             key={day}
             type="button"
             onClick={() => onSelectDay(day)}
-            className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+            className={`shrink-0 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all ${
               isSelected
                 ? 'bg-primary text-white shadow-md'
-                : 'border border-border bg-surface text-muted hover:border-primary/30 hover:text-primary'
+                : 'border border-border bg-surface text-muted hover:border-primary/25 hover:bg-bg-warm hover:text-primary'
             }`}
           >
             {day}

@@ -1,40 +1,37 @@
 export default function KidsRouteLogo({ className = 'h-20 w-20', ...props }) {
   return (
     <svg
-      viewBox="0 0 80 80"
+      viewBox="0 0 120 100"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-hidden="true"
+      role="img"
+      aria-label="KidsRoute logo"
+      stroke="currentColor"
+      strokeWidth="5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       {...props}
     >
-      <circle cx="40" cy="40" r="38" stroke="currentColor" strokeWidth="2" className="text-primary/20" />
-      {/* Left child */}
-      <circle cx="28" cy="26" r="7" fill="currentColor" className="text-primary" />
-      <path
-        d="M22 38 Q28 34 34 38 L34 52 Q28 56 22 52 Z"
-        fill="currentColor"
-        className="text-primary"
-      />
-      {/* Right child */}
-      <circle cx="52" cy="26" r="7" fill="currentColor" className="text-primary" />
-      <path
-        d="M46 38 Q52 34 58 38 L58 52 Q52 56 46 52 Z"
-        fill="currentColor"
-        className="text-primary"
-      />
-      {/* Holding hands */}
-      <path
-        d="M34 42 C38 44 42 44 46 42"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        className="text-accent"
-      />
-      {/* Path dots */}
-      <circle cx="24" cy="62" r="2" fill="currentColor" className="text-accent/60" />
-      <circle cx="40" cy="66" r="2" fill="currentColor" className="text-accent/80" />
-      <circle cx="56" cy="62" r="2" fill="currentColor" className="text-accent/60" />
+      {/* Left figure */}
+      <circle cx="36" cy="17" r="10" />
+      <line x1="36" y1="27" x2="36" y2="56" />
+      <line x1="36" y1="38" x2="20" y2="50" />
+      <line x1="36" y1="38" x2="52" y2="38" />
+      <line x1="36" y1="56" x2="26" y2="80" />
+      <line x1="36" y1="56" x2="48" y2="78" />
+
+      {/* Right figure */}
+      <circle cx="84" cy="17" r="10" />
+      <line x1="84" y1="27" x2="84" y2="56" />
+      <line x1="84" y1="38" x2="100" y2="50" />
+      <line x1="84" y1="38" x2="68" y2="38" />
+
+      {/* Hands connected */}
+      <line x1="52" y1="38" x2="68" y2="38" strokeWidth="5.5" />
+
+      <line x1="84" y1="56" x2="94" y2="80" />
+      <line x1="84" y1="56" x2="72" y2="78" />
     </svg>
   )
 }

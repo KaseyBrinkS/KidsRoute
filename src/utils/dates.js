@@ -31,11 +31,11 @@ export function getMonthDays(year, month) {
 }
 
 export const CHILD_CALENDAR_COLORS = [
-  { bg: '#eef4fa', border: '#5b8fc7', text: '#3d6a94' },
-  { bg: '#fef3e2', border: '#e8943a', text: '#b8732a' },
-  { bg: '#ecf7f0', border: '#4a9b6f', text: '#357a55' },
-  { bg: '#f3eef8', border: '#9b6bb5', text: '#7a5291' },
-  { bg: '#fceeee', border: '#c75b5b', text: '#9e4545' },
+  { bg: '#eef2f5', border: '#6889a3', text: '#4a6578' },
+  { bg: '#f2ebe7', border: '#a87f72', text: '#7a5f55' },
+  { bg: '#ecf2ee', border: '#5a8770', text: '#3d6650' },
+  { bg: '#f0edf2', border: '#9a8898', text: '#6e6270' },
+  { bg: '#f2ecea', border: '#a37870', text: '#73544e' },
 ]
 
 export function childColorIndex(childId, childIds) {

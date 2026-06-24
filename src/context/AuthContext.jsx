@@ -11,7 +11,6 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     return onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser)
       if (firebaseUser) {
         try {
           await saveUserProfile(firebaseUser)
@@ -19,6 +18,7 @@ export function AuthProvider({ children }) {
           // Profile sync is non-blocking for auth.
         }
       }
+      setUser(firebaseUser)
       setLoading(false)
     })
   }, [])

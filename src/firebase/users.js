@@ -25,18 +25,44 @@ export function normalizeUserProfile(data) {
   }
 }
 
+export function needsWelcome(profile) {
+  return profile?.welcomeCompleted === false
+}
+
+export async function completeWelcome(userId) {
+  await updateUserProfile(userId, { welcomeCompleted: true })
+}
+
+export async function getPostLoginPath(userId) {
+  const profile = await getUserProfile(userId)
+  return needsWelcome(profile) ? '/welcome' : '/dashboard'
+}
+
 export async function saveUserProfile(user) {
   if (!user) return
 
-  await setDoc(
-    userProfileRef(user.uid),
-    {
-      email: user.email ?? '',
-      displayName: user.displayName ?? '',
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  )
+  const ref = userProfileRef(user.uid)
+  const existing = await getDoc(ref)
+  const payload = {
+    email: user.email ?? '',
+    displayName: user.displayName ?? '',
+    updatedAt: serverTimestamp(),
+  }
+
+  if (!existing.exists()) {
+    await setDoc(
+      ref,
+      {
+        ...DEFAULT_USER_SETTINGS,
+        ...payload,
+        welcomeCompleted: false,
+      },
+      { merge: true },
+    )
+    return
+  }
+
+  await setDoc(ref, payload, { merge: true })
 }
 
 export function subscribeToUserProfile(userId, onData, onError) {

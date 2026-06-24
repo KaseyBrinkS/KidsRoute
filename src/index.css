@@ -1,24 +1,26 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #1a4f5c;
-  --color-primary-light: #2a6b7a;
-  --color-primary-dark: #143d47;
-  --color-accent: #e8943a;
-  --color-accent-soft: #fef3e2;
-  --color-surface: #fffef9;
-  --color-bg: #faf7f2;
-  --color-bg-warm: #f5f0e8;
-  --color-text: #2c2825;
-  --color-muted: #6b6560;
-  --color-border: #e8e2d9;
-  --color-walk-blue: #5b8fc7;
-  --color-walk-blue-bg: #eef4fa;
-  --color-walk-green: #4a9b6f;
-  --color-walk-green-bg: #ecf7f0;
+  --color-primary: #4f6f62;
+  --color-primary-light: #628274;
+  --color-primary-dark: #3f5a50;
+  --color-accent: #a87f72;
+  --color-accent-soft: #f2ebe7;
+  --color-surface: #fcfbf9;
+  --color-bg: #f8f6f2;
+  --color-bg-warm: #f2efe9;
+  --color-text: #3a3632;
+  --color-muted: #736b63;
+  --color-border: #e3ddd4;
+  --color-border-warm: #d9d0c4;
+  --color-walk-blue: #6889a3;
+  --color-walk-blue-bg: #eef2f5;
+  --color-walk-green: #5a8770;
+  --color-walk-green-bg: #ecf2ee;
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --shadow-kr: 0 4px 14px -2px rgb(26 79 92 / 0.08), 0 2px 6px -2px rgb(44 40 37 / 0.06);
-  --shadow-kr-lg: 0 10px 28px -4px rgb(26 79 92 / 0.12), 0 4px 10px -4px rgb(44 40 37 / 0.08);
+  --font-heading: "Nunito", "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --shadow-kr: 0 4px 16px -2px rgb(60 50 40 / 0.07), 0 2px 8px -2px rgb(60 50 40 / 0.04);
+  --shadow-kr-lg: 0 12px 32px -4px rgb(60 50 40 / 0.1), 0 4px 12px -4px rgb(60 50 40 / 0.06);
 }
 
 body {
@@ -26,14 +28,24 @@ body {
   @apply bg-bg text-[var(--color-text)] antialiased text-base leading-relaxed;
 }
 
+h1,
+h2,
+h3,
+.font-heading {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
+}
+
 /* Cards & surfaces */
 .kr-card {
   @apply rounded-2xl border border-border bg-surface;
   box-shadow: var(--shadow-kr);
+  border-left: 3px solid var(--color-border-warm);
 }
 
 .kr-card-flat {
-  @apply rounded-2xl border border-dashed border-border bg-surface px-6 py-10 text-center text-muted;
+  @apply rounded-2xl border border-dashed border-border-warm bg-surface px-6 py-10 text-center text-muted;
+  box-shadow: var(--shadow-kr);
 }
 
 /* Walk status cards */
@@ -42,60 +54,71 @@ body {
   @apply rounded-2xl border border-border bg-surface;
   box-shadow: var(--shadow-kr);
   border-left: 4px solid var(--color-walk-blue);
-  background: linear-gradient(to right, var(--color-walk-blue-bg) 0%, var(--color-surface) 28%);
+  background: linear-gradient(to right, var(--color-walk-blue-bg) 0%, var(--color-surface) 32%);
 }
 
 .kr-card-walk-active {
   @apply rounded-2xl border border-border bg-surface;
   box-shadow: var(--shadow-kr);
   border-left: 4px solid var(--color-walk-green);
-  background: linear-gradient(to right, var(--color-walk-green-bg) 0%, var(--color-surface) 28%);
+  background: linear-gradient(to right, var(--color-walk-green-bg) 0%, var(--color-surface) 32%);
 }
 
 .kr-card-invite {
   @apply rounded-2xl border border-border bg-surface;
   box-shadow: var(--shadow-kr);
   border-left: 4px solid var(--color-accent);
-  background: linear-gradient(to right, var(--color-accent-soft) 0%, var(--color-surface) 32%);
+  background: linear-gradient(to right, var(--color-accent-soft) 0%, var(--color-surface) 36%);
+}
+
+/* Login hero */
+.login-hero-gradient {
+  background: radial-gradient(
+      ellipse 85% 65% at 50% 35%,
+      rgb(79 111 98 / 0.07) 0%,
+      rgb(168 127 114 / 0.05) 40%,
+      transparent 72%
+    ),
+    linear-gradient(180deg, var(--color-bg-warm) 0%, var(--color-bg) 100%);
 }
 
 /* Buttons */
 .btn-primary {
-  @apply inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-light disabled:opacity-50;
+  @apply inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-primary-light hover:shadow-md disabled:opacity-50;
 }
 
 .btn-secondary {
-  @apply inline-flex items-center justify-center rounded-xl border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-[var(--color-text)] transition-colors hover:bg-bg-warm disabled:opacity-50;
+  @apply inline-flex items-center justify-center rounded-2xl border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-[var(--color-text)] transition-all hover:border-border-warm hover:bg-bg-warm disabled:opacity-50;
 }
 
 .btn-accent {
-  @apply inline-flex items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-50;
+  @apply inline-flex items-center justify-center rounded-2xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-105 hover:shadow-md disabled:opacity-50;
 }
 
 .btn-ghost {
-  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-bg-warm hover:text-[var(--color-text)] disabled:opacity-50;
+  @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-bg-warm hover:text-[var(--color-text)] disabled:opacity-50;
 }
 
 .btn-danger {
-  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50;
+  @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50;
 }
 
 .btn-leader {
-  @apply mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-primary/5 px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-white;
+  @apply mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary transition-all hover:border-primary hover:bg-primary hover:text-white;
 }
 
 /* Form controls */
 .input-kr {
-  @apply mt-1 block w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-[var(--color-text)] shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20;
+  @apply mt-1 block w-full rounded-2xl border border-border bg-surface px-3.5 py-2.5 text-sm text-[var(--color-text)] shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20;
 }
 
 .select-kr {
-  @apply rounded-xl border border-border bg-surface px-3 py-2 text-sm text-[var(--color-text)] shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20;
+  @apply rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-[var(--color-text)] shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20;
 }
 
 /* Alerts */
 .alert-error {
-  @apply mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800;
+  @apply mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-800;
 }
 
 /* Status badges */
@@ -118,9 +141,28 @@ body {
 
 /* Section headings */
 .kr-section-title {
+  font-family: var(--font-heading);
   @apply text-base font-semibold text-[var(--color-text)];
 }
 
 .kr-section-desc {
   @apply mt-1 text-sm text-muted;
+}
+
+/* App navigation */
+.kr-nav-bar {
+  @apply border-t border-border bg-surface;
+  box-shadow: 0 -4px 20px -4px rgb(60 50 40 / 0.06);
+}
+
+.kr-nav-link {
+  @apply rounded-2xl px-3 py-2 text-sm font-semibold transition-all;
+}
+
+.kr-nav-link-active {
+  @apply bg-primary/12 text-primary;
+}
+
+.kr-nav-link-inactive {
+  @apply text-muted hover:bg-bg-warm hover:text-primary;
 }
