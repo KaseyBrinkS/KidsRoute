@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { needsWelcome, subscribeToUserProfile } from '../firebase/users'
+import { getOnboardingRedirectPath, needsOnboarding, subscribeToUserProfile } from '../firebase/users'
 
 export default function RequireOnboarded() {
   const { user } = useAuth()
   const [ready, setReady] = useState(false)
-  const [showWelcome, setShowWelcome] = useState(false)
+  const [redirectPath, setRedirectPath] = useState(null)
 
   useEffect(() => {
     if (!user) return undefined
@@ -14,7 +14,7 @@ export default function RequireOnboarded() {
     const unsubscribe = subscribeToUserProfile(
       user.uid,
       (profile) => {
-        setShowWelcome(needsWelcome(profile))
+        setRedirectPath(getOnboardingRedirectPath(profile))
         setReady(true)
       },
       () => setReady(true),
@@ -31,9 +31,51 @@ export default function RequireOnboarded() {
     )
   }
 
-  if (showWelcome) {
-    return <Navigate to="/welcome" replace />
+  if (redirectPath) {
+    return <Navigate to={redirectPath} replace />
   }
 
   return <Outlet />
+}
+
+export function RequireOnboardingRoute({ minStep, children }) {
+  const { user } = useAuth()
+  const [ready, setReady] = useState(false)
+  const [redirectPath, setRedirectPath] = useState(null)
+
+  useEffect(() => {
+    if (!user) return undefined
+
+    const unsubscribe = subscribeToUserProfile(
+      user.uid,
+      (profile) => {
+        if (!needsOnboarding(profile)) {
+          setRedirectPath('/dashboard')
+        } else {
+          const currentStep = profile.onboardingStep ?? 1
+          if (currentStep < minStep) {
+            setRedirectPath(getOnboardingRedirectPath(profile))
+          }
+        }
+        setReady(true)
+      },
+      () => setReady(true),
+    )
+
+    return unsubscribe
+  }, [user, minStep])
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg">
+        <p className="text-muted">Loading…</p>
+      </div>
+    )
+  }
+
+  if (redirectPath) {
+    return <Navigate to={redirectPath} replace />
+  }
+
+  return children
 }

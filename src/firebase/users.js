@@ -25,17 +25,39 @@ export function normalizeUserProfile(data) {
   }
 }
 
-export function needsWelcome(profile) {
+export function needsOnboarding(profile) {
   return profile?.welcomeCompleted === false
 }
 
-export async function completeWelcome(userId) {
-  await updateUserProfile(userId, { welcomeCompleted: true })
+/** @deprecated use needsOnboarding */
+export const needsWelcome = needsOnboarding
+
+export function getOnboardingRedirectPath(profile) {
+  if (!needsOnboarding(profile)) return null
+  const step = profile.onboardingStep ?? 1
+  const paths = {
+    1: '/welcome',
+    2: '/onboarding/kids',
+    3: '/onboarding/details',
+    4: '/onboarding/activity',
+  }
+  return paths[step] ?? '/welcome'
 }
+
+export async function advanceOnboardingStep(userId, step) {
+  await updateUserProfile(userId, { onboardingStep: step })
+}
+
+export async function completeOnboarding(userId) {
+  await updateUserProfile(userId, { welcomeCompleted: true, onboardingStep: 4 })
+}
+
+/** @deprecated use completeOnboarding */
+export const completeWelcome = completeOnboarding
 
 export async function getPostLoginPath(userId) {
   const profile = await getUserProfile(userId)
-  return needsWelcome(profile) ? '/welcome' : '/dashboard'
+  return getOnboardingRedirectPath(profile) ?? '/dashboard'
 }
 
 export async function saveUserProfile(user) {
@@ -56,6 +78,7 @@ export async function saveUserProfile(user) {
         ...DEFAULT_USER_SETTINGS,
         ...payload,
         welcomeCompleted: false,
+        onboardingStep: 1,
       },
       { merge: true },
     )

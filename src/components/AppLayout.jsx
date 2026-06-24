@@ -36,7 +36,7 @@ export default function AppLayout() {
     <div className="flex min-h-screen flex-col bg-bg">
       <header className="border-b border-border bg-surface/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <NavLink to="/dashboard" className="flex items-center gap-2.5">
+          <NavLink to="/welcome" className="flex items-center gap-2.5">
             <KidsRouteLogo className="h-9 w-9 text-primary" />
             <span className="font-heading text-xl font-semibold text-primary">KidsRoute</span>
           </NavLink>

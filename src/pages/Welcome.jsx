@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import KidsRouteLogo from '../components/KidsRouteLogo'
+import AboutHero, { AboutDescription } from '../components/onboarding/AboutHero'
 import { useAuth } from '../context/AuthContext'
 import {
-  completeWelcome,
-  needsWelcome,
+  advanceOnboardingStep,
+  getOnboardingRedirectPath,
+  needsOnboarding,
   subscribeToUserProfile,
 } from '../firebase/users'
 
 export default function Welcome() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const [isNewUser, setIsNewUser] = useState(false)
+  const [onboardingStep, setOnboardingStep] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(null)
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     if (!user) return undefined
@@ -20,34 +23,27 @@ export default function Welcome() {
     const unsubscribe = subscribeToUserProfile(
       user.uid,
       (profile) => {
-        if (!needsWelcome(profile)) {
-          navigate('/dashboard', { replace: true })
-        }
+        setIsNewUser(needsOnboarding(profile))
+        setOnboardingStep(profile.onboardingStep ?? 1)
         setLoading(false)
       },
       () => setLoading(false),
     )
 
     return unsubscribe
-  }, [user, navigate])
+  }, [user])
 
   async function handleGetStarted() {
-    setBusy('start')
+    setBusy(true)
     try {
-      await completeWelcome(user.uid)
-      navigate('/my-kids')
+      if (onboardingStep > 1) {
+        navigate(getOnboardingRedirectPath({ welcomeCompleted: false, onboardingStep }) ?? '/onboarding/kids')
+        return
+      }
+      await advanceOnboardingStep(user.uid, 2)
+      navigate('/onboarding/kids')
     } catch {
-      setBusy(null)
-    }
-  }
-
-  async function handleGoToDashboard() {
-    setBusy('dashboard')
-    try {
-      await completeWelcome(user.uid)
-      navigate('/dashboard')
-    } catch {
-      setBusy(null)
+      setBusy(false)
     }
   }
 
@@ -62,38 +58,34 @@ export default function Welcome() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10">
       <div className="kr-card w-full max-w-lg overflow-hidden p-0">
-        <div className="login-hero-gradient px-8 pb-10 pt-12">
-          <div className="flex flex-col items-center text-center">
-            <KidsRouteLogo className="h-[140px] w-[140px] min-h-[100px] min-w-[100px] text-primary" />
-            <h1 className="font-heading mt-8 text-4xl font-semibold text-primary">KidsRoute</h1>
-            <p className="mt-3 text-xl font-medium text-muted">Safe walks, together.</p>
-          </div>
-        </div>
+        {isNewUser && (
+          <p className="pt-6 text-center text-sm font-semibold text-primary">Step 1 of 4</p>
+        )}
+
+        <AboutHero logoClassName="h-[140px] w-[140px] min-h-[100px] min-w-[100px]" />
 
         <div className="space-y-6 px-8 pb-10 pt-2">
-          <p className="text-center text-base leading-relaxed text-[var(--color-text)]">
-            KidsRoute helps PS 150 families coordinate neighborhood walks to after-school
-            activities. Add your children, sign up for their classes, and get matched with
-            nearby families walking the same route on the same days.
-          </p>
+          <AboutDescription />
 
           <div className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={handleGetStarted}
-              disabled={Boolean(busy)}
-              className="btn-primary w-full py-3.5"
-            >
-              {busy === 'start' ? 'Loading…' : 'Get Started'}
-            </button>
-            <button
-              type="button"
-              onClick={handleGoToDashboard}
-              disabled={Boolean(busy)}
-              className="btn-secondary w-full py-3.5"
-            >
-              {busy === 'dashboard' ? 'Loading…' : 'Go to Dashboard'}
-            </button>
+            {isNewUser ? (
+              <button
+                type="button"
+                onClick={handleGetStarted}
+                disabled={busy}
+                className="btn-primary w-full py-3.5"
+              >
+                {busy ? 'Loading…' : onboardingStep > 1 ? 'Continue setup' : 'Get Started'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="btn-primary w-full py-3.5"
+              >
+                Back to Dashboard
+              </button>
+            )}
           </div>
         </div>
       </div>
