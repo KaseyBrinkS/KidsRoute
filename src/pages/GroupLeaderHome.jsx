@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import LeaderWeekCalendar, { buildLeaderGroupsByDay } from '../components/LeaderWeekCalendar'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
-import { repairLeaderUserIdsForUser, subscribeToLeaderWalkGroups } from '../firebase/groupLeaders'
+import { subscribeToLeaderWalkGroups } from '../firebase/groupLeaders'
 import { subscribeToActiveWalkSession } from '../firebase/groupWalk'
 import { subscribeToKids } from '../firebase/kids'
+import { repairWalkGroupParticipantIds } from '../firebase/walkGroups'
 
 export default function GroupLeaderHome() {
   const { user } = useAuth()
@@ -17,32 +18,25 @@ export default function GroupLeaderHome() {
   useEffect(() => {
     if (!user) return undefined
 
-    let cancelled = false
-    let unsubGroups = () => {}
+    repairWalkGroupParticipantIds(user.uid).catch((err) => {
+      console.error('[GroupLeaderHome] repairWalkGroupParticipantIds failed', err)
+    })
 
-    repairLeaderUserIdsForUser(user.uid)
-      .catch((err) => {
-        console.error('[GroupLeaderHome] repairLeaderUserIdsForUser failed', err)
-      })
-      .finally(() => {
-        if (cancelled) return
-        unsubGroups = subscribeToLeaderWalkGroups(
-          user.uid,
-          (leaderGroups) => {
-            setGroups(leaderGroups)
-            setLoading(false)
-          },
-          (err) => {
-            setError(err.message)
-            setLoading(false)
-          },
-        )
-      })
+    const unsubGroups = subscribeToLeaderWalkGroups(
+      user.uid,
+      (leaderGroups) => {
+        setGroups(leaderGroups)
+        setLoading(false)
+      },
+      (err) => {
+        setError(err.message)
+        setLoading(false)
+      },
+    )
 
     const unsubKids = subscribeToKids(user.uid, setKids, (err) => setError(err.message))
 
     return () => {
-      cancelled = true
       unsubGroups()
       unsubKids()
     }
@@ -78,7 +72,7 @@ export default function GroupLeaderHome() {
     <div>
       <PageHeader
         title="Group Leader"
-        description="Your leader groups for the week — tap a group to start or manage a walk"
+        description="Your walk groups for the week — tap a group to start or manage a walk"
       />
 
       {error && <p className="alert-error">{error}</p>}
@@ -87,8 +81,8 @@ export default function GroupLeaderHome() {
         <p className="text-muted">Loading your groups…</p>
       ) : groups.length === 0 ? (
         <p className="kr-card-flat">
-          You are not leading any groups yet. When you accept a walk group invitation on the
-          Dashboard, you automatically become a group leader for that group.
+          No walk groups yet. After you accept a group invitation on the Dashboard, it will appear
+          here and you can start and manage walks for that group.
         </p>
       ) : (
         <section className="mt-4">

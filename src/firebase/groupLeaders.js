@@ -14,7 +14,11 @@ import {
 } from 'firebase/firestore'
 import { db } from './db'
 import { getUserProfile } from './users'
-import { resolveWalkGroupParticipantIds } from './walkGroups'
+import {
+  resolveWalkGroupParticipantIds,
+  walkGroupIsDeclinedForUser,
+  walkGroupUserHasAccepted,
+} from './walkGroups'
 
 export const LEADER_ROLES = {
   parent: 'Parent',
@@ -52,6 +56,12 @@ export function getApprovalFamilyIds(group) {
 
 export function isUserActiveLeader(group, userId) {
   if (!group || !userId) return false
+
+  if (group.source === 'walkGroup') {
+    if (walkGroupIsDeclinedForUser(group, userId)) return false
+    return resolveWalkGroupParticipantIds(group).includes(userId)
+  }
+
   if ((group.leaderUserIds ?? []).includes(userId)) return true
   return getActiveLeaders(group).some((leader) => leader.userId === userId)
 }
@@ -442,9 +452,16 @@ export function subscribeToLeaderWalkGroups(userId, onData, onError) {
   }
 
   return onSnapshot(
-    query(collection(db, 'walkGroups'), where('leaderUserIds', 'array-contains', userId)),
+    query(collection(db, 'walkGroups'), where('participantIds', 'array-contains', userId)),
     (snapshot) => {
-      onData(snapshot.docs.map((docSnap) => ({ id: docSnap.id, source: 'walkGroup', ...docSnap.data() })))
+      const groups = snapshot.docs
+        .map((docSnap) => ({ id: docSnap.id, source: 'walkGroup', ...docSnap.data() }))
+        .filter((group) => {
+          if (walkGroupIsDeclinedForUser(group, userId)) return false
+          if (!resolveWalkGroupParticipantIds(group).includes(userId)) return false
+          return walkGroupUserHasAccepted(group, userId)
+        })
+      onData(groups)
     },
     onError,
   )

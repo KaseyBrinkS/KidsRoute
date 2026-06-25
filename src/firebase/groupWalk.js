@@ -635,7 +635,12 @@ export async function startGroupWalk(groupId, leaderId, { group: prefetchedGroup
       throw error
     }
 
-    const leaderAccess = group.source === 'walkGroup' && isUserActiveLeader(group, leaderId)
+    const participantIds = resolveWalkGroupParticipantIds(group)
+    const leaderAccess =
+      group.source === 'walkGroup'
+        ? participantIds.includes(leaderId)
+        : isUserActiveLeader(group, leaderId)
+
     if (!sessionParticipantIds.includes(leaderId) && !leaderAccess) {
       throw new Error('You are not authorized to lead this group. Refresh the page and try again.')
     }

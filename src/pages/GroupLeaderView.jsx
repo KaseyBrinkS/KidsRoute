@@ -23,7 +23,7 @@ import {
   subscribeToWalkSessionChildren,
   verifyDropOffSaved,
 } from '../firebase/groupWalk'
-import { walkGroupIsReadyForWalk } from '../firebase/walkGroups'
+import { walkGroupIsReadyForWalk, resolveWalkGroupParticipantIds } from '../firebase/walkGroups'
 import { isUserActiveLeader } from '../firebase/groupLeaders'
 import { formatHistoryTime } from '../firebase/walkHistory'
 
@@ -70,8 +70,6 @@ export default function GroupLeaderView() {
     }
   }, [user, groupId])
 
-  const isLeader = isUserActiveLeader(group, user?.uid)
-
   useEffect(() => {
     if (!user || !groupId) return
 
@@ -115,20 +113,26 @@ export default function GroupLeaderView() {
 
   const isBuildingWalk = isBuildingWalkMatch(group)
   const isWalkGroup = group?.source === 'walkGroup'
-  const isParticipant = group?.participantIds?.includes(user?.uid)
+  const isParticipant =
+    resolveWalkGroupParticipantIds(group ?? {}).includes(user?.uid)
     || group?.parties?.some((party) => party.userId === user?.uid)
+
+  const canManageWalk = isUserActiveLeader(group, user?.uid)
 
   const groupReadyForWalk = useMemo(() => {
     if (!groupLoaded || !group || !user?.uid) return false
-    if (isWalkGroup && isUserActiveLeader(group, user.uid)) {
-      return group.status === 'active' && getGroupWalkParties(group).length > 0
+    if (isWalkGroup && canManageWalk) {
+      return (
+        (group.status === 'active' || walkGroupIsReadyForWalk(group, user.uid))
+        && getGroupWalkParties(group).length > 0
+      )
     }
     if (isWalkGroup) return walkGroupIsReadyForWalk(group, user.uid)
     return (
       matchIsConnectedForUser(group, user.uid)
       && getGroupWalkParties(group).length > 0
     )
-  }, [groupLoaded, group, user?.uid, isWalkGroup])
+  }, [groupLoaded, group, user?.uid, isWalkGroup, canManageWalk])
 
   const walkInProgress = Boolean(activeSession)
   const walkComplete = walkInProgress && isWalkSessionComplete(sessionChildren)
@@ -315,11 +319,7 @@ export default function GroupLeaderView() {
     )
   }
 
-  const hasAccess = group && (
-    isUserActiveLeader(group, user?.uid)
-    || isParticipant
-    || walkInProgress
-  )
+  const hasAccess = group && (canManageWalk || isParticipant || walkInProgress)
 
   if (!hasAccess) {
     return (
@@ -382,7 +382,7 @@ export default function GroupLeaderView() {
           </span>
         </div>
 
-        {!walkInProgress && isLeader && (
+        {!walkInProgress && canManageWalk && (
           <>
             <p className="mt-4 text-sm text-muted">
               All children in this group appear below with today&apos;s status. When everyone is
@@ -403,9 +403,9 @@ export default function GroupLeaderView() {
           </>
         )}
 
-        {!walkInProgress && !isLeader && (
+        {!walkInProgress && !canManageWalk && isParticipant && (
           <p className="mt-4 text-sm text-muted">
-            Only assigned group leaders can start a walk for this group.
+            Accept the group invitation on the Dashboard to start managing walks for this group.
           </p>
         )}
 
