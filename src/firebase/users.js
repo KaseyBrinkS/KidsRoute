@@ -1,5 +1,6 @@
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from './db'
+import { ACCOUNT_STATUS, getAccessGatePath } from './accessControl'
 
 import { DEFAULT_SCHOOL } from './schools'
 
@@ -74,6 +75,8 @@ export const completeWelcome = completeOnboarding
 
 export async function getPostLoginPath(userId) {
   const profile = await getUserProfile(userId)
+  const gatePath = getAccessGatePath(profile)
+  if (gatePath) return gatePath
   if (profile.accountType === 'external_leader') return '/leader'
   if (isSetupComplete(profile)) return '/dashboard'
   if (profile.welcomeCompleted === false && (profile.onboardingStep ?? 1) === 1) {
@@ -101,6 +104,9 @@ export async function saveUserProfile(user) {
         ...payload,
         welcomeCompleted: false,
         onboardingStep: 1,
+        inviteCodeVerified: false,
+        accountStatus: ACCOUNT_STATUS.NEEDS_INVITE,
+        createdAt: serverTimestamp(),
       },
       { merge: true },
     )
@@ -115,10 +121,10 @@ export function subscribeToUserProfile(userId, onData, onError) {
     userProfileRef(userId),
     (snapshot) => {
       if (!snapshot.exists()) {
-        onData({ ...DEFAULT_USER_SETTINGS })
+        onData({ ...DEFAULT_USER_SETTINGS, _profileExists: false })
         return
       }
-      onData(normalizeUserProfile(snapshot.data()))
+      onData({ ...normalizeUserProfile(snapshot.data()), _profileExists: true })
     },
     onError,
   )
@@ -126,7 +132,10 @@ export function subscribeToUserProfile(userId, onData, onError) {
 
 export async function getUserProfile(userId) {
   const snapshot = await getDoc(userProfileRef(userId))
-  return snapshot.exists() ? normalizeUserProfile(snapshot.data()) : { ...DEFAULT_USER_SETTINGS }
+  if (!snapshot.exists()) {
+    return { ...DEFAULT_USER_SETTINGS, _profileExists: false }
+  }
+  return { ...normalizeUserProfile(snapshot.data()), _profileExists: true }
 }
 
 export async function updateUserProfile(userId, fields) {

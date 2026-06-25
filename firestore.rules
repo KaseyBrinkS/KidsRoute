@@ -11,13 +11,37 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isSignedIn() && request.auth.uid == 'DEwa7len6TaBU6mKNceuMlyaRpw1';
+    }
+
+    // ── Invite codes ─────────────────────────────────────────────────────────
+
+    match /inviteCodes/{codeId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
     // ── Private family data (owner only) ─────────────────────────────────────
     // Phone, home address, email, kids, and activities live here.
     // Other families never read these docs — shared contact info is copied
     // onto walkGroups / matches party records when both families approve.
 
     match /users/{userId} {
-      allow read, create, update, delete: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if isAdmin() || (
+        isOwner(userId)
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['accountStatus'])
+          || (
+            resource.data.accountStatus == 'needs_invite'
+            && request.resource.data.accountStatus == 'pending'
+            && request.resource.data.inviteCodeVerified == true
+          )
+        )
+      );
+      allow delete: if isOwner(userId);
 
       match /children/{childId} {
         allow read, create, update, delete: if isOwner(userId);

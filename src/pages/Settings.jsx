@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import SchoolSelect from '../components/SchoolSelect'
 import { useAuth } from '../context/AuthContext'
 import { logOut } from '../firebase/auth'
+import { isAdmin } from '../firebase/admin'
 import { syncUserMatchingOptOut } from '../firebase/matching'
 import {
   formatSchoolDisplay,
@@ -427,6 +428,17 @@ export default function Settings() {
               )}
             </form>
           </SettingsSection>
+
+          {isAdmin(user.uid) && (
+            <SettingsSection
+              title="Admin"
+              description="Review and approve new family accounts."
+            >
+              <Link to="/admin" className="btn-secondary inline-flex">
+                Open admin panel
+              </Link>
+            </SettingsSection>
+          )}
 
           <div className="kr-card p-6">
             <button

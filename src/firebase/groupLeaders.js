@@ -13,6 +13,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './db'
+import { ACCOUNT_STATUS } from './accessControl'
 import { getUserProfile } from './users'
 import {
   resolveWalkGroupParticipantIds,
@@ -439,6 +440,8 @@ export async function syncLeaderProfileFromInvite(userId, invite) {
       leaderRole: invite.role,
       displayName: invite.name,
       phoneNumber: invite.phone,
+      inviteCodeVerified: true,
+      accountStatus: ACCOUNT_STATUS.APPROVED,
       updatedAt: serverTimestamp(),
     },
     { merge: true },
