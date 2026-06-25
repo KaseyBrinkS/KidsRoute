@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import DashboardWeekView, { buildDashboardWeekGroups } from '../components/DashboardWeekView'
 import { ChildNameWithDot } from '../components/ChildColorDot'
+import MeetingPointProposalAlerts from '../components/MeetingPointProposalAlerts'
 import DaySelector, { todayWeekday } from '../components/DaySelector'
 import OnboardingReminderBanner from '../components/onboarding/OnboardingReminderBanner'
 import PageHeader from '../components/PageHeader'
@@ -109,6 +110,16 @@ export default function Dashboard() {
     [walkGroups],
   )
 
+  const acceptedWalkGroups = useMemo(
+    () =>
+      dashboardWalkGroups.filter(
+        (group) =>
+          walkGroupUserHasAccepted(group, user?.uid)
+          && !walkGroupIsDeclinedForUser(group, user?.uid),
+      ),
+    [dashboardWalkGroups, user?.uid],
+  )
+
   const pendingWalkGroups = useMemo(
     () =>
       dashboardWalkGroups.filter((group) => walkGroupNeedsUserResponse(group, user?.uid)),
@@ -168,6 +179,10 @@ export default function Dashboard() {
 
       {showSetupReminder && (
         <OnboardingReminderBanner continuePath={setupContinuePath} />
+      )}
+
+      {!loading && user && (
+        <MeetingPointProposalAlerts groups={acceptedWalkGroups} userId={user.uid} />
       )}
 
       {!loading && pendingWalkGroups.length > 0 && (

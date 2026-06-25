@@ -26,6 +26,7 @@ import {
 import { walkGroupIsReadyForWalk, resolveWalkGroupParticipantIds } from '../firebase/walkGroups'
 import { isUserActiveLeader } from '../firebase/groupLeaders'
 import { formatHistoryTime } from '../firebase/walkHistory'
+import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
 
 const SUCCESS_DISMISS_MS = 4000
 
@@ -355,6 +356,12 @@ export default function GroupLeaderView() {
         title="Manage Group"
         description="Manage your walking group"
       />
+
+      {isWalkGroup && (
+        <div className="mb-6">
+          <ConfirmedMeetingPoint group={group} />
+        </div>
+      )}
 
       <div className="kr-card mb-6 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">

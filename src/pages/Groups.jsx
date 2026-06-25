@@ -21,6 +21,8 @@ import {
   subscribeToUserActiveWalkSessions,
 } from '../firebase/groupWalk'
 import GroupLeaderControls from '../components/GroupLeaderControls'
+import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
+import MeetingPointControls from '../components/MeetingPointControls'
 import {
   getPartiesForUser,
   leaveWalkGroup,
@@ -366,6 +368,17 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
             <p className="mt-3 text-xs text-muted">
               Absences can be updated again after today&apos;s walk is completed.
             </p>
+          )}
+
+          {group.source === 'walkGroup' && (
+            <div className="mt-3 space-y-3">
+              <ConfirmedMeetingPoint group={group} />
+              <MeetingPointControls
+                group={group}
+                userId={userId}
+                proposerName={myParties[0]?.parentName || 'A parent'}
+              />
+            </div>
           )}
 
           <GroupLeaderControls group={group} userId={userId} />
