@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import LeaderWeekCalendar, { buildLeaderGroupsByDay } from '../components/LeaderWeekCalendar'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
-import { subscribeToLeaderWalkGroups } from '../firebase/groupLeaders'
+import { repairLeaderUserIdsForUser, subscribeToLeaderWalkGroups } from '../firebase/groupLeaders'
 import { subscribeToActiveWalkSession } from '../firebase/groupWalk'
 import { subscribeToKids } from '../firebase/kids'
 
@@ -17,21 +17,32 @@ export default function GroupLeaderHome() {
   useEffect(() => {
     if (!user) return undefined
 
-    const unsubGroups = subscribeToLeaderWalkGroups(
-      user.uid,
-      (leaderGroups) => {
-        setGroups(leaderGroups)
-        setLoading(false)
-      },
-      (err) => {
-        setError(err.message)
-        setLoading(false)
-      },
-    )
+    let cancelled = false
+    let unsubGroups = () => {}
+
+    repairLeaderUserIdsForUser(user.uid)
+      .catch((err) => {
+        console.error('[GroupLeaderHome] repairLeaderUserIdsForUser failed', err)
+      })
+      .finally(() => {
+        if (cancelled) return
+        unsubGroups = subscribeToLeaderWalkGroups(
+          user.uid,
+          (leaderGroups) => {
+            setGroups(leaderGroups)
+            setLoading(false)
+          },
+          (err) => {
+            setError(err.message)
+            setLoading(false)
+          },
+        )
+      })
 
     const unsubKids = subscribeToKids(user.uid, setKids, (err) => setError(err.message))
 
     return () => {
+      cancelled = true
       unsubGroups()
       unsubKids()
     }
@@ -63,11 +74,6 @@ export default function GroupLeaderHome() {
     [groups, user, activeSessions],
   )
 
-  const hasGroups = useMemo(
-    () => Object.values(groupsByDay).some((dayGroups) => dayGroups.length > 0),
-    [groupsByDay],
-  )
-
   return (
     <div>
       <PageHeader
@@ -84,8 +90,6 @@ export default function GroupLeaderHome() {
           You are not leading any groups yet. When you accept a walk group invitation on the
           Dashboard, you automatically become a group leader for that group.
         </p>
-      ) : !hasGroups ? (
-        <p className="kr-card-flat">No leader groups scheduled this week.</p>
       ) : (
         <section className="mt-4">
           <h2 className="kr-section-title">Your week</h2>

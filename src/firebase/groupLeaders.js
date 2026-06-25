@@ -52,6 +52,7 @@ export function getApprovalFamilyIds(group) {
 
 export function isUserActiveLeader(group, userId) {
   if (!group || !userId) return false
+  if ((group.leaderUserIds ?? []).includes(userId)) return true
   return getActiveLeaders(group).some((leader) => leader.userId === userId)
 }
 
@@ -98,6 +99,58 @@ function buildLeaderUserIds(leaders) {
   ]
 }
 
+/** All user IDs who can lead this group: participants + active leader records. */
+export function resolveLeaderUserIds(group) {
+  const storedParticipantIds = group.participantIds ?? []
+  const partyUserIds = [
+    ...new Set(
+      (group.parties ?? [])
+        .filter((party) => party.response !== 'declined')
+        .map((party) => party.userId),
+    ),
+  ]
+  const resolvedParticipantIds = resolveWalkGroupParticipantIds(group)
+  const fromLeaders = buildLeaderUserIds(getGroupLeaders(group))
+
+  return [
+    ...new Set([
+      ...storedParticipantIds,
+      ...partyUserIds,
+      ...resolvedParticipantIds,
+      ...fromLeaders,
+      ...(group.leaderUserIds ?? []),
+    ]),
+  ].filter(Boolean)
+}
+
+export async function repairLeaderUserIdsForUser(userId) {
+  if (!userId) return
+
+  const snapshot = await getDocs(
+    query(collection(db, 'walkGroups'), where('participantIds', 'array-contains', userId)),
+  )
+
+  await Promise.all(
+    snapshot.docs.map(async (docSnap) => {
+      const group = { id: docSnap.id, ...docSnap.data() }
+      const merged = resolveLeaderUserIds(group)
+      const stored = group.leaderUserIds ?? []
+
+      if (
+        merged.length === stored.length &&
+        merged.every((id) => stored.includes(id))
+      ) {
+        return
+      }
+
+      await updateDoc(docSnap.ref, {
+        leaderUserIds: merged,
+        updatedAt: serverTimestamp(),
+      })
+    }),
+  )
+}
+
 export function ensureParentLeaderOnGroup(group, userId, { displayName, phoneNumber } = {}) {
   const leaders = getGroupLeaders(group)
   const activeLeader = leaders.find(
@@ -106,7 +159,7 @@ export function ensureParentLeaderOnGroup(group, userId, { displayName, phoneNum
   if (activeLeader) {
     return {
       groupLeaders: leaders,
-      leaderUserIds: buildLeaderUserIds(leaders),
+      leaderUserIds: resolveLeaderUserIds(group),
     }
   }
 
@@ -131,7 +184,10 @@ export function ensureParentLeaderOnGroup(group, userId, { displayName, phoneNum
 
   return {
     groupLeaders: updatedLeaders,
-    leaderUserIds: buildLeaderUserIds(updatedLeaders),
+    leaderUserIds: resolveLeaderUserIds({
+      ...group,
+      groupLeaders: updatedLeaders,
+    }),
   }
 }
 
