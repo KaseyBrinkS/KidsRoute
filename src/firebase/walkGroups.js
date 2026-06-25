@@ -11,6 +11,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './db'
+import { ensureParentLeaderOnGroup } from './groupLeaders'
 import { getActiveSession } from './groupWalk'
 import { MATCH_WINDOW_MINUTES, timesWithinWindow } from './matching'
 import { defaultSessions } from './sessions'
@@ -470,10 +471,17 @@ export async function respondToWalkGroup(groupId, userId, response, contactPhone
     participantIds = [...participantIds, userId]
   }
 
+  const { groupLeaders, leaderUserIds } = ensureParentLeaderOnGroup(group, userId, {
+    displayName: parentName,
+    phoneNumber: contactPhone,
+  })
+
   await updateDoc(groupRef, {
     parties,
     participantIds,
     status: computeWalkGroupStatus(parties),
+    groupLeaders,
+    leaderUserIds,
     updatedAt: serverTimestamp(),
   })
 }

@@ -98,27 +98,24 @@ function buildLeaderUserIds(leaders) {
   ]
 }
 
-export async function volunteerAsParentLeader(groupId, userId) {
-  const profile = await getUserProfile(userId)
-  const group = await loadWalkGroup(groupId)
-  if (!group) throw new Error('Group not found.')
-
-  const familyIds = getApprovalFamilyIds(group)
-  if (!familyIds.includes(userId)) {
-    throw new Error('You must be a group member to volunteer as leader.')
-  }
-
+export function ensureParentLeaderOnGroup(group, userId, { displayName, phoneNumber } = {}) {
   const leaders = getGroupLeaders(group)
-  if (leaders.some((leader) => leader.userId === userId && leader.status === 'active')) {
-    return
+  const activeLeader = leaders.find(
+    (leader) => leader.userId === userId && leader.status === 'active',
+  )
+  if (activeLeader) {
+    return {
+      groupLeaders: leaders,
+      leaderUserIds: buildLeaderUserIds(leaders),
+    }
   }
 
   const leaderRecord = {
     id: generateId(),
     userId,
     role: 'parent',
-    name: profile.displayName || 'Parent',
-    phone: profile.phoneNumber || '',
+    name: displayName || 'Parent',
+    phone: phoneNumber || '',
     status: 'active',
     proposedBy: null,
     approvals: null,
@@ -132,9 +129,34 @@ export async function volunteerAsParentLeader(groupId, userId) {
     leaderRecord,
   ]
 
-  await updateDoc(doc(db, 'walkGroups', groupId), {
+  return {
     groupLeaders: updatedLeaders,
     leaderUserIds: buildLeaderUserIds(updatedLeaders),
+  }
+}
+
+export async function volunteerAsParentLeader(groupId, userId) {
+  const profile = await getUserProfile(userId)
+  const group = await loadWalkGroup(groupId)
+  if (!group) throw new Error('Group not found.')
+
+  const familyIds = getApprovalFamilyIds(group)
+  if (!familyIds.includes(userId)) {
+    throw new Error('You must be a group member to volunteer as leader.')
+  }
+
+  const { groupLeaders, leaderUserIds } = ensureParentLeaderOnGroup(group, userId, {
+    displayName: profile.displayName || 'Parent',
+    phoneNumber: profile.phoneNumber || '',
+  })
+
+  if (isUserActiveLeader(group, userId)) {
+    return
+  }
+
+  await updateDoc(doc(db, 'walkGroups', groupId), {
+    groupLeaders,
+    leaderUserIds,
     updatedAt: serverTimestamp(),
   })
 }

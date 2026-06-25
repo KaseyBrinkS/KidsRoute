@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import LeaderWeekCalendar, { buildLeaderGroupsByDay } from '../components/LeaderWeekCalendar'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
-import { formatGroupTimes } from '../firebase/groups'
 import { subscribeToLeaderWalkGroups } from '../firebase/groupLeaders'
 import { subscribeToActiveWalkSession } from '../firebase/groupWalk'
+import { subscribeToKids } from '../firebase/kids'
 
 export default function GroupLeaderHome() {
   const { user } = useAuth()
   const [groups, setGroups] = useState([])
+  const [kids, setKids] = useState([])
   const [activeSessions, setActiveSessions] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -28,7 +29,12 @@ export default function GroupLeaderHome() {
       },
     )
 
-    return unsubGroups
+    const unsubKids = subscribeToKids(user.uid, setKids, (err) => setError(err.message))
+
+    return () => {
+      unsubGroups()
+      unsubKids()
+    }
   }, [user])
 
   useEffect(() => {
@@ -52,11 +58,21 @@ export default function GroupLeaderHome() {
     return () => unsubs.forEach((unsub) => unsub())
   }, [user, groups])
 
+  const groupsByDay = useMemo(
+    () => (user ? buildLeaderGroupsByDay(groups, user.uid, activeSessions) : {}),
+    [groups, user, activeSessions],
+  )
+
+  const hasGroups = useMemo(
+    () => Object.values(groupsByDay).some((dayGroups) => dayGroups.length > 0),
+    [groupsByDay],
+  )
+
   return (
     <div>
       <PageHeader
         title="Group Leader"
-        description="Groups you are assigned to lead"
+        description="Your leader groups for the week — tap a group to start or manage a walk"
       />
 
       {error && <p className="alert-error">{error}</p>}
@@ -65,37 +81,21 @@ export default function GroupLeaderHome() {
         <p className="text-muted">Loading your groups…</p>
       ) : groups.length === 0 ? (
         <p className="kr-card-flat">
-          You are not assigned to lead any groups yet. Parents can volunteer from the Groups page,
-          or a family can invite you with an approval link.
+          You are not leading any groups yet. When you accept a walk group invitation on the
+          Dashboard, you automatically become a group leader for that group.
         </p>
+      ) : !hasGroups ? (
+        <p className="kr-card-flat">No leader groups scheduled this week.</p>
       ) : (
-        <ul className="mt-4 space-y-4">
-          {groups.map((group) => {
-            const inProgress = Boolean(activeSessions[group.id])
-            return (
-              <li key={group.id} className="kr-card p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-[var(--color-text)]">{group.location}</p>
-                    <p className="mt-1 text-sm text-muted">
-                      {group.day} · {formatGroupTimes(group)}
-                    </p>
-                  </div>
-                  <span
-                    className={
-                      inProgress ? 'badge-walk-active' : 'badge-walk-upcoming'
-                    }
-                  >
-                    {inProgress ? 'Walk in progress' : 'Ready'}
-                  </span>
-                </div>
-                <Link to={`/groups/${group.id}/leader`} className="btn-leader mt-4">
-                  Open leader view
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
+        <section className="mt-4">
+          <h2 className="kr-section-title">Your week</h2>
+          <p className="kr-section-desc">
+            Sunday through Saturday — colored cards show each group on its walk day.
+          </p>
+          <div className="mt-4">
+            <LeaderWeekCalendar groupsByDay={groupsByDay} kids={kids} />
+          </div>
+        </section>
       )}
     </div>
   )

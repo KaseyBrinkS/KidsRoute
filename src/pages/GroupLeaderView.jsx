@@ -142,7 +142,10 @@ export default function GroupLeaderView() {
     if (walkInProgress) {
       return mergeWalkSessionChildren(sessionChildren, preWalkParties)
     }
-    return mergePartiesWithScheduleStatus(preWalkParties, absences, group?.day)
+    return mergePartiesWithScheduleStatus(preWalkParties, absences, group?.day).map((child) => ({
+      ...child,
+      walkStatus: child.walkStatus === 'absent' ? 'absent' : 'confirmed',
+    }))
   }, [walkInProgress, sessionChildren, preWalkParties, group?.day, absences])
 
   const droppableCount = useMemo(
@@ -379,14 +382,11 @@ export default function GroupLeaderView() {
           </span>
         </div>
 
-        {!walkInProgress && (
+        {!walkInProgress && isLeader && (
           <>
             <p className="mt-4 text-sm text-muted">
-              {isWalkGroup
-                ? 'All accepted children in the group appear below. Mark each child as arrived when they join the walk, then dropped off at their destination.'
-                : isBuildingWalk
-                  ? 'Children are automatically confirmed on weekdays. They show as absent only when a parent has marked them absent for today.'
-                  : 'Children are automatically confirmed on scheduled class days. They show as absent only when a parent has marked them absent for today.'}
+              All children in this group appear below with today&apos;s status. When everyone is
+              ready, start the walk — then mark each child as arrived and dropped off.
             </p>
             <button
               type="button"
@@ -401,6 +401,12 @@ export default function GroupLeaderView() {
                   : 'Start walk'}
             </button>
           </>
+        )}
+
+        {!walkInProgress && !isLeader && (
+          <p className="mt-4 text-sm text-muted">
+            Only assigned group leaders can start a walk for this group.
+          </p>
         )}
 
         {walkInProgress && !walkComplete && (
@@ -440,9 +446,17 @@ export default function GroupLeaderView() {
         <p className="alert-error mb-4">{error}</p>
       )}
 
-      <h2 className="kr-section-title">Children</h2>
+      <h2 className="kr-section-title">Children on this walk</h2>
+      <p className="kr-section-desc">
+        Parent contact info and walk status for every child in the group.
+      </p>
       <ul className="kr-card mt-3 divide-y divide-border">
-        {children.map((child) => {
+        {children.length === 0 ? (
+          <li className="px-5 py-8 text-center text-sm text-muted">
+            No children in this group yet.
+          </li>
+        ) : (
+        children.map((child) => {
           const status = getChildWalkStatus(child)
           const childKey = child.id ?? `${child.userId}_${child.childId}`
           const arrivalId = `arrive_${childKey}`
@@ -467,54 +481,56 @@ export default function GroupLeaderView() {
 
           return (
             <li key={childKey} className="px-5 py-4">
-              <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-[var(--color-text)]">{child.childFirstName}</p>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.style}`}>
                       {status.label}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-muted">Parent: {child.parentName}</p>
-                  <p className="text-sm text-muted">Phone: {child.contactPhone}</p>
+                  <p className="mt-1.5 text-sm text-muted">
+                    {child.parentName} · {child.contactPhone}
+                  </p>
                   {child.pickedUpAt && (
-                    <p className="mt-2 text-sm text-muted">
-                      Arrived: {formatHistoryTime(child.pickedUpAt)}
-                    </p>
-                  )}
-                  {child.droppedOffAt && (
-                    <p className="text-sm text-muted">
-                      Dropped off: {formatHistoryTime(child.droppedOffAt)}
+                    <p className="mt-1 text-xs text-muted">
+                      Arrived {formatHistoryTime(child.pickedUpAt)}
+                      {child.droppedOffAt && (
+                        <> · Dropped off {formatHistoryTime(child.droppedOffAt)}</>
+                      )}
                     </p>
                   )}
                 </div>
 
-                <div className="flex shrink-0 flex-wrap gap-2">
-                  {canArrive && (
-                    <button
-                      type="button"
-                      onClick={() => handleArrival(child)}
-                      disabled={actionId === arrivalId}
-                      className="rounded-xl border border-[var(--color-walk-green)] px-3 py-1.5 text-sm font-semibold text-[var(--color-walk-green)] hover:bg-[var(--color-walk-green-bg)] disabled:opacity-50"
-                    >
-                      {actionId === arrivalId ? 'Saving…' : 'Mark as arrived'}
-                    </button>
-                  )}
-                  {canDropOff && (
-                    <button
-                      type="button"
-                      onClick={() => handleDropOff(child)}
-                      disabled={actionId === childKey}
-                      className="btn-primary py-1.5"
-                    >
-                      {actionId === childKey ? 'Saving…' : 'Mark as dropped off'}
-                    </button>
-                  )}
-                </div>
+                {(canArrive || canDropOff) && (
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {canArrive && (
+                      <button
+                        type="button"
+                        onClick={() => handleArrival(child)}
+                        disabled={actionId === arrivalId}
+                        className="rounded-xl border border-[var(--color-walk-green)] px-3 py-1.5 text-sm font-semibold text-[var(--color-walk-green)] hover:bg-[var(--color-walk-green-bg)] disabled:opacity-50"
+                      >
+                        {actionId === arrivalId ? 'Saving…' : 'Arrived'}
+                      </button>
+                    )}
+                    {canDropOff && (
+                      <button
+                        type="button"
+                        onClick={() => handleDropOff(child)}
+                        disabled={actionId === childKey}
+                        className="btn-primary py-1.5"
+                      >
+                        {actionId === childKey ? 'Saving…' : 'Dropped off'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </li>
           )
-        })}
+        })
+        )}
       </ul>
 
       <p className="mt-6 flex flex-wrap gap-4">
