@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import DashboardWeekView, { buildDashboardWeekGroups } from '../components/DashboardWeekView'
 import { ChildNameWithDot } from '../components/ChildColorDot'
+import GuidanceBanner from '../components/GuidanceBanner'
 import MeetingPointProposalAlerts from '../components/MeetingPointProposalAlerts'
+import {
+  dismissIds,
+  hasUndismissedIds,
+} from '../utils/guidanceDismissals'
 import DaySelector, { todayWeekday } from '../components/DaySelector'
 import OnboardingReminderBanner from '../components/onboarding/OnboardingReminderBanner'
 import PageHeader from '../components/PageHeader'
@@ -51,6 +56,7 @@ export default function Dashboard() {
   const [activityCount, setActivityCount] = useState(0)
   const [profile, setProfile] = useState(null)
   const [setupContinuePath, setSetupContinuePath] = useState('/welcome')
+  const [guidanceRefresh, setGuidanceRefresh] = useState(0)
 
   useEffect(() => {
     if (!user) return undefined
@@ -126,6 +132,18 @@ export default function Dashboard() {
     [dashboardWalkGroups, user?.uid],
   )
 
+  const pendingInvitationIds = useMemo(
+    () => pendingWalkGroups.map((group) => group.id),
+    [pendingWalkGroups],
+  )
+
+  const showInvitationGuidance = useMemo(
+    () =>
+      pendingInvitationIds.length > 0
+      && hasUndismissedIds('dashboard-invitations', pendingInvitationIds),
+    [pendingInvitationIds, guidanceRefresh],
+  )
+
   const weekGroupsByDay = useMemo(
     () =>
       buildDashboardWeekGroups(dashboardWalkGroups, user?.uid, activeSessions, {
@@ -183,6 +201,17 @@ export default function Dashboard() {
 
       {!loading && user && (
         <MeetingPointProposalAlerts groups={acceptedWalkGroups} userId={user.uid} />
+      )}
+
+      {!loading && showInvitationGuidance && (
+        <GuidanceBanner
+          onDismiss={() => {
+            dismissIds('dashboard-invitations', pendingInvitationIds)
+            setGuidanceRefresh((value) => value + 1)
+          }}
+        >
+          You have a new group match! Review and join to start coordinating your walk.
+        </GuidanceBanner>
       )}
 
       {!loading && pendingWalkGroups.length > 0 && (

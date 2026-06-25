@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ChildNameWithDot } from './ChildColorDot'
 import ConfirmedMeetingPoint from './ConfirmedMeetingPoint'
+import GroupNote from './GroupNote'
 import MeetingPointControls from './MeetingPointControls'
 import { WEEKDAYS, getChildColorById } from '../utils/dates'
 import { formatGroupTimes } from '../firebase/groups'
@@ -46,6 +47,15 @@ export default function GroupsWeekCalendar({
                         color: color.text,
                       }}
                     >
+                      {isWalkGroupDocument(group) && userId && (
+                        <GroupNote
+                          group={group}
+                          userId={userId}
+                          editorName={myParties[0]?.parentName || 'A parent'}
+                          compact
+                          className="mb-2"
+                        />
+                      )}
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold">

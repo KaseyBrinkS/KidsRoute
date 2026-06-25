@@ -22,7 +22,13 @@ import {
 } from '../firebase/groupWalk'
 import GroupLeaderControls from '../components/GroupLeaderControls'
 import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
+import GroupNote from '../components/GroupNote'
+import GuidanceBanner from '../components/GuidanceBanner'
 import MeetingPointControls from '../components/MeetingPointControls'
+import {
+  dismissGuidance,
+  isGuidanceDismissed,
+} from '../utils/guidanceDismissals'
 import {
   getPartiesForUser,
   isWalkGroupDocument,
@@ -338,6 +344,15 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
 
   return (
     <div className={`p-5 ${walkStatusCardClass(displayWalkStatus)}`}>
+      {isWalkGroupDocument(group) && (
+        <GroupNote
+          group={group}
+          userId={userId}
+          editorName={myParties[0]?.parentName || 'A parent'}
+          className="mb-4"
+        />
+      )}
+
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-[var(--color-text)]">
@@ -562,6 +577,9 @@ export default function Groups() {
   const [activityGroupsLoading, setActivityGroupsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [buildingBusyKey, setBuildingBusyKey] = useState(null)
+  const [hideJoinedGuidance, setHideJoinedGuidance] = useState(() =>
+    isGuidanceDismissed('groups-joined'),
+  )
 
   useEffect(() => {
     if (!user) return
@@ -687,6 +705,18 @@ export default function Groups() {
       />
 
       {error && <p className="alert-error">{error}</p>}
+
+      {!activityGroupsLoading && groups.length > 0 && !hideJoinedGuidance && (
+        <GuidanceBanner
+          onDismiss={() => {
+            dismissGuidance('groups-joined')
+            setHideJoinedGuidance(true)
+          }}
+        >
+          You&apos;re in a group! Open Manage Group to see your fellow families, propose a meeting
+          point, and start coordinating.
+        </GuidanceBanner>
+      )}
 
       <div className="space-y-8">
         <section>

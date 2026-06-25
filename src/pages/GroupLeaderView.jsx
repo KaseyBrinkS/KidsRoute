@@ -27,6 +27,12 @@ import { walkGroupIsReadyForWalk, resolveWalkGroupParticipantIds, isWalkGroupDoc
 import { isUserActiveLeader } from '../firebase/groupLeaders'
 import { formatHistoryTime } from '../firebase/walkHistory'
 import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
+import GroupNote from '../components/GroupNote'
+import GuidanceBanner from '../components/GuidanceBanner'
+import {
+  dismissGuidance,
+  isGuidanceDismissed,
+} from '../utils/guidanceDismissals'
 
 const SUCCESS_DISMISS_MS = 4000
 
@@ -42,6 +48,10 @@ export default function GroupLeaderView() {
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
   const [actionId, setActionId] = useState(null)
+  const preWalkGuidanceKey = `manage-pre-walk:${groupId}`
+  const [hidePreWalkGuidance, setHidePreWalkGuidance] = useState(() =>
+    isGuidanceDismissed(preWalkGuidanceKey),
+  )
 
   useEffect(() => {
     if (!successMessage) return undefined
@@ -166,6 +176,12 @@ export default function GroupLeaderView() {
   const buildingWalkConfig = isBuildingWalk
     ? BUILDING_WALK_TYPES[group.buildingWalkType]
     : null
+
+  const editorName =
+    preWalkParties.find((party) => party.userId === user?.uid)?.parentName || 'A parent'
+
+  const showPreWalkGuidance =
+    isWalkGroup && !walkInProgress && !walkComplete && isParticipant && !hidePreWalkGuidance
 
   async function handleStartWalk() {
     if (!groupReadyForWalk || !user) return
@@ -357,8 +373,21 @@ export default function GroupLeaderView() {
         description="Manage your walking group"
       />
 
+      {showPreWalkGuidance && (
+        <GuidanceBanner
+          onDismiss={() => {
+            dismissGuidance(preWalkGuidanceKey)
+            setHidePreWalkGuidance(true)
+          }}
+        >
+          Ready to walk? Tap Start Walk when your group has met up. Each family&apos;s contact is
+          listed below.
+        </GuidanceBanner>
+      )}
+
       {isWalkGroup && (
-        <div className="mb-6">
+        <div className="mb-6 space-y-4">
+          <GroupNote group={group} userId={user.uid} editorName={editorName} />
           <ConfirmedMeetingPoint group={group} />
         </div>
       )}

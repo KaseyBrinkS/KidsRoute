@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
+import GuidanceBanner from '../components/GuidanceBanner'
 import LeaderWeekCalendar, { buildLeaderGroupsByDay } from '../components/LeaderWeekCalendar'
 import PageHeader from '../components/PageHeader'
+import { getConfirmedMeetingPoint } from '../firebase/meetingPoints'
+import {
+  dismissIds,
+  hasUndismissedIds,
+} from '../utils/guidanceDismissals'
 import { useAuth } from '../context/AuthContext'
 import { subscribeToLeaderWalkGroups } from '../firebase/groupLeaders'
 import { subscribeToActiveWalkSession } from '../firebase/groupWalk'
@@ -14,6 +20,7 @@ export default function GroupLeaderHome() {
   const [activeSessions, setActiveSessions] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [guidanceRefresh, setGuidanceRefresh] = useState(0)
 
   useEffect(() => {
     if (!user) return undefined
@@ -68,6 +75,18 @@ export default function GroupLeaderHome() {
     [groups, user, activeSessions],
   )
 
+  const groupsNeedingMeetingPoint = useMemo(
+    () => groups.filter((group) => !getConfirmedMeetingPoint(group)).map((group) => group.id),
+    [groups],
+  )
+
+  const showMeetingPointGuidance = useMemo(
+    () =>
+      groupsNeedingMeetingPoint.length > 0
+      && hasUndismissedIds('leader-meeting-point', groupsNeedingMeetingPoint),
+    [groupsNeedingMeetingPoint, guidanceRefresh],
+  )
+
   return (
     <div>
       <PageHeader
@@ -76,6 +95,17 @@ export default function GroupLeaderHome() {
       />
 
       {error && <p className="alert-error">{error}</p>}
+
+      {!loading && showMeetingPointGuidance && (
+        <GuidanceBanner
+          onDismiss={() => {
+            dismissIds('leader-meeting-point', groupsNeedingMeetingPoint)
+            setGuidanceRefresh((value) => value + 1)
+          }}
+        >
+          Don&apos;t forget to propose a meeting point so your group knows where to meet.
+        </GuidanceBanner>
+      )}
 
       {loading ? (
         <p className="text-muted">Loading your groups…</p>
