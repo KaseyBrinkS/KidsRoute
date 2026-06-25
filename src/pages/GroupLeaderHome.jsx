@@ -71,7 +71,7 @@ export default function GroupLeaderHome() {
   return (
     <div>
       <PageHeader
-        title="Group Leader"
+        title="My Groups"
         description="Your walk groups for the week — tap a group to start or manage a walk"
       />
 

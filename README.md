@@ -20,6 +20,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 | `/my-kids` | My Kids |
 | `/my-activities` | My Activities |
 | `/groups` | Groups |
+| `/leader` | My Groups |
 | `/groups/:groupId/leader` | Manage Group |
 | `/settings` | Settings |
 

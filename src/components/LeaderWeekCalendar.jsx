@@ -45,7 +45,7 @@ export default function LeaderWeekCalendar({ groupsByDay, kids }) {
           <div key={day} className="kr-card p-4">
             <h3 className="kr-section-title">{day}</h3>
             {dayGroups.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">No leader groups</p>
+              <p className="mt-3 text-sm text-muted">No groups</p>
             ) : (
               <ul className="mt-3 space-y-3">
                 {dayGroups.map((group) => {

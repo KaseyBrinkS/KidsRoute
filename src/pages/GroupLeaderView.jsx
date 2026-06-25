@@ -535,7 +535,7 @@ export default function GroupLeaderView() {
 
       <p className="mt-6 flex flex-wrap gap-4">
         <Link to="/leader" className="text-sm font-semibold text-primary hover:underline">
-          ← All leader groups
+          ← My Groups
         </Link>
         <Link to="/groups" className="text-sm font-semibold text-primary hover:underline">
           Back to Groups
