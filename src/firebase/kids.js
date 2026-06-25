@@ -11,10 +11,12 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { db } from './db'
+import { DEFAULT_SCHOOL, SCHOOLS } from './schools'
 import { syncChildColorKeyToWalkGroups } from './walkGroups'
 
+export { DEFAULT_SCHOOL, SCHOOLS }
+
 export const GRADES = ['K', '1', '2', '3', '4', '5']
-export const SCHOOLS = ['PS 150']
 
 function kidsCollection(userId) {
   return collection(db, 'users', userId, 'children')

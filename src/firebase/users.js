@@ -1,7 +1,9 @@
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from './db'
 
-export const DEFAULT_SCHOOL = 'PS 150'
+import { DEFAULT_SCHOOL } from './schools'
+
+export { DEFAULT_SCHOOL }
 
 export const DEFAULT_USER_SETTINGS = {
   phoneNumber: '',

@@ -1,5 +1,5 @@
 export const APP_DESCRIPTION =
-  'KidsRoute helps PS 150 families coordinate neighborhood walks to after-school activities. Add your children, sign up for their classes, and get matched with nearby families walking the same route on the same days.'
+  'KidsRoute helps NYC families coordinate neighborhood walks to after-school activities. Add your children, sign up for their classes, and get matched with nearby families walking the same route on the same days.'
 
 export const ONBOARDING_STEPS = {
   welcome: 1,

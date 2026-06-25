@@ -4,12 +4,20 @@ import ChildColorDot from '../../components/ChildColorDot'
 import ChildColorPicker from '../../components/ChildColorPicker'
 import OnboardingShell from '../../components/onboarding/OnboardingShell'
 import { OnboardingStepActions } from '../../components/onboarding/OnboardingStepActions'
+import SchoolSelect from '../../components/SchoolSelect'
 import { useAuth } from '../../context/AuthContext'
 import { advanceOnboardingStep } from '../../firebase/users'
 import { addKid, GRADES, SCHOOLS, subscribeToKids } from '../../firebase/kids'
+import { resolveSchoolValue } from '../../firebase/schools'
 import { defaultColorKeyForNewChild } from '../../utils/dates'
 
-const emptyForm = { firstName: '', grade: 'K', school: SCHOOLS[0], colorKey: 0 }
+const emptyForm = {
+  firstName: '',
+  grade: 'K',
+  schoolSelect: SCHOOLS[0],
+  schoolCustom: '',
+  colorKey: 0,
+}
 
 export default function OnboardingKids() {
   const navigate = useNavigate()
@@ -51,7 +59,13 @@ export default function OnboardingKids() {
     setError(null)
     setSubmitting(true)
     try {
-      await addKid(user.uid, form)
+      const school = resolveSchoolValue(form.schoolSelect, form.schoolCustom)
+      await addKid(user.uid, {
+        firstName: form.firstName,
+        grade: form.grade,
+        school,
+        colorKey: form.colorKey,
+      })
       setForm({
         ...emptyForm,
         colorKey: defaultColorKeyForNewChild(
@@ -127,19 +141,18 @@ export default function OnboardingKids() {
             <label htmlFor="school" className="block text-sm font-medium text-[var(--color-text)]">
               School
             </label>
-            <select
-              id="school"
-              name="school"
-              value={form.school}
-              onChange={handleChange}
-              className="input-kr"
-            >
-              {SCHOOLS.map((school) => (
-                <option key={school} value={school}>
-                  {school}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <SchoolSelect
+                selectValue={form.schoolSelect}
+                customValue={form.schoolCustom}
+                onSelectChange={(event) =>
+                  setForm((prev) => ({ ...prev, schoolSelect: event.target.value }))
+                }
+                onCustomChange={(event) =>
+                  setForm((prev) => ({ ...prev, schoolCustom: event.target.value }))
+                }
+              />
+            </div>
           </div>
         </div>
         <ChildColorPicker

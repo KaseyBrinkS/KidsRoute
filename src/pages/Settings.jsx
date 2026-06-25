@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
+import SchoolSelect from '../components/SchoolSelect'
 import { useAuth } from '../context/AuthContext'
 import { logOut } from '../firebase/auth'
 import { syncUserMatchingOptOut } from '../firebase/matching'
+import {
+  formatSchoolDisplay,
+  resolveSchoolValue,
+  schoolCustomValue,
+  schoolSelectValue,
+} from '../firebase/schools'
 import {
   DEFAULT_SCHOOL,
   subscribeToUserProfile,
@@ -70,6 +77,10 @@ export default function Settings() {
   const [error, setError] = useState(null)
   const [phoneSaved, setPhoneSaved] = useState(false)
   const [homeAddressSaved, setHomeAddressSaved] = useState(false)
+  const [schoolSelect, setSchoolSelect] = useState(DEFAULT_SCHOOL)
+  const [schoolCustom, setSchoolCustom] = useState('')
+  const [savingSchool, setSavingSchool] = useState(false)
+  const [schoolSaved, setSchoolSaved] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -82,6 +93,8 @@ export default function Settings() {
         setStreetNumber(data.streetNumber ?? '')
         setStreetName(data.streetName ?? '')
         setZipCode(data.zipCode ?? '')
+        setSchoolSelect(schoolSelectValue(data.school))
+        setSchoolCustom(schoolCustomValue(data.school))
         setLoading(false)
       },
       (err) => {
@@ -153,6 +166,24 @@ export default function Settings() {
       setError(err.message)
     } finally {
       setSavingToggle(null)
+    }
+  }
+
+  async function handleSaveSchool(event) {
+    event.preventDefault()
+    if (!user) return
+
+    setError(null)
+    setSchoolSaved(false)
+    setSavingSchool(true)
+    try {
+      const school = resolveSchoolValue(schoolSelect, schoolCustom)
+      await updateUserProfile(user.uid, { school })
+      setSchoolSaved(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingSchool(false)
     }
   }
 
@@ -357,13 +388,44 @@ export default function Settings() {
             />
           </SettingsSection>
 
-          <SettingsSection title="School">
-            <p className="text-sm font-semibold text-[var(--color-text)]">
-              {loading ? 'Loading…' : (profile?.school ?? DEFAULT_SCHOOL)}
-            </p>
-            <p className="mt-2 text-sm text-gray-500">
-              More schools coming soon. KidsRoute is currently available for PS 150 families.
-            </p>
+          <SettingsSection
+            title="School"
+            description="Used for morning and afternoon building walks — kids must attend this school to join those walks. Activity matching works across all schools."
+          >
+            <form onSubmit={handleSaveSchool}>
+              <label htmlFor="settings-school" className="block text-sm font-medium text-[var(--color-text)]">
+                Your school
+              </label>
+              <div className="mt-1 max-w-md">
+                <SchoolSelect
+                  selectId="settings-school"
+                  customId="settings-school-custom"
+                  selectValue={schoolSelect}
+                  customValue={schoolCustom}
+                  onSelectChange={(event) => {
+                    setSchoolSelect(event.target.value)
+                    setSchoolSaved(false)
+                  }}
+                  onCustomChange={(event) => {
+                    setSchoolCustom(event.target.value)
+                    setSchoolSaved(false)
+                  }}
+                />
+              </div>
+              <div className="mt-4">
+                <button type="submit" disabled={savingSchool || loading} className="btn-primary">
+                  {savingSchool ? 'Saving…' : 'Save school'}
+                </button>
+              </div>
+              {schoolSaved && (
+                <p className="mt-2 text-sm text-green-600">School saved.</p>
+              )}
+              {!loading && profile?.school && (
+                <p className="mt-3 text-sm text-muted">
+                  Current: {formatSchoolDisplay(profile.school)}
+                </p>
+              )}
+            </form>
           </SettingsSection>
 
           <div className="kr-card p-6">

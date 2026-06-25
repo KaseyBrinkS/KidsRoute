@@ -21,14 +21,14 @@ export const BUILDING_WALK_TYPES = {
   morning_to_school: {
     id: 'morning_to_school',
     label: 'Morning Walk to School',
-    route: 'Home → PS 150',
+    route: 'Home → School',
     fixedTime: '08:15',
     scheduleLabel: 'Weekdays · 8:15 AM',
   },
   afternoon_from_school: {
     id: 'afternoon_from_school',
     label: 'Afternoon Walk from School',
-    route: 'PS 150 → Home',
+    route: 'School → Home',
     fixedTime: '14:50',
     scheduleLabel: 'Weekdays · 2:50 PM',
   },

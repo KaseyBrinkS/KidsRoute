@@ -2,17 +2,30 @@ import { useEffect, useState } from 'react'
 import ChildAvatar from '../components/ChildAvatar'
 import ChildColorPicker from '../components/ChildColorPicker'
 import PageHeader from '../components/PageHeader'
+import SchoolSelect from '../components/SchoolSelect'
 import { useAuth } from '../context/AuthContext'
 import { addKid, deleteKid, GRADES, SCHOOLS, subscribeToKids, updateKid } from '../firebase/kids'
+import {
+  resolveSchoolValue,
+  schoolCustomValue,
+  schoolSelectValue,
+} from '../firebase/schools'
 import { defaultColorKeyForNewChild, getChildColorKey } from '../utils/dates'
 
-const emptyForm = { firstName: '', grade: 'K', school: SCHOOLS[0], colorKey: 0 }
+const emptyForm = {
+  firstName: '',
+  grade: 'K',
+  schoolSelect: SCHOOLS[0],
+  schoolCustom: '',
+  colorKey: 0,
+}
 
 function formFromKid(kid, kids) {
   return {
     firstName: kid.firstName,
     grade: kid.grade,
-    school: kid.school,
+    schoolSelect: schoolSelectValue(kid.school),
+    schoolCustom: schoolCustomValue(kid.school),
     colorKey: getChildColorKey(kid, kids),
   }
 }
@@ -64,11 +77,18 @@ export default function MyKids() {
     setError(null)
     setSubmitting(true)
     try {
+      const school = resolveSchoolValue(form.schoolSelect, form.schoolCustom)
+      const payload = {
+        firstName: form.firstName,
+        grade: form.grade,
+        school,
+        colorKey: form.colorKey,
+      }
       if (editingId) {
-        await updateKid(user.uid, editingId, form)
+        await updateKid(user.uid, editingId, payload)
         setEditingId(null)
       } else {
-        await addKid(user.uid, form)
+        await addKid(user.uid, payload)
       }
       setForm(newChildForm(kids))
     } catch (err) {
@@ -157,19 +177,18 @@ export default function MyKids() {
             <label htmlFor="school" className="block text-sm font-medium text-[var(--color-text)]">
               School
             </label>
-            <select
-              id="school"
-              name="school"
-              value={form.school}
-              onChange={handleChange}
-              className={inputClass}
-            >
-              {SCHOOLS.map((school) => (
-                <option key={school} value={school}>
-                  {school}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <SchoolSelect
+                selectValue={form.schoolSelect}
+                customValue={form.schoolCustom}
+                onSelectChange={(event) =>
+                  setForm((prev) => ({ ...prev, schoolSelect: event.target.value }))
+                }
+                onCustomChange={(event) =>
+                  setForm((prev) => ({ ...prev, schoolCustom: event.target.value }))
+                }
+              />
+            </div>
           </div>
           <ChildColorPicker
             value={form.colorKey}
