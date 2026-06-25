@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import ChildColorDot from '../components/ChildColorDot'
+import ChildAvatar from '../components/ChildAvatar'
 import ChildColorPicker from '../components/ChildColorPicker'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
@@ -223,7 +223,7 @@ export default function MyKids() {
               >
                 <div>
                   <p className="inline-flex items-center gap-2 font-semibold text-[var(--color-text)]">
-                    <ChildColorDot child={kid} kids={kids} size="md" />
+                    <ChildAvatar child={kid} kids={kids} size="sm" />
                     {kid.firstName}
                   </p>
                   <p className="mt-1 text-sm text-muted">

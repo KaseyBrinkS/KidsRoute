@@ -16,6 +16,7 @@ import { getActiveSession } from './groupWalk'
 import { MATCH_WINDOW_MINUTES, timesWithinWindow } from './matching'
 import { defaultSessions } from './sessions'
 import { getUserProfile } from './users'
+import { getKid } from './kids'
 
 export const MAX_WALK_GROUP_FAMILIES = 20
 
@@ -37,7 +38,7 @@ function partyScheduleFields(source) {
 }
 
 function buildWalkGroupParty(userId, activityId, activity, startTime, response = 'pending') {
-  return {
+  const party = {
     userId,
     childId: activity.childId,
     childFirstName: activity.childFirstName,
@@ -48,6 +49,8 @@ function buildWalkGroupParty(userId, activityId, activity, startTime, response =
     response,
     ...partyScheduleFields(activity),
   }
+  if (typeof activity.colorKey === 'number') party.colorKey = activity.colorKey
+  return party
 }
 
 function partyKey(party) {
@@ -324,22 +327,37 @@ export async function processActivityWalkGrouping(userId, activityId, activity) 
     return
   }
 
+  let enrichedActivity = { ...activity }
+  if (activity.childId) {
+    const kid = await getKid(userId, activity.childId)
+    if (kid) {
+      enrichedActivity = {
+        ...enrichedActivity,
+        colorKey: kid.colorKey,
+      }
+    }
+  }
+
   debugLog('processActivityWalkGrouping', {
     userId,
     activityId,
-    child: activity.childFirstName,
-    location: activity.location,
-    days: activity.days,
-    startTime: activity.startTime,
+    child: enrichedActivity.childFirstName,
+    location: enrichedActivity.location,
+    days: enrichedActivity.days,
+    startTime: enrichedActivity.startTime,
   })
 
-  if (!Array.isArray(activity.days) || activity.days.length === 0) {
+  if (!Array.isArray(enrichedActivity.days) || enrichedActivity.days.length === 0) {
     debugLog('processActivityWalkGrouping skipped — no days on activity', { userId, activityId })
     return
   }
 
-  for (const day of activity.days) {
-    const existingGroup = await findWalkGroupForActivity(activity.location, day, activity.startTime)
+  for (const day of enrichedActivity.days) {
+    const existingGroup = await findWalkGroupForActivity(
+      enrichedActivity.location,
+      day,
+      enrichedActivity.startTime,
+    )
 
     if (existingGroup) {
       debugLog('found existing walkGroup for day', {
@@ -348,14 +366,22 @@ export async function processActivityWalkGrouping(userId, activityId, activity) 
         status: existingGroup.status,
         participantIds: existingGroup.participantIds,
       })
-      const result = await addFamilyToWalkGroup(existingGroup.id, userId, activityId, activity)
+      const result = await addFamilyToWalkGroup(
+        existingGroup.id,
+        userId,
+        activityId,
+        enrichedActivity,
+      )
       debugLog('addFamilyToWalkGroup result', { day, result })
       if (result === 'full') {
-        await createWalkGroup(userId, activityId, activity, day)
+        await createWalkGroup(userId, activityId, enrichedActivity, day)
       }
     } else {
-      debugLog('no existing walkGroup — creating new group', { day, location: activity.location })
-      await createWalkGroup(userId, activityId, activity, day)
+      debugLog('no existing walkGroup — creating new group', {
+        day,
+        location: enrichedActivity.location,
+      })
+      await createWalkGroup(userId, activityId, enrichedActivity, day)
     }
   }
 }
@@ -466,16 +492,20 @@ export async function respondToWalkGroup(groupId, userId, response, contactPhone
     return
   }
 
-  const parties = (group.parties ?? []).map((party) => {
-    if (party.userId !== userId) return party
-    return {
-      ...party,
-      response: 'accepted',
-      walkStatus: party.walkStatus || 'unconfirmed',
-      contactPhone: contactPhone || 'Not provided',
-      parentName: parentName || 'Parent',
-    }
-  })
+  const parties = await Promise.all(
+    (group.parties ?? []).map(async (party) => {
+      if (party.userId !== userId) return party
+      const kid = party.childId ? await getKid(userId, party.childId) : null
+      return {
+        ...party,
+        response: 'accepted',
+        walkStatus: party.walkStatus || 'unconfirmed',
+        contactPhone: contactPhone || 'Not provided',
+        parentName: parentName || 'Parent',
+        ...(typeof kid?.colorKey === 'number' ? { colorKey: kid.colorKey } : {}),
+      }
+    }),
+  )
 
   let participantIds = group.participantIds ?? []
   if (!participantIds.includes(userId)) {
@@ -508,7 +538,46 @@ export async function respondToWalkGroup(groupId, userId, response, contactPhone
   })
 }
 
+export async function syncChildColorKeyToWalkGroups(userId, childId, colorKey) {
+  if (typeof colorKey !== 'number') return
+
+  const snapshot = await getDocs(
+    query(collection(db, 'walkGroups'), where('participantIds', 'array-contains', userId)),
+  )
+
+  await Promise.all(
+    snapshot.docs.map(async (docSnap) => {
+      const group = docSnap.data()
+      let changed = false
+
+      const parties = (group.parties ?? []).map((party) => {
+        if (party.userId !== userId || party.childId !== childId) return party
+        changed = true
+        return { ...party, colorKey }
+      })
+
+      if (changed) {
+        await updateDoc(docSnap.ref, {
+          parties,
+          updatedAt: serverTimestamp(),
+        })
+      }
+    }),
+  )
+}
+
 export async function syncWalkGroupPartiesForActivity(userId, activityId, activity) {
+  let enrichedActivity = { ...activity }
+  if (activity.childId) {
+    const kid = await getKid(userId, activity.childId)
+    if (kid) {
+      enrichedActivity = {
+        ...enrichedActivity,
+        colorKey: kid.colorKey,
+      }
+    }
+  }
+
   const snapshot = await getDocs(
     query(collection(db, 'walkGroups'), where('participantIds', 'array-contains', userId)),
   )
@@ -521,14 +590,16 @@ export async function syncWalkGroupPartiesForActivity(userId, activityId, activi
       const parties = (group.parties ?? []).map((party) => {
         if (party.userId !== userId || party.activityId !== activityId) return party
         changed = true
-        return {
+        const next = {
           ...party,
-          childId: activity.childId,
-          childFirstName: activity.childFirstName,
-          startTime: activity.startTime,
-          grade: activity.grade,
-          ...partyScheduleFields(activity),
+          childId: enrichedActivity.childId,
+          childFirstName: enrichedActivity.childFirstName,
+          startTime: enrichedActivity.startTime,
+          grade: enrichedActivity.grade,
+          ...partyScheduleFields(enrichedActivity),
         }
+        if (typeof enrichedActivity.colorKey === 'number') next.colorKey = enrichedActivity.colorKey
+        return next
       })
 
       if (changed) {

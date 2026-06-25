@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -10,12 +11,19 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { db } from './db'
+import { syncChildColorKeyToWalkGroups } from './walkGroups'
 
 export const GRADES = ['K', '1', '2', '3', '4', '5']
 export const SCHOOLS = ['PS 150']
 
 function kidsCollection(userId) {
   return collection(db, 'users', userId, 'children')
+}
+
+export async function getKid(userId, kidId) {
+  const snapshot = await getDoc(doc(db, 'users', userId, 'children', kidId))
+  if (!snapshot.exists()) return null
+  return { id: snapshot.id, ...snapshot.data() }
 }
 
 export function subscribeToKids(userId, onData, onError) {
@@ -46,7 +54,7 @@ export function addKid(userId, { firstName, grade, school, colorKey }) {
   return addDoc(kidsCollection(userId), payload)
 }
 
-export function updateKid(userId, kidId, { firstName, grade, school, colorKey }) {
+export async function updateKid(userId, kidId, { firstName, grade, school, colorKey }) {
   const payload = {
     firstName: firstName.trim(),
     grade,
@@ -56,7 +64,11 @@ export function updateKid(userId, kidId, { firstName, grade, school, colorKey })
   if (typeof colorKey === 'number') {
     payload.colorKey = colorKey
   }
-  return updateDoc(doc(db, 'users', userId, 'children', kidId), payload)
+  await updateDoc(doc(db, 'users', userId, 'children', kidId), payload)
+
+  if (typeof colorKey === 'number') {
+    await syncChildColorKeyToWalkGroups(userId, kidId, colorKey)
+  }
 }
 
 export function deleteKid(userId, kidId) {

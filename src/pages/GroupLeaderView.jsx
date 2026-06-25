@@ -24,9 +24,11 @@ import {
   verifyDropOffSaved,
 } from '../firebase/groupWalk'
 import { walkGroupIsReadyForWalk, resolveWalkGroupParticipantIds, isWalkGroupDocument } from '../firebase/walkGroups'
+import { subscribeToKids } from '../firebase/kids'
 import { isUserActiveLeader } from '../firebase/groupLeaders'
 import { formatHistoryTime } from '../firebase/walkHistory'
 import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
+import ChildAvatar, { childAvatarPropsFromParty } from '../components/ChildAvatar'
 import GroupNote from '../components/GroupNote'
 import GuidanceBanner from '../components/GuidanceBanner'
 import {
@@ -48,10 +50,16 @@ export default function GroupLeaderView() {
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
   const [actionId, setActionId] = useState(null)
+  const [kids, setKids] = useState([])
   const preWalkGuidanceKey = `manage-pre-walk:${groupId}`
   const [hidePreWalkGuidance, setHidePreWalkGuidance] = useState(() =>
     isGuidanceDismissed(preWalkGuidanceKey),
   )
+
+  useEffect(() => {
+    if (!user) return undefined
+    return subscribeToKids(user.uid, setKids)
+  }, [user])
 
   useEffect(() => {
     if (!successMessage) return undefined
@@ -519,17 +527,25 @@ export default function GroupLeaderView() {
             <li key={childKey} className="px-5 py-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-[var(--color-text)]">{child.childFirstName}</p>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.style}`}>
-                      {status.label}
-                    </span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <ChildAvatar
+                      {...childAvatarPropsFromParty(child, kids)}
+                      size="md"
+                    />
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-[var(--color-text)]">{child.childFirstName}</p>
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.style}`}>
+                          {status.label}
+                        </span>
+                      </div>
+                      <p className="mt-1.5 text-sm text-muted">
+                        {child.parentName} · {child.contactPhone}
+                      </p>
+                    </div>
                   </div>
-                  <p className="mt-1.5 text-sm text-muted">
-                    {child.parentName} · {child.contactPhone}
-                  </p>
                   {child.pickedUpAt && (
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="mt-2 text-xs text-muted sm:ml-[3.25rem]">
                       Arrived {formatHistoryTime(child.pickedUpAt)}
                       {child.droppedOffAt && (
                         <> · Dropped off {formatHistoryTime(child.droppedOffAt)}</>

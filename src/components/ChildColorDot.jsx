@@ -1,4 +1,4 @@
-import { getChildColor, getChildColorById } from '../utils/dates'
+import ChildAvatar from './ChildAvatar'
 
 export default function ChildColorDot({
   child,
@@ -8,16 +8,20 @@ export default function ChildColorDot({
   size = 'sm',
   className = '',
 }) {
-  const color = child
-    ? getChildColor(child, kids)
-    : getChildColorById(childId, kids, fallbackChildIds)
-  const sizeClass = size === 'md' ? 'h-2.5 w-2.5' : 'h-2 w-2'
+  const kid = child ?? (kids ?? []).find((entry) => entry.id === childId)
+  const resolvedId = kid?.id ?? childId
+  const firstName = kid?.firstName ?? '?'
+  const colorKey = kid?.colorKey
 
   return (
-    <span
-      className={`inline-block shrink-0 rounded-full ${sizeClass} ${className}`}
-      style={{ backgroundColor: color.swatch ?? color.border }}
-      aria-hidden="true"
+    <ChildAvatar
+      firstName={firstName}
+      child={kid}
+      childId={resolvedId}
+      kids={kids}
+      colorKey={colorKey}
+      size={size === 'md' ? 'sm' : 'sm'}
+      className={className}
     />
   )
 }
@@ -35,11 +39,13 @@ export function ChildNameWithDot({
 
   return (
     <span className={`inline-flex items-center gap-1.5 ${className}`}>
-      <ChildColorDot
+      <ChildAvatar
+        firstName={name ?? kid?.firstName}
         child={kid}
         childId={resolvedId}
         kids={kids}
-        fallbackChildIds={fallbackChildIds}
+        colorKey={kid?.colorKey}
+        size="sm"
       />
       <span>{name ?? kid?.firstName ?? 'Child'}</span>
     </span>
