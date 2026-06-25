@@ -313,7 +313,7 @@ export default function GroupLeaderView() {
   if (loading) {
     return (
       <div>
-        <PageHeader title="Group Leader View" description="Manage your walking group" />
+        <PageHeader title="Manage Group" description="Manage your walking group" />
         <p className="text-muted">Loading group…</p>
       </div>
     )
@@ -324,7 +324,7 @@ export default function GroupLeaderView() {
   if (!hasAccess) {
     return (
       <div>
-        <PageHeader title="Group Leader View" description="Manage your walking group" />
+        <PageHeader title="Manage Group" description="Manage your walking group" />
         <p className="text-muted">
           Group not found or you don&apos;t have access.{' '}
           <Link to="/groups" className="font-semibold text-primary hover:underline">
@@ -352,7 +352,7 @@ export default function GroupLeaderView() {
   return (
     <div>
       <PageHeader
-        title="Group Leader View"
+        title="Manage Group"
         description="Manage your walking group"
       />
 

@@ -79,7 +79,7 @@ export default function LeaderWeekCalendar({ groupsByDay, kids }) {
                           </span>
                         </div>
                         <p className="mt-3 text-xs font-semibold underline opacity-90">
-                          Open leader view →
+                          Manage group →
                         </p>
                       </Link>
                     </li>

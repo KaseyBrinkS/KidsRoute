@@ -377,7 +377,7 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
       </div>
 
       <Link to={`/groups/${group.id}/leader`} className="btn-leader">
-        Group Leader View
+        Manage Group
       </Link>
 
       {!walkInProgress && (
@@ -492,7 +492,7 @@ function BuildingWalkGroupCard({ group, userId, onLeave }) {
 
       {group.status === 'connected' && !partnerLeft && (
         <Link to={`/groups/${group.id}/leader`} className="btn-leader">
-          Group Leader View
+          Manage Group
         </Link>
       )}
 

@@ -58,7 +58,7 @@ export default function GroupsWeekCalendar({ groupsByDay, activeSessions, kids =
                         </span>
                       </div>
                       <Link to={`/groups/${group.id}/leader`} className="btn-leader mt-3">
-                        Group Leader View
+                        Manage Group
                       </Link>
                     </li>
                   )
