@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { ChildNameWithDot } from './ChildColorDot'
 import ConfirmedMeetingPoint from './ConfirmedMeetingPoint'
 import { formatGroupTimes } from '../firebase/groups'
-import { formatWalkGroupDetails, getPartiesForUser } from '../firebase/walkGroups'
+import { formatWalkGroupDetails, getPartiesForUser, isWalkGroupDocument } from '../firebase/walkGroups'
 import { CALENDAR_WEEKDAYS, getChildColorById } from '../utils/dates'
 import { walkStatusBadgeClass, walkStatusLabel } from '../utils/walkStatus'
 
@@ -74,7 +74,9 @@ export default function LeaderWeekCalendar({ groupsByDay, kids }) {
                               {formatWalkGroupDetails(group)}
                             </p>
                             <p className="mt-0.5 text-xs opacity-80">{formatGroupTimes(group)}</p>
+                          {isWalkGroupDocument(group) && (
                             <ConfirmedMeetingPoint group={group} compact />
+                          )}
                           </div>
                           <span className={walkStatusBadgeClass(status)}>
                             {walkStatusLabel(status)}

@@ -23,7 +23,7 @@ import {
   subscribeToWalkSessionChildren,
   verifyDropOffSaved,
 } from '../firebase/groupWalk'
-import { walkGroupIsReadyForWalk, resolveWalkGroupParticipantIds } from '../firebase/walkGroups'
+import { walkGroupIsReadyForWalk, resolveWalkGroupParticipantIds, isWalkGroupDocument } from '../firebase/walkGroups'
 import { isUserActiveLeader } from '../firebase/groupLeaders'
 import { formatHistoryTime } from '../firebase/walkHistory'
 import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
@@ -113,7 +113,7 @@ export default function GroupLeaderView() {
   }, [activeSession?.id])
 
   const isBuildingWalk = isBuildingWalkMatch(group)
-  const isWalkGroup = group?.source === 'walkGroup'
+  const isWalkGroup = isWalkGroupDocument(group)
   const isParticipant =
     resolveWalkGroupParticipantIds(group ?? {}).includes(user?.uid)
     || group?.parties?.some((party) => party.userId === user?.uid)

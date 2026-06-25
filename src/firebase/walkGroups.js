@@ -129,6 +129,17 @@ export function countWalkGroupFamilies(group) {
   return new Set(getNonDeclinedParties(group).map((party) => party.userId)).size
 }
 
+/** True for documents from the walkGroups collection (with or without normalized source field). */
+export function isWalkGroupDocument(group) {
+  if (!group) return false
+  if (group.source === 'walkGroup') return true
+  if (group.matchType || group.buildingWalkType) return false
+  return (
+    group.groupType === 'location_window'
+    || (Array.isArray(group.parties) && Boolean(group.day) && Boolean(group.location))
+  )
+}
+
 /** True when the group has children from at least two different families (non-declined). */
 export function walkGroupHasMultipleFamilies(group) {
   return countWalkGroupFamilies(group) >= 2
@@ -370,7 +381,7 @@ export function subscribeToWalkGroups(userId, onData, onError) {
     groupsQuery,
     (snapshot) => {
       const groups = snapshot.docs
-        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        .map((docSnap) => ({ id: docSnap.id, source: 'walkGroup', ...docSnap.data() }))
         .sort((a, b) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0))
 
       debugLog('subscribeToWalkGroups — snapshot', {

@@ -25,6 +25,7 @@ import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
 import MeetingPointControls from '../components/MeetingPointControls'
 import {
   getPartiesForUser,
+  isWalkGroupDocument,
   leaveWalkGroup,
   subscribeToWalkGroups,
   walkGroupIsVisibleOnGroupsPage,
@@ -370,17 +371,6 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
             </p>
           )}
 
-          {group.source === 'walkGroup' && (
-            <div className="mt-3 space-y-3">
-              <ConfirmedMeetingPoint group={group} />
-              <MeetingPointControls
-                group={group}
-                userId={userId}
-                proposerName={myParties[0]?.parentName || 'A parent'}
-              />
-            </div>
-          )}
-
           <GroupLeaderControls group={group} userId={userId} />
         </div>
 
@@ -389,7 +379,18 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
         </span>
       </div>
 
-      <Link to={`/groups/${group.id}/leader`} className="btn-leader">
+      {isWalkGroupDocument(group) && (
+        <div className="mt-4 space-y-3">
+          <ConfirmedMeetingPoint group={group} />
+          <MeetingPointControls
+            group={group}
+            userId={userId}
+            proposerName={myParties[0]?.parentName || 'A parent'}
+          />
+        </div>
+      )}
+
+      <Link to={`/groups/${group.id}/leader`} className="btn-leader mt-4">
         Manage Group
       </Link>
 
@@ -703,6 +704,7 @@ export default function Groups() {
                 groupsByDay={groupsByDay}
                 activeSessions={activeSessions}
                 kids={kids}
+                userId={user.uid}
               />
             </div>
           ) : (

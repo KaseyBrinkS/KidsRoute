@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './db'
 import { getApprovalFamilyIds } from './groupLeaders'
-import { countWalkGroupFamilies } from './walkGroups'
+import { countWalkGroupFamilies, isWalkGroupDocument } from './walkGroups'
 
 function generateId() {
   return crypto.randomUUID()
@@ -51,9 +51,26 @@ function isFullyApproved(group, proposal) {
 }
 
 export function walkGroupCanProposeMeetingPoint(group) {
-  if (!group || group.source !== 'walkGroup') return false
+  if (!isWalkGroupDocument(group)) return false
   if (group.status !== 'active') return false
   return countWalkGroupFamilies(group) >= 2
+}
+
+export function shouldShowMeetingPointUI(group, userId) {
+  if (!isWalkGroupDocument(group) || !userId) return false
+
+  const familyIds = getApprovalFamilyIds(group)
+  if (!familyIds.includes(userId)) return false
+
+  if (getConfirmedMeetingPoint(group)) return true
+  if (getPendingMeetingPointForUser(group, userId).length > 0) return true
+  if (
+    getPendingMeetingPointProposals(group).some((proposal) => proposal.proposedBy === userId)
+  ) {
+    return true
+  }
+
+  return walkGroupCanProposeMeetingPoint(group)
 }
 
 export function getPendingMeetingPointForUser(group, userId) {

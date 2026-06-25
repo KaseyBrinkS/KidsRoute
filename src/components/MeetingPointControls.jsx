@@ -6,6 +6,7 @@ import {
   getPendingMeetingPointProposals,
   proposeMeetingPoint,
   respondToMeetingPointProposal,
+  shouldShowMeetingPointUI,
   walkGroupCanProposeMeetingPoint,
 } from '../firebase/meetingPoints'
 
@@ -16,6 +17,7 @@ export default function MeetingPointControls({ group, userId, proposerName = 'A 
   const [error, setError] = useState(null)
 
   const canPropose = walkGroupCanProposeMeetingPoint(group)
+  const showSection = shouldShowMeetingPointUI(group, userId)
   const confirmed = getConfirmedMeetingPoint(group)
   const pendingForUser = getPendingMeetingPointForUser(group, userId)
   const pendingProposals = getPendingMeetingPointProposals(group)
@@ -48,7 +50,7 @@ export default function MeetingPointControls({ group, userId, proposerName = 'A 
     }
   }
 
-  if (!canPropose) return null
+  if (!showSection) return null
 
   return (
     <div className="mt-4 rounded-xl border border-border bg-bg-warm p-4">
@@ -93,7 +95,7 @@ export default function MeetingPointControls({ group, userId, proposerName = 'A 
         </div>
       )}
 
-      {!showForm && !userPendingProposal && (
+      {!showForm && !userPendingProposal && canPropose && (
         <div className="mt-3">
           <button
             type="button"

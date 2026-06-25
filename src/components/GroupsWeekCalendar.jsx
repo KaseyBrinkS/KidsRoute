@@ -1,13 +1,21 @@
 import { Link } from 'react-router-dom'
 import { ChildNameWithDot } from './ChildColorDot'
+import ConfirmedMeetingPoint from './ConfirmedMeetingPoint'
+import MeetingPointControls from './MeetingPointControls'
 import { WEEKDAYS, getChildColorById } from '../utils/dates'
 import { formatGroupTimes } from '../firebase/groups'
+import { getPartiesForUser, isWalkGroupDocument } from '../firebase/walkGroups'
 import {
   walkStatusBadgeClass,
   walkStatusLabel,
 } from '../utils/walkStatus'
 
-export default function GroupsWeekCalendar({ groupsByDay, activeSessions, kids = [] }) {
+export default function GroupsWeekCalendar({
+  groupsByDay,
+  activeSessions,
+  kids = [],
+  userId,
+}) {
   function cardStatus(group) {
     if (activeSessions[group.id]) return 'in progress'
     return group._displayStatus ?? 'upcoming'
@@ -27,9 +35,10 @@ export default function GroupsWeekCalendar({ groupsByDay, activeSessions, kids =
                 {dayGroups.map((group) => {
                   const status = cardStatus(group)
                   const color = getChildColorById(group._childId, kids)
+                  const myParties = userId ? getPartiesForUser(group, userId) : []
                   return (
                     <li
-                      key={group.id}
+                      key={`${group.id}_${group._childId ?? ''}`}
                       className="rounded-xl border p-3"
                       style={{
                         background: color.bg,
@@ -46,17 +55,27 @@ export default function GroupsWeekCalendar({ groupsByDay, activeSessions, kids =
                               kids={kids}
                             />
                           </p>
-                          <p className="mt-0.5 truncate text-xs text-muted">
+                          <p className="mt-0.5 truncate text-xs opacity-80">
                             {group.location}
                           </p>
-                          <p className="mt-0.5 text-xs text-muted">
+                          <p className="mt-0.5 text-xs opacity-80">
                             {formatGroupTimes(group)}
                           </p>
+                          {isWalkGroupDocument(group) && (
+                            <ConfirmedMeetingPoint group={group} compact />
+                          )}
                         </div>
                         <span className={walkStatusBadgeClass(status)}>
                           {walkStatusLabel(status)}
                         </span>
                       </div>
+                      {isWalkGroupDocument(group) && userId && (
+                        <MeetingPointControls
+                          group={group}
+                          userId={userId}
+                          proposerName={myParties[0]?.parentName || 'A parent'}
+                        />
+                      )}
                       <Link to={`/groups/${group.id}/leader`} className="btn-leader mt-3">
                         Manage Group
                       </Link>
