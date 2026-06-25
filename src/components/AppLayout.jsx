@@ -10,13 +10,13 @@ const navLinks = [
   { to: '/my-kids', label: 'My Kids', mobileLabel: 'Kids' },
   { to: '/my-activities', label: 'Activities', mobileLabel: 'Activities' },
   { to: '/groups', label: 'Groups', mobileLabel: 'Groups' },
-  { to: '/leader', label: 'My Groups', mobileLabel: 'My Groups' },
+  { to: '/leader', label: 'Leader', mobileLabel: 'Leader' },
   { to: '/history', label: 'History', mobileLabel: 'History' },
   { to: '/settings', label: 'Settings', mobileLabel: 'Settings' },
 ]
 
 const externalLeaderLinks = [
-  { to: '/leader', label: 'My Groups', mobileLabel: 'My Groups' },
+  { to: '/leader', label: 'Leader', mobileLabel: 'Leader' },
   { to: '/settings', label: 'Settings', mobileLabel: 'Settings' },
 ]
 
