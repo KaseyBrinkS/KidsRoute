@@ -1,5 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#4F46E5"/>
-  <path d="M8 22 L16 8 L24 22 Z" stroke="white" stroke-width="2" fill="none" stroke-linejoin="round"/>
-  <circle cx="16" cy="18" r="2" fill="white"/>
+  <defs>
+    <linearGradient id="favicon-bg" x1="8%" y1="6%" x2="92%" y2="94%">
+      <stop offset="0%" stop-color="#4f6f62" />
+      <stop offset="100%" stop-color="#a87f72" />
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="6" fill="url(#favicon-bg)" />
+  <g
+    transform="translate(4.5 7) scale(0.2)"
+    stroke="#ffffff"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <circle cx="36" cy="17" r="10" />
+    <line x1="36" y1="27" x2="36" y2="56" />
+    <line x1="36" y1="38" x2="20" y2="50" />
+    <line x1="36" y1="38" x2="52" y2="38" />
+    <line x1="36" y1="56" x2="26" y2="80" />
+    <line x1="36" y1="56" x2="48" y2="78" />
+    <circle cx="84" cy="17" r="10" />
+    <line x1="84" y1="27" x2="84" y2="56" />
+    <line x1="84" y1="38" x2="100" y2="50" />
+    <line x1="84" y1="38" x2="68" y2="38" />
+    <line x1="52" y1="38" x2="68" y2="38" stroke-width="7" />
+    <line x1="84" y1="56" x2="94" y2="80" />
+    <line x1="84" y1="56" x2="72" y2="78" />
+  </g>
 </svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="kidsroute-bg" x1="8%" y1="6%" x2="92%" y2="94%">
+      <stop offset="0%" stop-color="#4f6f62" />
+      <stop offset="45%" stop-color="#5c7d6e" />
+      <stop offset="100%" stop-color="#a87f72" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#kidsroute-bg)" />
+  <g
+    transform="translate(106 138) scale(2.5)"
+    stroke="#ffffff"
+    stroke-width="5.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <circle cx="36" cy="17" r="10" />
+    <line x1="36" y1="27" x2="36" y2="56" />
+    <line x1="36" y1="38" x2="20" y2="50" />
+    <line x1="36" y1="38" x2="52" y2="38" />
+    <line x1="36" y1="56" x2="26" y2="80" />
+    <line x1="36" y1="56" x2="48" y2="78" />
+    <circle cx="84" cy="17" r="10" />
+    <line x1="84" y1="27" x2="84" y2="56" />
+    <line x1="84" y1="38" x2="100" y2="50" />
+    <line x1="84" y1="38" x2="68" y2="38" />
+    <line x1="52" y1="38" x2="68" y2="38" stroke-width="6.5" />
+    <line x1="84" y1="56" x2="94" y2="80" />
+    <line x1="84" y1="56" x2="72" y2="78" />
+  </g>
+</svg>
