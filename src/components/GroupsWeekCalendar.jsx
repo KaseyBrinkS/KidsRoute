@@ -28,8 +28,8 @@ export default function GroupsWeekCalendar({
       {WEEKDAYS.map((day) => {
         const dayGroups = groupsByDay[day] ?? []
         return (
-          <div key={day} className="kr-card p-4">
-            <h3 className="kr-section-title">{day}</h3>
+          <div key={day} className="kr-card-subsection p-4">
+            <h3 className="font-heading text-sm font-semibold text-primary">{day}</h3>
             {dayGroups.length === 0 ? (
               <p className="mt-3 text-sm text-muted">No groups</p>
             ) : (
@@ -87,10 +87,12 @@ export default function GroupsWeekCalendar({
                           proposerName={myParties[0]?.parentName || 'A parent'}
                         />
                       )}
-                      <GroupChatButton group={group} userId={userId} />
-                      <Link to={`/groups/${group.id}/leader`} className="btn-leader mt-2">
-                        Manage Group
-                      </Link>
+                      <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
+                        <GroupChatButton group={group} userId={userId} className="mt-0" />
+                        <Link to={`/groups/${group.id}/leader`} className="btn-manage-group mt-0">
+                          Manage Group
+                        </Link>
+                      </div>
                     </li>
                   )
                 })}

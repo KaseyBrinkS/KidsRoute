@@ -262,96 +262,111 @@ function PartyAbsenceControls({ party, group, userId, absences, walkInProgress }
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-border bg-bg-warm p-3">
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setMode('single')}
-          className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
-            mode === 'single' ? 'bg-primary text-white' : 'btn-secondary py-1'
-          }`}
+    <div className="kr-card-subsection">
+      <h4 className="font-heading text-sm font-semibold text-primary">Mark absent</h4>
+      <p className="mt-1 text-xs leading-relaxed text-muted">
+        Mark the days {party.childFirstName} is absent from the group walk ahead of time.
+      </p>
+
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="min-w-0 flex-1">
+          {mode === 'single' ? (
+            <select
+              value={singleDate}
+              onChange={(event) => setSingleDate(event.target.value)}
+              className="select-kr w-full text-sm"
+              aria-label="Absent date"
+            >
+              {scheduledDates.map((dateKey) => (
+                <option key={dateKey} value={dateKey}>
+                  {formatDisplayDate(dateKey)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={rangeStart}
+                onChange={(event) => setRangeStart(event.target.value)}
+                className="select-kr min-w-0 flex-1 text-sm"
+                aria-label="Range start"
+              >
+                {scheduledDates.map((dateKey) => (
+                  <option key={`start-${dateKey}`} value={dateKey}>
+                    {formatDisplayDate(dateKey)}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-muted">to</span>
+              <select
+                value={rangeEnd}
+                onChange={(event) => setRangeEnd(event.target.value)}
+                className="select-kr min-w-0 flex-1 text-sm"
+                aria-label="Range end"
+              >
+                {scheduledDates.map((dateKey) => (
+                  <option key={`end-${dateKey}`} value={dateKey}>
+                    {formatDisplayDate(dateKey)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleMarkAbsent}
+            disabled={busy}
+            className="btn-primary mt-2.5 w-full py-2 text-xs sm:w-auto"
+          >
+            {busy ? 'Saving…' : 'Mark absent'}
+          </button>
+        </div>
+
+        <div
+          className="flex shrink-0 flex-row gap-1 sm:flex-col"
+          role="tablist"
+          aria-label="Absence date type"
         >
-          Single date
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('range')}
-          className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
-            mode === 'range' ? 'bg-primary text-white' : 'btn-secondary py-1'
-          }`}
-        >
-          Date range
-        </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'single'}
+            onClick={() => setMode('single')}
+            className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+              mode === 'single'
+                ? 'bg-primary text-white shadow-sm'
+                : 'border border-border bg-surface text-muted hover:border-border-warm hover:text-primary'
+            }`}
+          >
+            Single date
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'range'}
+            onClick={() => setMode('range')}
+            className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+              mode === 'range'
+                ? 'bg-primary text-white shadow-sm'
+                : 'border border-border bg-surface text-muted hover:border-border-warm hover:text-primary'
+            }`}
+          >
+            Date range
+          </button>
+        </div>
       </div>
 
-      {mode === 'single' ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <select
-            value={singleDate}
-            onChange={(event) => setSingleDate(event.target.value)}
-            className="select-kr text-xs"
-          >
-            {scheduledDates.map((dateKey) => (
-              <option key={dateKey} value={dateKey}>
-                {formatDisplayDate(dateKey)}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={handleMarkAbsent}
-            disabled={busy}
-            className="btn-secondary py-1 text-xs"
-          >
-            {busy ? 'Saving…' : 'Mark absent'}
-          </button>
-        </div>
-      ) : (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <select
-            value={rangeStart}
-            onChange={(event) => setRangeStart(event.target.value)}
-            className="select-kr text-xs"
-            aria-label="Range start"
-          >
-            {scheduledDates.map((dateKey) => (
-              <option key={`start-${dateKey}`} value={dateKey}>
-                {formatDisplayDate(dateKey)}
-              </option>
-            ))}
-          </select>
-          <span className="text-xs text-muted">to</span>
-          <select
-            value={rangeEnd}
-            onChange={(event) => setRangeEnd(event.target.value)}
-            className="select-kr text-xs"
-            aria-label="Range end"
-          >
-            {scheduledDates.map((dateKey) => (
-              <option key={`end-${dateKey}`} value={dateKey}>
-                {formatDisplayDate(dateKey)}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={handleMarkAbsent}
-            disabled={busy}
-            className="btn-secondary py-1 text-xs"
-          >
-            {busy ? 'Saving…' : 'Mark absent'}
-          </button>
-        </div>
-      )}
-
       {upcomingAbsences.length > 0 && (
-        <ul className="mt-3 space-y-1">
+        <ul className="mt-4 space-y-2 border-t border-border pt-3">
           {upcomingAbsences.map((absence) => (
             <li
               key={absence.id}
-              className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-bg-warm px-3 py-2 text-xs text-muted"
             >
-              <span>Absent: {formatAbsenceLabel(absence)}</span>
+              <span>
+                <span className="font-semibold text-[var(--color-text)]">Scheduled absent:</span>{' '}
+                {formatAbsenceLabel(absence)}
+              </span>
               <button
                 type="button"
                 onClick={() => handleCancelAbsence(absence.id)}
@@ -403,7 +418,7 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
   }
 
   return (
-    <div className={`p-5 ${walkStatusCardClass(displayWalkStatus)}`}>
+    <div className={`p-5 shadow-[var(--shadow-kr-lg)] ${walkStatusCardClass(displayWalkStatus)}`}>
       {isWalkGroupDocument(group) && (
         <GroupNote
           group={group}
@@ -413,40 +428,15 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
         />
       )}
 
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-[var(--color-text)]">
+          <p className="font-heading text-lg font-semibold text-[var(--color-text)]">
             {group._childName ?? formatGroupChildNames(group)}
           </p>
-          <p className="mt-1 text-sm text-muted">{group.location}</p>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-sm font-medium text-primary">{group.location}</p>
+          <p className="mt-0.5 text-sm text-muted">
             {group.day} · {formatGroupTimes(group)}
           </p>
-
-          {!walkInProgress && myParties.length > 0 && (
-            <div className="space-y-2">
-              {myParties
-                .filter((party) => !group._childName || party.childFirstName === group._childName)
-                .map((party) => (
-                  <PartyAbsenceControls
-                    key={party.childId}
-                    party={party}
-                    group={group}
-                    userId={userId}
-                    absences={absences}
-                    walkInProgress={walkInProgress}
-                  />
-                ))}
-            </div>
-          )}
-
-          {walkInProgress && (
-            <p className="mt-3 text-xs text-muted">
-              Absences can be updated again after today&apos;s walk is completed.
-            </p>
-          )}
-
-          <GroupLeaderControls group={group} userId={userId} />
         </div>
 
         <span className={walkStatusBadgeClass(displayWalkStatus)}>
@@ -454,8 +444,33 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
         </span>
       </div>
 
+      {!walkInProgress && myParties.length > 0 && (
+        <div className="space-y-3 pt-4">
+          {myParties
+            .filter((party) => !group._childName || party.childFirstName === group._childName)
+            .map((party) => (
+              <PartyAbsenceControls
+                key={party.childId}
+                party={party}
+                group={group}
+                userId={userId}
+                absences={absences}
+                walkInProgress={walkInProgress}
+              />
+            ))}
+        </div>
+      )}
+
+      {walkInProgress && (
+        <p className="mt-4 rounded-xl bg-bg-warm px-3 py-2 text-xs text-muted">
+          Absences can be updated again after today&apos;s walk is completed.
+        </p>
+      )}
+
+      <GroupLeaderControls group={group} userId={userId} />
+
       {isWalkGroupDocument(group) && (
-        <div className="mt-4 space-y-3">
+        <div className="kr-card-subsection mt-4 space-y-3">
           <ConfirmedMeetingPoint group={group} />
           <MeetingPointControls
             group={group}
@@ -465,11 +480,13 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
         </div>
       )}
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <GroupChatButton group={group} userId={userId} className="mt-0 sm:flex-1" />
-        <Link to={`/groups/${group.id}/leader`} className="btn-leader mt-0 sm:flex-1">
-          Manage Group
-        </Link>
+      <div className="kr-card-actions mt-5">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <GroupChatButton group={group} userId={userId} className="mt-0 sm:flex-1" />
+          <Link to={`/groups/${group.id}/leader`} className="btn-manage-group mt-0 sm:flex-1">
+            Manage Group
+          </Link>
+        </div>
       </div>
 
       {!walkInProgress && (
@@ -477,7 +494,7 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
           type="button"
           onClick={handleLeaveGroup}
           disabled={leaving}
-          className="btn-danger mt-3"
+          className="btn-danger mt-4 w-full"
         >
           {leaving ? 'Leaving…' : 'Leave group'}
         </button>
@@ -583,7 +600,7 @@ function BuildingWalkGroupCard({ group, userId, onLeave }) {
       </div>
 
       {group.status === 'connected' && !partnerLeft && (
-        <Link to={`/groups/${group.id}/leader`} className="btn-leader">
+        <Link to={`/groups/${group.id}/leader`} className="btn-manage-group">
           Manage Group
         </Link>
       )}
@@ -833,8 +850,9 @@ export default function Groups() {
       )}
 
       <div className="space-y-8">
-        <section>
-          <h2 className="kr-section-title">Walk groups</h2>
+        <section className="kr-groups-section">
+          <h2 className="font-heading text-lg font-semibold text-primary">Walk groups</h2>
+          <p className="kr-section-desc">Activity groups you&apos;ve joined with other families.</p>
 
           {activityGroupsLoading ? (
             <p className="mt-4 text-muted">Loading activity groups…</p>
@@ -877,7 +895,7 @@ export default function Groups() {
               )}
             </div>
           ) : (
-            <div className="mt-4 space-y-4">
+            <div className="mt-5 space-y-5">
               {allGroupsList.map((group) => (
                 <GroupCard
                   key={group.id}
@@ -890,14 +908,14 @@ export default function Groups() {
           )}
         </section>
 
-        <section>
-          <h2 className="kr-section-title">Building walks</h2>
+        <section className="kr-groups-section">
+          <h2 className="font-heading text-lg font-semibold text-primary">Building walks</h2>
           <p className="kr-section-desc">
             Walk with neighbors at your building. Set your home address in Settings, then join
             each walk type separately.
           </p>
 
-          <div className="kr-card mt-4 overflow-hidden">
+          <div className="kr-card-subsection mt-4 overflow-hidden p-0">
             <BuildingWalkTypeRow
               walkType="morning_to_school"
               config={BUILDING_WALK_TYPES.morning_to_school}

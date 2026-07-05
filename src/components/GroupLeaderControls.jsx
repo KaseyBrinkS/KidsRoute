@@ -12,6 +12,52 @@ import {
   volunteerAsParentLeader,
 } from '../firebase/groupLeaders'
 
+function LeaderPersonIcon({ className = '' }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+      />
+      <circle cx="9" cy="7" r="4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 8v6M22 11h-6" />
+    </svg>
+  )
+}
+
+function AddExternalLeaderCard({ onClick, disabled }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full rounded-2xl border-2 border-dashed border-primary/30 bg-surface p-4 text-left transition-all hover:border-primary/60 hover:bg-bg-warm disabled:opacity-50"
+    >
+      <div className="flex gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <LeaderPersonIcon className="h-6 w-6" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-heading text-sm font-semibold text-primary">Add group leader</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted">
+            Add a nanny, older child, or trusted chaperone to lead this group. All families in the
+            group must approve before they are accepted. We recommend messaging the group first to
+            introduce them.
+          </p>
+        </div>
+      </div>
+    </button>
+  )
+}
+
 export default function GroupLeaderControls({ group, userId }) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [name, setName] = useState('')
@@ -78,11 +124,14 @@ export default function GroupLeaderControls({ group, userId }) {
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-border bg-bg-warm p-4">
-      <p className="text-sm font-semibold text-primary">Group leaders</p>
+    <div className="kr-card-subsection mt-4">
+      <p className="font-heading text-sm font-semibold text-primary">Group leaders</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted">
+        Parent volunteers or approved chaperones who can start and manage walks for this group.
+      </p>
 
       {activeLeaders.length > 0 && (
-        <ul className="mt-3 space-y-2">
+        <ul className="mt-3 space-y-2 rounded-xl border border-border bg-bg-warm p-3">
           {activeLeaders.map((leader) => (
             <li key={leader.id} className="text-sm text-[var(--color-text)]">
               <span className="font-semibold">{leader.name}</span>
@@ -107,7 +156,7 @@ export default function GroupLeaderControls({ group, userId }) {
       {pendingForUser.length > 0 && (
         <div className="mt-4 space-y-3">
           {pendingForUser.map((leader) => (
-            <div key={leader.id} className="rounded-xl border border-border bg-surface p-3">
+            <div key={leader.id} className="rounded-xl border border-accent/30 bg-accent-soft p-3">
               <p className="text-sm text-[var(--color-text)]">
                 <span className="font-semibold">{leader.name}</span> has been proposed as a group
                 leader ({LEADER_ROLES[leader.role]}). Approve?
@@ -135,38 +184,43 @@ export default function GroupLeaderControls({ group, userId }) {
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {canVolunteer && (
-          <button
-            type="button"
-            onClick={handleVolunteer}
-            disabled={busy}
-            className="btn-secondary py-1.5 text-xs"
-          >
-            {busy ? 'Saving…' : 'Volunteer as group leader'}
-          </button>
-        )}
-        {hasVolunteered && (
-          <span className="self-center text-xs font-semibold text-[var(--color-walk-green)]">
-            You are a group leader
-          </span>
-        )}
-        {!showAddForm && (
-          <button
-            type="button"
-            onClick={() => setShowAddForm(true)}
-            className="btn-ghost py-1.5 text-xs"
-          >
-            Add external leader
-          </button>
-        )}
-      </div>
+      {(canVolunteer || hasVolunteered) && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {canVolunteer && (
+            <button
+              type="button"
+              onClick={handleVolunteer}
+              disabled={busy}
+              className="btn-secondary py-1.5 text-xs"
+            >
+              {busy ? 'Saving…' : 'Volunteer as group leader'}
+            </button>
+          )}
+          {hasVolunteered && (
+            <span className="text-xs font-semibold text-[var(--color-walk-green)]">
+              You are a group leader
+            </span>
+          )}
+        </div>
+      )}
 
-      {showAddForm && (
-        <form onSubmit={handlePropose} className="mt-4 space-y-3 border-t border-border pt-4">
-          <p className="text-xs text-muted">
-            Propose a nanny or older student. All families must approve before they get access.
-          </p>
+      {!showAddForm ? (
+        <div className="mt-4">
+          <AddExternalLeaderCard onClick={() => setShowAddForm(true)} disabled={busy} />
+        </div>
+      ) : (
+        <form onSubmit={handlePropose} className="mt-4 space-y-3 rounded-2xl border border-border bg-bg-warm p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <LeaderPersonIcon className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="font-heading text-sm font-semibold text-primary">Propose a group leader</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted">
+                All families must approve before they get access.
+              </p>
+            </div>
+          </div>
           <input
             type="text"
             value={name}

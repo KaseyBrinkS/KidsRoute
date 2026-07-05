@@ -22,12 +22,12 @@ export default function GroupChatButton({ group, userId, className = '' }) {
   return (
     <Link
       to={`/groups/${group.id}/chat`}
-      className={`btn-secondary relative mt-3 w-full py-2.5 text-center text-sm ${className}`}
+      className={`btn-accent relative mt-3 w-full py-2.5 text-center text-sm ${className}`}
     >
       Messages
       {unreadCount > 0 && (
         <span
-          className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-white"
+          className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-accent bg-surface px-1 text-[10px] font-bold text-accent"
           aria-label={`${unreadCount} unread messages`}
         >
           {unreadCount > 9 ? '9+' : unreadCount}
