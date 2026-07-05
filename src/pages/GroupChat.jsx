@@ -107,7 +107,7 @@ export default function GroupChat() {
           You don&apos;t have access to this group chat. Join and accept the group invitation
           first.
         </p>
-        <Link to="/groups" className="mt-4 inline-block text-sm font-semibold text-primary hover:underline">
+        <Link to="/groups" className="link-accent mt-4 inline-block text-sm">
           ← Back to Groups
         </Link>
       </div>
@@ -117,7 +117,7 @@ export default function GroupChat() {
   return (
     <div className="flex flex-col sm:-mx-0" style={{ height: 'calc(100dvh - 7.5rem)' }}>
       <div className="shrink-0 border-b border-border pb-4">
-        <Link to="/groups" className="text-sm font-semibold text-primary hover:underline">
+        <Link to="/groups" className="link-accent text-sm">
           ← Groups
         </Link>
         <h1 className="font-heading mt-2 text-xl font-semibold text-primary">Group messages</h1>

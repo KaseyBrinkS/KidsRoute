@@ -31,7 +31,7 @@ export function getMonthDays(year, month) {
 }
 
 export const CHILD_CALENDAR_COLORS = [
-  { bg: '#eef2f5', border: '#6889a3', text: '#4a6578', swatch: '#6889a3' },
+  { bg: '#e6eff8', border: '#2b4b7a', text: '#2b4b7a', swatch: '#2b4b7a' },
   { bg: '#f2ebe7', border: '#a87f72', text: '#7a5f55', swatch: '#a87f72' },
   { bg: '#ecf2ee', border: '#5a8770', text: '#3d6650', swatch: '#5a8770' },
   { bg: '#f0edf2', border: '#9a8898', text: '#6e6270', swatch: '#9a8898' },

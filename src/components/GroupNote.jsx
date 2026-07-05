@@ -89,7 +89,7 @@ export default function GroupNote({
           <button type="submit" disabled={busy} className="btn-primary py-1.5 text-xs">
             {busy ? 'Saving…' : 'Save note'}
           </button>
-          <button type="button" onClick={handleCancel} className="btn-ghost py-1.5 text-xs">
+          <button type="button" onClick={handleCancel} className="btn-link-accent py-1.5 text-xs">
             Cancel
           </button>
           <span className="text-xs text-muted">{draft.length}/280</span>
@@ -106,7 +106,7 @@ export default function GroupNote({
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="text-xs font-semibold text-primary hover:underline"
+          className="link-accent text-xs"
         >
           Edit
         </button>

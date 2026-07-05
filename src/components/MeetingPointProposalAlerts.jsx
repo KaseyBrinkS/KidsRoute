@@ -66,7 +66,7 @@ export default function MeetingPointProposalAlerts({ groups, userId }) {
                 >
                   Decline
                 </button>
-                <Link to="/groups" className="btn-ghost self-center">
+                <Link to="/groups" className="btn-link-accent self-center">
                   View on Groups
                 </Link>
               </div>

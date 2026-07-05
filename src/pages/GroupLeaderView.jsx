@@ -364,7 +364,7 @@ export default function GroupLeaderView() {
         <PageHeader title="Manage Group" description="Manage your walking group" />
         <p className="text-muted">
           Group not found or you don&apos;t have access.{' '}
-          <Link to="/groups" className="font-semibold text-primary hover:underline">
+          <Link to="/groups" className="link-accent">
             Back to Groups
           </Link>
         </p>
@@ -604,10 +604,10 @@ export default function GroupLeaderView() {
       </ul>
 
       <p className="mt-6 flex flex-wrap gap-4">
-        <Link to="/leader" className="text-sm font-semibold text-primary hover:underline">
+        <Link to="/leader" className="link-accent text-sm">
           ← My Groups
         </Link>
-        <Link to="/groups" className="text-sm font-semibold text-primary hover:underline">
+        <Link to="/groups" className="link-accent text-sm">
           Back to Groups
         </Link>
       </p>

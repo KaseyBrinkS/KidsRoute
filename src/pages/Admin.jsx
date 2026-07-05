@@ -141,7 +141,7 @@ export default function Admin() {
         </section>
 
         <p className="mt-6">
-          <Link to="/dashboard" className="text-sm font-semibold text-primary hover:underline">
+          <Link to="/dashboard" className="link-accent text-sm">
             ← Back to app
           </Link>
         </p>

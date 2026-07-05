@@ -2,7 +2,7 @@ export default function OnboardingShell({ step, title, description, children }) 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10">
       <div className="w-full max-w-lg">
-        <p className="mb-4 text-center text-sm font-semibold text-primary">
+        <p className="mb-4 text-center text-sm font-semibold text-support-blue">
           Step {step} of 4
         </p>
         <div className="kr-card overflow-hidden p-0">

@@ -213,7 +213,7 @@ export default function MyKids() {
                 type="button"
                 onClick={handleCancelEdit}
                 disabled={submitting}
-                className="btn-secondary"
+                className="btn-link-accent py-1.5 text-xs"
               >
                 Cancel
               </button>
@@ -254,7 +254,7 @@ export default function MyKids() {
                     type="button"
                     onClick={() => handleEdit(kid)}
                     disabled={Boolean(editingId) || deletingId === kid.id}
-                    className="rounded-xl px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/10 disabled:opacity-50"
+                    className="btn-link-accent px-3 py-1.5 text-sm"
                   >
                     Edit
                   </button>

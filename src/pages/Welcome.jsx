@@ -45,7 +45,7 @@ export default function Welcome() {
     <div className="min-h-screen bg-bg px-4 py-8 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
         {setupIncomplete && onboardingStep === 1 && (
-          <p className="mb-4 text-center text-sm font-semibold text-primary">Step 1 of 4</p>
+          <p className="mb-4 text-center text-sm font-semibold text-support-blue">Step 1 of 4</p>
         )}
 
         <div className="kr-card overflow-hidden p-0">
@@ -68,7 +68,7 @@ export default function Welcome() {
               <div className="text-center">
                 <Link
                   to="/dashboard"
-                  className="text-sm font-semibold text-primary hover:underline"
+                  className="link-accent text-sm"
                 >
                   ← Back to Dashboard
                 </Link>

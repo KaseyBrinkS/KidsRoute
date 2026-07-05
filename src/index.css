@@ -21,6 +21,8 @@
   --color-walk-pink-bg: #f6e8ec;
   --color-walk-grey: #6b6560;
   --color-walk-grey-bg: #ebe8e4;
+  --color-support-blue: #2b4b7a;
+  --color-support-blue-soft: #e6eff8;
   --color-nav-bg: #1c3a4a;
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-heading: "Nunito", "DM Sans", ui-sans-serif, system-ui, sans-serif;
@@ -117,7 +119,19 @@ h3,
 }
 
 .btn-group-leader {
-  @apply inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-accent/35 bg-surface px-4 py-2.5 text-sm font-semibold text-accent transition-all hover:border-accent hover:bg-accent-soft;
+  @apply inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-support-blue bg-surface px-4 py-2.5 text-sm font-semibold text-support-blue transition-all hover:border-support-blue hover:bg-support-blue-soft;
+}
+
+.link-accent {
+  @apply font-semibold text-support-blue hover:underline;
+}
+
+.btn-link-accent {
+  @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold text-support-blue transition-colors hover:bg-support-blue-soft disabled:opacity-50;
+}
+
+.text-support-blue {
+  color: var(--color-support-blue);
 }
 
 .kr-card-subsection {

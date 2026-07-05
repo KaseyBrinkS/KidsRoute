@@ -143,7 +143,7 @@ export default function GroupLeaderControls({ group, userId }) {
                 <button
                   type="button"
                   onClick={() => copyInviteLink(leader.inviteToken)}
-                  className="mt-1 text-xs font-semibold text-primary hover:underline"
+                  className="link-accent text-xs"
                 >
                   {copiedToken === leader.inviteToken ? 'Link copied!' : 'Copy sign-in link for leader'}
                 </button>
@@ -255,7 +255,7 @@ export default function GroupLeaderControls({ group, userId }) {
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              className="btn-ghost py-1.5 text-xs"
+              className="btn-link-accent py-1.5 text-xs"
             >
               Cancel
             </button>

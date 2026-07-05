@@ -326,7 +326,7 @@ export default function MyActivities() {
         ) : kids.length === 0 ? (
           <p className="mt-4 text-muted">
             Add a child on the{' '}
-            <Link to="/my-kids" className="font-semibold text-primary hover:underline">
+            <Link to="/my-kids" className="link-accent">
               My Kids
             </Link>{' '}
             screen before adding activities.
@@ -569,7 +569,7 @@ export default function MyActivities() {
                   type="button"
                   onClick={handleCancelEdit}
                   disabled={submitting}
-                  className="btn-secondary"
+                  className="btn-link-accent"
                 >
                   Cancel
                 </button>
@@ -641,7 +641,7 @@ export default function MyActivities() {
                             type="button"
                             onClick={() => handleEdit(activity)}
                             disabled={Boolean(editingId) || deletingId === activity.id}
-                            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/10 disabled:opacity-50"
+                            className="btn-link-accent px-3 py-1.5 text-sm"
                           >
                             Edit
                           </button>

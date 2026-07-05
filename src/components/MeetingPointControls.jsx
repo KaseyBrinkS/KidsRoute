@@ -127,7 +127,7 @@ export default function MeetingPointControls({ group, userId, proposerName = 'A 
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="btn-ghost py-1.5 text-xs"
+                  className="btn-link-accent py-1.5 text-xs"
             >
               Cancel
             </button>

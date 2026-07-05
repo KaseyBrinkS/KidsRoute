@@ -371,7 +371,7 @@ function PartyAbsenceControls({ party, group, userId, absences, walkInProgress }
                 type="button"
                 onClick={() => handleCancelAbsence(absence.id)}
                 disabled={busy}
-                className="font-semibold text-primary hover:underline disabled:opacity-50"
+                className="link-accent disabled:opacity-50"
               >
                 Cancel
               </button>
