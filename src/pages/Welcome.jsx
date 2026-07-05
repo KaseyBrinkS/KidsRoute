@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AboutHero from '../components/onboarding/AboutHero'
 import {
-  GettingStartedSection,
+  GetStartedButton,
+  getWelcomeLogoPath,
   HowItWorksSection,
   KeyFeaturesSection,
   WelcomeIntro,
@@ -41,6 +42,8 @@ export default function Welcome() {
     )
   }
 
+  const logoPath = getWelcomeLogoPath(setupIncomplete, onboardingStep)
+
   return (
     <div className="min-h-screen bg-bg px-4 py-8 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
@@ -49,10 +52,15 @@ export default function Welcome() {
         )}
 
         <div className="kr-card overflow-hidden p-0">
-          <AboutHero logoClassName="h-[120px] w-[120px] min-h-[100px] min-w-[100px]" />
+          <AboutHero
+            logoClassName="h-[120px] w-[120px] min-h-[100px] min-w-[100px]"
+            logoTo={logoPath}
+          />
 
           <div className="space-y-8 px-6 pb-8 pt-6 sm:px-8 sm:pb-10">
             <WelcomeIntro />
+
+            <GetStartedButton />
 
             <HowItWorksSection />
 
@@ -62,14 +70,9 @@ export default function Welcome() {
               <WelcomeNavGrid />
             </section>
 
-            <GettingStartedSection />
-
             {!setupIncomplete ? (
               <div className="text-center">
-                <Link
-                  to="/dashboard"
-                  className="link-accent text-sm"
-                >
+                <Link to="/dashboard" className="link-accent text-sm">
                   ← Back to Dashboard
                 </Link>
               </div>

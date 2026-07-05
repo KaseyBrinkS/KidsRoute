@@ -1,5 +1,16 @@
 import { Link } from 'react-router-dom'
 
+export function getWelcomeLogoPath(setupIncomplete, onboardingStep) {
+  if (!setupIncomplete) return '/dashboard'
+  if (onboardingStep === 1) return '/my-kids'
+  const paths = {
+    2: '/onboarding/kids',
+    3: '/onboarding/details',
+    4: '/onboarding/activity',
+  }
+  return paths[onboardingStep] ?? '/my-kids'
+}
+
 const HOW_IT_WORKS_STEPS = [
   {
     emoji: '👶',
@@ -66,6 +77,16 @@ export function WelcomeIntro() {
   )
 }
 
+export function GetStartedButton({ className = '' }) {
+  return (
+    <div className={`text-center ${className}`}>
+      <Link to="/my-kids" className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]">
+        Get Started
+      </Link>
+    </div>
+  )
+}
+
 export function HowItWorksSection() {
   return (
     <section aria-labelledby="how-it-works-heading">
@@ -115,26 +136,6 @@ export function KeyFeaturesSection() {
           </li>
         ))}
       </ul>
-    </section>
-  )
-}
-
-export function GettingStartedSection() {
-  return (
-    <section
-      aria-labelledby="getting-started-heading"
-      className="rounded-2xl border border-border-warm bg-accent-soft/60 px-5 py-6 text-center"
-    >
-      <h2 id="getting-started-heading" className="font-heading text-lg font-semibold text-primary">
-        Ready to begin?
-      </h2>
-      <p className="mt-2 text-sm leading-relaxed text-[var(--color-text)]">
-        New here? Start by adding your first child and their activities — we&apos;ll take it from
-        there.
-      </p>
-      <Link to="/my-kids" className="btn-primary mt-5 inline-flex w-full justify-center py-3">
-        Get Started
-      </Link>
     </section>
   )
 }
