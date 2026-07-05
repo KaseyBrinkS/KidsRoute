@@ -78,11 +78,11 @@ export async function getPostLoginPath(userId) {
   const gatePath = getAccessGatePath(profile)
   if (gatePath) return gatePath
   if (profile.accountType === 'external_leader') return '/leader'
-  if (isSetupComplete(profile)) return '/dashboard'
+  if (isSetupComplete(profile)) return '/welcome'
   if (profile.welcomeCompleted === false && (profile.onboardingStep ?? 1) === 1) {
     return '/welcome'
   }
-  return '/dashboard'
+  return getOnboardingRedirectPath(profile)
 }
 
 export async function saveUserProfile(user) {

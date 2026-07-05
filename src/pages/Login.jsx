@@ -43,7 +43,7 @@ export default function Login() {
 
   useEffect(() => {
     if (!user) return
-    finishLogin(user.uid).catch(() => navigate('/dashboard', { replace: true }))
+    finishLogin(user.uid).catch(() => navigate('/welcome', { replace: true }))
   }, [user, navigate])
 
   useEffect(() => {

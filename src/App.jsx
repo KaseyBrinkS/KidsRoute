@@ -35,7 +35,7 @@ export default function App() {
           <Route path="/onboarding/kids" element={<OnboardingKids />} />
           <Route path="/onboarding/details" element={<OnboardingDetails />} />
           <Route path="/onboarding/activity" element={<OnboardingActivity />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/welcome" replace />} />
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/my-kids" element={<MyKids />} />

@@ -59,7 +59,7 @@ export default function AccessGate() {
     if (!isSetupComplete(profile)) {
       return <Navigate to={getOnboardingRedirectPath(profile)} replace />
     }
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/welcome" replace />
   }
 
   if (!hasFullAccess(profile)) {
