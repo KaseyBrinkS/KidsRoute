@@ -48,12 +48,71 @@ import {
 import { subscribeToActivities, syncWalkGroupsForUser } from '../firebase/activities'
 import { subscribeToKids } from '../firebase/kids'
 import { formatDisplayDate, getPartyUpcomingScheduledDates } from '../firebase/sessions'
-import { WEEKDAYS } from '../utils/dates'
+import { WEEKDAYS, getChildColorById } from '../utils/dates'
 import {
   walkStatusBadgeClass,
   walkStatusCardClass,
   walkStatusLabel,
 } from '../utils/walkStatus'
+
+function sortGroupsByDayAndTime(groups) {
+  return [...groups].sort((a, b) => {
+    const dayDiff = WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day)
+    if (dayDiff !== 0) return dayDiff
+    const timeA = a.windowStartTime ?? a.parties?.[0]?.startTime ?? ''
+    const timeB = b.windowStartTime ?? b.parties?.[0]?.startTime ?? ''
+    return String(timeA).localeCompare(String(timeB))
+  })
+}
+
+function ChildViewTabs({ groupsByChild, kids, selectedChildId, onSelect }) {
+  return (
+    <div
+      className="flex gap-2 overflow-x-auto pb-1"
+      role="tablist"
+      aria-label="Select child"
+    >
+      {groupsByChild.map(({ childId, childName }) => {
+        const color = getChildColorById(childId, kids)
+        const selected = selectedChildId === childId
+        return (
+          <button
+            key={childId}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onSelect(childId)}
+            className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
+              selected ? 'shadow-sm' : 'opacity-80 hover:opacity-100'
+            }`}
+            style={
+              selected
+                ? { background: color.bg, borderColor: color.border, color: color.text }
+                : { borderColor: color.border, color: color.text }
+            }
+          >
+            <ChildNameWithDot name={childName} childId={childId} kids={kids} />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function ColorCodedGroupCard({ group, userId, kids, childId, displayStatus }) {
+  const color = getChildColorById(childId, kids)
+  return (
+    <div
+      className="overflow-hidden rounded-2xl border-l-4"
+      style={{
+        borderLeftColor: color.border,
+        background: `linear-gradient(90deg, ${color.bg} 0%, var(--color-surface) 2.5rem)`,
+      }}
+    >
+      <GroupCard group={group} userId={userId} displayStatus={displayStatus} />
+    </div>
+  )
+}
 
 function formatAbsenceLabel(absence) {
   if (absence.type === 'range') {
@@ -577,10 +636,14 @@ export default function Groups() {
   const [activities, setActivities] = useState([])
   const [activeSessions, setActiveSessions] = useState({})
   const [kids, setKids] = useState([])
-  const [viewMode, setViewMode] = useState('list')
+  const [viewMode, setViewMode] = useState('calendar')
+  const [selectedChildId, setSelectedChildId] = useState(null)
   const [activityGroupsLoading, setActivityGroupsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [buildingBusyKey, setBuildingBusyKey] = useState(null)
+  const [hideViewsGuidance, setHideViewsGuidance] = useState(() =>
+    isGuidanceDismissed('groups-views'),
+  )
   const [hideJoinedGuidance, setHideJoinedGuidance] = useState(() =>
     isGuidanceDismissed('groups-joined'),
   )
@@ -654,6 +717,38 @@ export default function Groups() {
     [groups, user, activeSessions],
   )
 
+  const allGroupsList = useMemo(() => {
+    if (!user) return []
+    return sortGroupsByDayAndTime(
+      groups.map((group) => ({
+        ...group,
+        _displayStatus: activeSessions[group.id]
+          ? 'in progress'
+          : getGroupWalkStatus(group),
+      })),
+    )
+  }, [groups, user, activeSessions])
+
+  const selectedChildGroups = useMemo(() => {
+    if (!selectedChildId) return null
+    const childEntry = groupsByChild.find((entry) => entry.childId === selectedChildId)
+    if (!childEntry) return null
+    const flat = []
+    for (const day of WEEKDAYS) {
+      for (const group of childEntry.byDay[day] ?? []) {
+        flat.push(group)
+      }
+    }
+    return sortGroupsByDayAndTime(flat)
+  }, [groupsByChild, selectedChildId])
+
+  useEffect(() => {
+    if (viewMode !== 'byKid' || groupsByChild.length === 0) return
+    if (!selectedChildId || !groupsByChild.some((entry) => entry.childId === selectedChildId)) {
+      setSelectedChildId(groupsByChild[0].childId)
+    }
+  }, [viewMode, groupsByChild, selectedChildId])
+
   async function handleJoinBuildingWalk(walkType, activityId = null) {
     const busyKey = activityId ? `${walkType}:${activityId}` : walkType
     setError(null)
@@ -693,22 +788,37 @@ export default function Groups() {
     <div>
       <PageHeader
         title="Groups"
-        description="Walking groups organized by child and day"
-        actions={
-          groups.length > 0 ? (
-            <ViewToggle
-              value={viewMode}
-              onChange={setViewMode}
-              options={[
-                { value: 'list', label: 'List' },
-                { value: 'calendar', label: 'Calendar' },
-              ]}
-            />
-          ) : null
-        }
+        description="Your walking groups at a glance"
       />
 
       {error && <p className="alert-error">{error}</p>}
+
+      {!activityGroupsLoading && groups.length > 0 && (
+        <>
+          <ViewToggle
+            value={viewMode}
+            onChange={setViewMode}
+            options={[
+              { value: 'calendar', label: 'Calendar' },
+              { value: 'byKid', label: 'By Kid' },
+              { value: 'all', label: 'All Groups' },
+            ]}
+            className="mb-4"
+          />
+
+          {!hideViewsGuidance && (
+            <GuidanceBanner
+              onDismiss={() => {
+                dismissGuidance('groups-views')
+                setHideViewsGuidance(true)
+              }}
+            >
+              Switch between views to see your groups by calendar, by child, or all at once. Tap
+              any group to manage the walk or send a message.
+            </GuidanceBanner>
+          )}
+        </>
+      )}
 
       {!activityGroupsLoading && groups.length > 0 && !hideJoinedGuidance && (
         <GuidanceBanner
@@ -741,33 +851,40 @@ export default function Groups() {
                 userId={user.uid}
               />
             </div>
-          ) : (
-            <div className="mt-6 space-y-8">
-              {groupsByChild.map(({ childId, childName, byDay }) => (
-                <div key={childId}>
-                  <h3 className="text-xl font-bold text-primary">
-                    <ChildNameWithDot
-                      name={childName}
-                      childId={childId}
+          ) : viewMode === 'byKid' ? (
+            <div className="mt-4 space-y-4">
+              <ChildViewTabs
+                groupsByChild={groupsByChild}
+                kids={kids}
+                selectedChildId={selectedChildId}
+                onSelect={setSelectedChildId}
+              />
+              {selectedChildGroups?.length ? (
+                <div className="space-y-4">
+                  {selectedChildGroups.map((group) => (
+                    <ColorCodedGroupCard
+                      key={`${group.id}_${group._childName}`}
+                      group={group}
+                      userId={user.uid}
                       kids={kids}
+                      childId={selectedChildId}
+                      displayStatus={group._displayStatus}
                     />
-                  </h3>
-                  {WEEKDAYS.filter((day) => byDay[day]?.length).map((day) => (
-                    <div key={day} className="mt-4">
-                      <h4 className="kr-section-title">{day}</h4>
-                      <div className="mt-3 space-y-4">
-                        {byDay[day].map((group) => (
-                          <GroupCard
-                            key={`${group.id}_${group._childName}`}
-                            group={group}
-                            userId={user.uid}
-                            displayStatus={group._displayStatus}
-                          />
-                        ))}
-                      </div>
-                    </div>
                   ))}
                 </div>
+              ) : (
+                <p className="kr-card-flat text-muted">No groups for this child yet.</p>
+              )}
+            </div>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {allGroupsList.map((group) => (
+                <GroupCard
+                  key={group.id}
+                  group={group}
+                  userId={user.uid}
+                  displayStatus={group._displayStatus}
+                />
               ))}
             </div>
           )}
