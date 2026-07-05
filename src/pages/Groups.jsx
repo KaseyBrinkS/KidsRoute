@@ -21,6 +21,7 @@ import {
   subscribeToUserActiveWalkSessions,
 } from '../firebase/groupWalk'
 import GroupLeaderControls from '../components/GroupLeaderControls'
+import GroupChatButton from '../components/GroupChatButton'
 import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
 import GroupNote from '../components/GroupNote'
 import GuidanceBanner from '../components/GuidanceBanner'
@@ -405,9 +406,12 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
         </div>
       )}
 
-      <Link to={`/groups/${group.id}/leader`} className="btn-leader mt-4">
-        Manage Group
-      </Link>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <GroupChatButton group={group} userId={userId} className="mt-0 sm:flex-1" />
+        <Link to={`/groups/${group.id}/leader`} className="btn-leader mt-0 sm:flex-1">
+          Manage Group
+        </Link>
+      </div>
 
       {!walkInProgress && (
         <button

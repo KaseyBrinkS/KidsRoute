@@ -81,6 +81,19 @@ service cloud.firestore {
 
     match /walkGroups/{groupId} {
       allow read, write: if isSignedIn();
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/walkGroups/$(groupId)).data.participantIds;
+        allow create: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/walkGroups/$(groupId)).data.participantIds
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500
+          && request.resource.data.displayName is string;
+        allow update, delete: if false;
+      }
     }
 
     match /matches/{matchId} {

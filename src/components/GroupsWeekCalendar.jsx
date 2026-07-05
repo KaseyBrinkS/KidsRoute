@@ -3,6 +3,7 @@ import { ChildNameWithDot } from './ChildColorDot'
 import ConfirmedMeetingPoint from './ConfirmedMeetingPoint'
 import GroupNote from './GroupNote'
 import MeetingPointControls from './MeetingPointControls'
+import GroupChatButton from './GroupChatButton'
 import { WEEKDAYS, getChildColorById } from '../utils/dates'
 import { formatGroupTimes } from '../firebase/groups'
 import { getPartiesForUser, isWalkGroupDocument } from '../firebase/walkGroups'
@@ -86,7 +87,8 @@ export default function GroupsWeekCalendar({
                           proposerName={myParties[0]?.parentName || 'A parent'}
                         />
                       )}
-                      <Link to={`/groups/${group.id}/leader`} className="btn-leader mt-3">
+                      <GroupChatButton group={group} userId={userId} />
+                      <Link to={`/groups/${group.id}/leader`} className="btn-leader mt-2">
                         Manage Group
                       </Link>
                     </li>
