@@ -30,6 +30,7 @@ import { formatHistoryTime } from '../firebase/walkHistory'
 import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
 import ChildAvatar, { childAvatarPropsFromParty } from '../components/ChildAvatar'
 import GroupNote from '../components/GroupNote'
+import GroupLeaderControls from '../components/GroupLeaderControls'
 import GuidanceBanner from '../components/GuidanceBanner'
 import {
   dismissGuidance,
@@ -88,6 +89,17 @@ export default function GroupLeaderView() {
       unsubGroup()
     }
   }, [user, groupId])
+
+  useEffect(() => {
+    if (!groupLoaded || !group) return undefined
+    if (window.location.hash !== '#group-leaders') return undefined
+
+    const frameId = requestAnimationFrame(() => {
+      document.getElementById('group-leaders')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+
+    return () => cancelAnimationFrame(frameId)
+  }, [groupLoaded, group])
 
   useEffect(() => {
     if (!user || !groupId) return
@@ -488,6 +500,12 @@ export default function GroupLeaderView() {
 
       {error && (
         <p className="alert-error mb-4">{error}</p>
+      )}
+
+      {isWalkGroup && user && (
+        <div id="group-leaders" className="mb-6 scroll-mt-24">
+          <GroupLeaderControls group={group} userId={user.uid} />
+        </div>
       )}
 
       <h2 className="kr-section-title">Children on this walk</h2>
