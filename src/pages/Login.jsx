@@ -88,8 +88,8 @@ export default function Login() {
       <div className="kr-card w-full max-w-md overflow-hidden p-0">
         <div className="login-hero-gradient px-8 pb-8 pt-10">
           <div className="flex flex-col items-center text-center">
-            <KidsRouteLogo className="h-[120px] w-[120px] min-h-[100px] min-w-[100px] text-primary" />
-            <h1 className="font-heading mt-6 text-4xl font-semibold text-primary">KidsRoute</h1>
+            <KidsRouteLogo className="h-[120px] w-[120px] min-h-[100px] min-w-[100px] text-primary-dark" />
+            <h1 className="font-heading mt-6 text-4xl font-semibold text-primary-dark">KidsRoute</h1>
             <p className="mt-3 text-lg font-medium text-muted">
               Safe walks, together.
             </p>

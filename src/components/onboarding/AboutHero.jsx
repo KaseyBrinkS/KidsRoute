@@ -5,8 +5,8 @@ export default function AboutHero({ logoClassName = 'h-[120px] w-[120px] min-h-[
   return (
     <div className="login-hero-gradient px-8 pb-10 pt-12">
       <div className="flex flex-col items-center text-center">
-        <KidsRouteLogo className={`text-primary ${logoClassName}`} />
-        <h1 className="font-heading mt-8 text-4xl font-semibold text-primary">KidsRoute</h1>
+        <KidsRouteLogo className={`text-primary-dark ${logoClassName}`} />
+        <h1 className="font-heading mt-8 text-4xl font-semibold text-primary-dark">KidsRoute</h1>
         <p className="mt-3 text-xl font-medium text-muted">Safe walks, together.</p>
       </div>
     </div>

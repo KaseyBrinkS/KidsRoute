@@ -52,9 +52,9 @@ async function withPermissionRetries(operation, label, maxAttempts = 3, delayMs 
 export const CHILD_WALK_STATUSES = {
   waiting_arrival: { label: 'Not arrived', style: 'bg-yellow-50 text-yellow-800' },
   confirmed: { label: 'Arrived', style: 'bg-green-50 text-green-700' },
-  absent: { label: 'Absent', style: 'bg-gray-100 text-gray-600' },
+  absent: { label: 'Absent', style: 'badge-walk-absent' },
   off_day: { label: 'No class today', style: 'bg-slate-50 text-slate-600' },
-  dropped_off: { label: 'Dropped off', style: 'bg-indigo-50 text-indigo-700' },
+  dropped_off: { label: 'Dropped off', style: 'badge-walk-completed' },
 }
 
 function isActiveTodaySession(session) {

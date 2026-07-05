@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #4f6f62;
-  --color-primary-light: #628274;
-  --color-primary-dark: #3f5a50;
-  --color-accent: #a87f72;
-  --color-accent-soft: #f2ebe7;
+  --color-primary: #3d6b5e;
+  --color-primary-light: #4d7d6e;
+  --color-primary-dark: #2f5348;
+  --color-accent: #c4768a;
+  --color-accent-soft: #f6e8ec;
   --color-surface: #fcfbf9;
   --color-bg: #f8f6f2;
   --color-bg-warm: #f2efe9;
@@ -17,6 +17,11 @@
   --color-walk-blue-bg: #eef2f5;
   --color-walk-green: #5a8770;
   --color-walk-green-bg: #ecf2ee;
+  --color-walk-pink: #c4768a;
+  --color-walk-pink-bg: #f6e8ec;
+  --color-walk-grey: #6b6560;
+  --color-walk-grey-bg: #ebe8e4;
+  --color-nav-bg: #1c3a4a;
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-heading: "Nunito", "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --shadow-kr: 0 4px 16px -2px rgb(60 50 40 / 0.07), 0 2px 8px -2px rgb(60 50 40 / 0.04);
@@ -75,8 +80,8 @@ h3,
 .login-hero-gradient {
   background: radial-gradient(
       ellipse 85% 65% at 50% 35%,
-      rgb(79 111 98 / 0.07) 0%,
-      rgb(168 127 114 / 0.05) 40%,
+      rgb(61 107 94 / 0.09) 0%,
+      rgb(196 118 138 / 0.06) 40%,
       transparent 72%
     ),
     linear-gradient(180deg, var(--color-bg-warm) 0%, var(--color-bg) 100%);
@@ -145,8 +150,7 @@ h3,
 }
 
 /* Status badges */
-.badge-walk-upcoming,
-.badge-walk-completed {
+.badge-walk-upcoming {
   @apply inline-flex rounded-full px-3 py-1 text-xs font-semibold;
   background: var(--color-walk-blue-bg);
   color: var(--color-walk-blue);
@@ -156,6 +160,18 @@ h3,
   @apply inline-flex rounded-full px-3 py-1 text-xs font-semibold;
   background: var(--color-walk-green-bg);
   color: var(--color-walk-green);
+}
+
+.badge-walk-completed {
+  @apply inline-flex rounded-full px-3 py-1 text-xs font-semibold;
+  background: var(--color-walk-pink-bg);
+  color: var(--color-walk-pink);
+}
+
+.badge-walk-absent {
+  @apply inline-flex rounded-full px-3 py-1 text-xs font-semibold;
+  background: var(--color-walk-grey-bg);
+  color: var(--color-walk-grey);
 }
 
 .badge-accent {
@@ -174,8 +190,16 @@ h3,
 
 /* App navigation */
 .kr-nav-bar {
-  @apply border-t border-border bg-surface;
-  box-shadow: 0 -4px 20px -4px rgb(60 50 40 / 0.06);
+  background: var(--color-nav-bg);
+  box-shadow: 0 -4px 20px -4px rgb(28 58 74 / 0.35);
+}
+
+.kr-nav-bar .kr-nav-link-active {
+  @apply bg-transparent text-primary;
+}
+
+.kr-nav-bar .kr-nav-link-inactive {
+  @apply text-white/75 hover:bg-white/10 hover:text-white;
 }
 
 .kr-nav-link {

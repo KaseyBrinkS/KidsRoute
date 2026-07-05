@@ -429,7 +429,7 @@ export default function GroupLeaderView() {
           </div>
           <span className={
             walkComplete
-              ? 'badge-walk-upcoming'
+              ? 'badge-walk-completed'
               : walkInProgress
                 ? 'badge-walk-active'
                 : 'badge-walk-upcoming'

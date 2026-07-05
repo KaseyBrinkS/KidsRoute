@@ -103,5 +103,5 @@ export const WALK_STATUS_LABELS = {
 export const WALK_STATUS_STYLES = {
   upcoming: 'badge-walk-upcoming',
   'in progress': 'badge-walk-active',
-  completed: 'badge-walk-upcoming',
+  completed: 'badge-walk-completed',
 }

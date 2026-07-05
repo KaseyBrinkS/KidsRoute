@@ -8,7 +8,7 @@ export default function KidsRouteLogo({ className = 'h-20 w-20', ...props }) {
       role="img"
       aria-label="KidsRoute logo"
       stroke="currentColor"
-      strokeWidth="5"
+      strokeWidth="7"
       strokeLinecap="round"
       strokeLinejoin="round"
       {...props}
@@ -28,7 +28,7 @@ export default function KidsRouteLogo({ className = 'h-20 w-20', ...props }) {
       <line x1="84" y1="38" x2="68" y2="38" />
 
       {/* Hands connected */}
-      <line x1="52" y1="38" x2="68" y2="38" strokeWidth="5.5" />
+      <line x1="52" y1="38" x2="68" y2="38" strokeWidth="8" />
 
       <line x1="84" y1="56" x2="94" y2="80" />
       <line x1="84" y1="56" x2="72" y2="78" />

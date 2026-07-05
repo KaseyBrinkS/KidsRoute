@@ -6,6 +6,7 @@ export function walkStatusCardClass(status) {
 
 export function walkStatusBadgeClass(status) {
   if (status === 'in progress') return 'badge-walk-active'
+  if (status === 'completed') return 'badge-walk-completed'
   return 'badge-walk-upcoming'
 }
 
