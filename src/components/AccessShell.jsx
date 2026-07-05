@@ -6,7 +6,7 @@ export default function AccessShell({ title, description, children }) {
       <div className="kr-card w-full max-w-md overflow-hidden p-0">
         <div className="login-hero-gradient px-8 pb-6 pt-10">
           <div className="flex flex-col items-center text-center">
-            <KidsRouteLogo className="h-20 w-20 text-primary" />
+            <KidsRouteLogo className="h-20 w-20" />
             <h1 className="font-heading mt-5 text-2xl font-semibold text-primary">{title}</h1>
             {description && (
               <p className="mt-3 text-sm leading-relaxed text-muted">{description}</p>
