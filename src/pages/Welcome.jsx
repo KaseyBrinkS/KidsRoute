@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import AboutHero, { AboutDescription } from '../components/onboarding/AboutHero'
+import { Link } from 'react-router-dom'
+import AboutHero from '../components/onboarding/AboutHero'
+import {
+  GettingStartedSection,
+  HowItWorksSection,
+  KeyFeaturesSection,
+  WelcomeIntro,
+} from '../components/onboarding/WelcomeAboutContent'
 import WelcomeNavGrid from '../components/onboarding/WelcomeNavGrid'
 import { useAuth } from '../context/AuthContext'
-import {
-  advanceOnboardingStep,
-  getOnboardingRedirectPath,
-  isSetupComplete,
-  subscribeToUserProfile,
-} from '../firebase/users'
+import { isSetupComplete, subscribeToUserProfile } from '../firebase/users'
 
 export default function Welcome() {
-  const navigate = useNavigate()
   const { user } = useAuth()
   const [setupIncomplete, setSetupIncomplete] = useState(false)
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     if (!user) return undefined
@@ -34,20 +33,6 @@ export default function Welcome() {
     return unsubscribe
   }, [user])
 
-  async function handleGetStarted() {
-    setBusy(true)
-    try {
-      if (onboardingStep > 1) {
-        navigate(getOnboardingRedirectPath({ welcomeCompleted: false, onboardingStep }))
-        return
-      }
-      await advanceOnboardingStep(user.uid, 2)
-      navigate('/onboarding/kids')
-    } catch {
-      setBusy(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
@@ -57,50 +42,46 @@ export default function Welcome() {
   }
 
   return (
-    <div className="min-h-screen bg-bg px-4 py-10">
-      <div className="kr-card mx-auto w-full max-w-xl p-0">
+    <div className="min-h-screen bg-bg px-4 py-8 sm:py-10">
+      <div className="mx-auto w-full max-w-2xl">
         {setupIncomplete && onboardingStep === 1 && (
-          <p className="pt-6 text-center text-sm font-semibold text-primary">Step 1 of 4</p>
+          <p className="mb-4 text-center text-sm font-semibold text-primary">Step 1 of 4</p>
         )}
 
-        <div className="overflow-hidden">
-          <AboutHero logoClassName="h-[140px] w-[140px] min-h-[100px] min-w-[100px]" />
-        </div>
+        <div className="kr-card overflow-hidden p-0">
+          <AboutHero logoClassName="h-[120px] w-[120px] min-h-[100px] min-w-[100px]" />
 
-        <div className="space-y-6 px-8 pb-10 pt-2">
-          <AboutDescription />
+          <div className="space-y-8 px-6 pb-8 pt-6 sm:px-8 sm:pb-10">
+            <WelcomeIntro />
 
-          <section aria-label="App navigation" className="border-t border-border pt-6">
-            <WelcomeNavGrid />
-          </section>
+            <HowItWorksSection />
 
-          <div className="flex flex-col gap-3 border-t border-border pt-6">
-            {setupIncomplete ? (
-              <>
-                <button
-                  type="button"
-                  onClick={handleGetStarted}
-                  disabled={busy}
-                  className="btn-primary w-full py-3.5"
+            <KeyFeaturesSection />
+
+            <section aria-label="App navigation" className="border-t border-border pt-6">
+              <WelcomeNavGrid />
+            </section>
+
+            <GettingStartedSection />
+
+            {!setupIncomplete ? (
+              <div className="text-center">
+                <Link
+                  to="/dashboard"
+                  className="text-sm font-semibold text-primary hover:underline"
                 >
-                  {busy ? 'Loading…' : onboardingStep > 1 ? 'Continue setup' : 'Get Started'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/dashboard')}
-                  className="btn-ghost w-full py-2"
+                  ← Back to Dashboard
+                </Link>
+              </div>
+            ) : (
+              <div className="text-center">
+                <Link
+                  to="/dashboard"
+                  className="text-sm font-semibold text-muted hover:text-primary"
                 >
                   Skip for now
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={() => navigate('/dashboard')}
-                className="btn-primary w-full py-3.5"
-              >
-                Back to Dashboard
-              </button>
+                </Link>
+              </div>
             )}
           </div>
         </div>
