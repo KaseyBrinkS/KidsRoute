@@ -20,3 +20,18 @@ export function resolveContactPhoneForSharing(profile, user) {
 export function formatParentContactLine(parentName, contactPhone) {
   return `${parentName?.trim() || 'Parent'} · ${formatSharedContactPhone(contactPhone)}`
 }
+
+/** Contact line for a party, respecting per-group phone sharing preferences. */
+export function formatParentContactForGroup(party, group, viewerUserId) {
+  const parentName = party.parentName?.trim() || 'Parent'
+  const isSelf = party.userId === viewerUserId
+  const shared = group?.phoneSharing?.[party.userId] === true
+
+  if (!shared) {
+    return isSelf
+      ? `${parentName} · Not shared with group`
+      : `${parentName} · Not shared`
+  }
+
+  return `${parentName} · ${formatSharedContactPhone(party.contactPhone)}`
+}

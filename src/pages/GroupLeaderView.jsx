@@ -23,10 +23,11 @@ import {
   subscribeToWalkSessionChildren,
   verifyDropOffSaved,
 } from '../firebase/groupWalk'
-import { walkGroupIsReadyForWalk, resolveWalkGroupParticipantIds, isWalkGroupDocument } from '../firebase/walkGroups'
+import { walkGroupIsReadyForWalk, resolveWalkGroupParticipantIds, isWalkGroupDocument, walkGroupUserHasAccepted } from '../firebase/walkGroups'
 import { subscribeToKids } from '../firebase/kids'
 import { isUserActiveLeader } from '../firebase/groupLeaders'
-import { formatParentContactLine, formatSharedContactPhone } from '../utils/contactInfo'
+import { formatParentContactForGroup, formatSharedContactPhone } from '../utils/contactInfo'
+import GroupPhoneSharingToggle from '../components/GroupPhoneSharingToggle'
 import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
 import ChildAvatar, { childAvatarPropsFromParty } from '../components/ChildAvatar'
 import GroupNote from '../components/GroupNote'
@@ -372,6 +373,13 @@ export default function GroupLeaderView() {
     )
   }
 
+  const showPhoneSharingToggle =
+    user
+    && isParticipant
+    && (isWalkGroup
+      ? walkGroupUserHasAccepted(group, user.uid)
+      : matchIsConnectedForUser(group, user.uid))
+
   const pickupLabel = isBuildingWalk
     ? group.buildingWalkType === 'morning_to_school'
       ? 'Walk started from home'
@@ -508,9 +516,14 @@ export default function GroupLeaderView() {
         </div>
       )}
 
+      {showPhoneSharingToggle && (
+        <GroupPhoneSharingToggle group={group} groupId={groupId} userId={user.uid} />
+      )}
+
       <h2 className="kr-section-title">Children on this walk</h2>
       <p className="kr-section-desc">
-        Parent contact info and walk status for every child in the group.
+        Parent phone numbers appear below when a family has chosen to share. Walk status is shown
+        for every child in the group.
       </p>
       <ul className="kr-card mt-3 divide-y divide-border">
         {children.length === 0 ? (
@@ -558,7 +571,7 @@ export default function GroupLeaderView() {
                         </span>
                       </div>
                       <p className="mt-1.5 text-sm text-muted">
-                        {formatParentContactLine(child.parentName, child.contactPhone)}
+                        {formatParentContactForGroup(child, group, user.uid)}
                       </p>
                     </div>
                   </div>
