@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import DashboardWeekView, { buildDashboardWeekGroups } from '../components/DashboardWeekView'
-import { ChildNameWithDot } from '../components/ChildColorDot'
+import { formatSharedContactPhone, resolveContactPhoneForSharing } from '../utils/contactInfo'
 import GuidanceBanner from '../components/GuidanceBanner'
 import MeetingPointProposalAlerts from '../components/MeetingPointProposalAlerts'
 import {
@@ -175,8 +175,7 @@ export default function Dashboard() {
     try {
       const profile = await getUserProfile(user.uid)
       const parentName = profile?.displayName || user.displayName || 'Parent'
-      const contactPhone =
-        profile?.phoneNumber || user.phoneNumber || user.email || 'Not provided'
+      const contactPhone = resolveContactPhoneForSharing(profile, user)
 
       await respondToWalkGroup(groupId, user.uid, response, contactPhone, parentName)
     } catch (err) {

@@ -11,6 +11,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './db'
+import { formatSharedContactPhone } from '../utils/contactInfo'
 import { ensureParentLeaderOnGroup, resolveLeaderUserIds } from './groupLeaders'
 import { getActiveSession } from './groupWalk'
 import { MATCH_WINDOW_MINUTES, timesWithinWindow } from './matching'
@@ -500,7 +501,7 @@ export async function respondToWalkGroup(groupId, userId, response, contactPhone
         ...party,
         response: 'accepted',
         walkStatus: party.walkStatus || 'unconfirmed',
-        contactPhone: contactPhone || 'Not provided',
+        contactPhone: formatSharedContactPhone(contactPhone),
         parentName: parentName || 'Parent',
         ...(typeof kid?.colorKey === 'number' ? { colorKey: kid.colorKey } : {}),
       }
@@ -519,7 +520,7 @@ export async function respondToWalkGroup(groupId, userId, response, contactPhone
     userId,
     {
       displayName: parentName,
-      phoneNumber: contactPhone,
+      phoneNumber: formatSharedContactPhone(contactPhone),
     },
   )
 

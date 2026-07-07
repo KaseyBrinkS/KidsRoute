@@ -11,6 +11,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './db'
+import { formatSharedContactPhone } from '../utils/contactInfo'
 import { deleteAllActivitySlots, fetchUserActivities } from './activities'
 import { getActiveSession } from './groupWalk'
 import { processActivityWalkGrouping } from './walkGroups'
@@ -428,7 +429,7 @@ export async function respondToMatch(matchId, userId, response, contactPhone, pa
       walkStatus: party.walkStatus || 'unconfirmed',
       ...(response === 'accepted'
         ? {
-            contactPhone: contactPhone || 'Not provided',
+            contactPhone: formatSharedContactPhone(contactPhone),
             parentName: parentName || 'Parent',
           }
         : {}),

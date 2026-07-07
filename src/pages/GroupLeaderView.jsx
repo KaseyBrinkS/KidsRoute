@@ -26,7 +26,7 @@ import {
 import { walkGroupIsReadyForWalk, resolveWalkGroupParticipantIds, isWalkGroupDocument } from '../firebase/walkGroups'
 import { subscribeToKids } from '../firebase/kids'
 import { isUserActiveLeader } from '../firebase/groupLeaders'
-import { formatHistoryTime } from '../firebase/walkHistory'
+import { formatParentContactLine, formatSharedContactPhone } from '../utils/contactInfo'
 import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
 import ChildAvatar, { childAvatarPropsFromParty } from '../components/ChildAvatar'
 import GroupNote from '../components/GroupNote'
@@ -558,7 +558,7 @@ export default function GroupLeaderView() {
                         </span>
                       </div>
                       <p className="mt-1.5 text-sm text-muted">
-                        {child.parentName} · {child.contactPhone}
+                        {formatParentContactLine(child.parentName, child.contactPhone)}
                       </p>
                     </div>
                   </div>
@@ -619,6 +619,6 @@ function normalizePartyForDisplay(party) {
   return {
     ...party,
     parentName: party.parentName || 'Parent',
-    contactPhone: party.contactPhone || 'Not provided',
+    contactPhone: formatSharedContactPhone(party.contactPhone),
   }
 }

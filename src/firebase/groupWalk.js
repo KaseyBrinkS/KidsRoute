@@ -15,6 +15,7 @@ import {
 import { db } from './db'
 import { isPartyScheduledOnDate, todayKey } from './sessions'
 import { syncWalkHistoryDropOff, createWalkHistoryEntry } from './walkHistory'
+import { formatSharedContactPhone } from '../utils/contactInfo'
 import { isFirestorePermissionError } from './errors'
 import {
   getActiveParties as getWalkGroupActiveParties,
@@ -138,7 +139,7 @@ export function normalizeParty(party) {
     ...party,
     walkStatus: party.walkStatus || 'off_day',
     parentName: party.parentName || 'Parent',
-    contactPhone: party.contactPhone || 'Not provided',
+    contactPhone: formatSharedContactPhone(party.contactPhone),
   }
 }
 
@@ -502,7 +503,12 @@ export function mergeWalkSessionChildren(sessionChildren, walkParties) {
     const key = `${party.userId}_${party.childId}`
     partyKeys.add(key)
     const existing = sessionByKey.get(key)
-    if (existing) return existing
+    if (existing) {
+      return {
+        ...existing,
+        contactPhone: formatSharedContactPhone(existing.contactPhone),
+      }
+    }
 
     return {
       ...normalizeParty(party),
@@ -518,7 +524,10 @@ export function mergeWalkSessionChildren(sessionChildren, walkParties) {
   for (const child of sessionChildren) {
     const key = `${child.userId}_${child.childId}`
     if (!partyKeys.has(key)) {
-      merged.push(child)
+      merged.push({
+        ...child,
+        contactPhone: formatSharedContactPhone(child.contactPhone),
+      })
     }
   }
 
@@ -541,7 +550,7 @@ export async function ensureSessionChildRecord(sessionId, party, session) {
     childId: party.childId,
     childFirstName: party.childFirstName,
     parentName: party.parentName || 'Parent',
-    contactPhone: party.contactPhone || 'Not provided',
+    contactPhone: formatSharedContactPhone(party.contactPhone),
     walkStatus,
     historyId: null,
     pickedUpAt: walkStatus === 'confirmed' ? serverTimestamp() : null,
@@ -736,7 +745,7 @@ export async function startGroupWalk(groupId, leaderId, { group: prefetchedGroup
           childId: party.childId,
           childFirstName: party.childFirstName,
           parentName: party.parentName,
-          contactPhone: party.contactPhone,
+          contactPhone: formatSharedContactPhone(party.contactPhone),
           walkStatus,
           historyId,
           pickedUpAt,

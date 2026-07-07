@@ -12,6 +12,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './db'
+import { formatSharedContactPhone } from '../utils/contactInfo'
 import { fetchUserActivities } from './activities'
 import { getActiveSession } from './groupWalk'
 import { defaultSessions } from './sessions'
@@ -133,7 +134,7 @@ function buildBuildingParty(userId, child, slot, walkTypeConfig, activityId = nu
     sessions: defaultSessions(),
     summerStartDate: null,
     summerEndDate: null,
-    contactPhone: slot.contactPhone || 'Not provided',
+    contactPhone: formatSharedContactPhone(slot.contactPhone),
     parentName: slot.parentName || 'Parent',
   }
 }
@@ -326,7 +327,7 @@ export async function joinBuildingWalk(userId, walkType, { activityId = null } =
     homeAddressDisplay,
     school,
     parentName: profile.displayName || 'Parent',
-    contactPhone: profile.phoneNumber || 'Not provided',
+    contactPhone: formatSharedContactPhone(profile.phoneNumber),
     children: eligibleChildren.map((child) => ({
       id: child.id,
       firstName: child.firstName,
@@ -479,7 +480,7 @@ export async function syncBuildingWalkChildren(userId) {
         homeAddressDisplay,
         school,
         parentName: profile.displayName || 'Parent',
-        contactPhone: profile.phoneNumber || 'Not provided',
+        contactPhone: formatSharedContactPhone(profile.phoneNumber),
         children: eligibleChildren.map((child) => ({
           id: child.id,
           firstName: child.firstName,
