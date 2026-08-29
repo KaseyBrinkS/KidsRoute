@@ -13,6 +13,7 @@ import MyActivities from './pages/MyActivities'
 import Privacy from './pages/Privacy'
 import Settings from './pages/Settings'
 import Terms from './pages/Terms'
+import Flyer from './pages/Flyer'
 import Welcome from './pages/Welcome'
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
+      <Route path="/flyer" element={<Flyer />} />
       <Route path="/pending-approval" element={<Navigate to="/welcome" replace />} />
       <Route path="/rejected" element={<Navigate to="/welcome" replace />} />
       <Route path="/my-kids" element={<Navigate to="/settings" replace />} />

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KidsRoute Flyer — Print</title>
+    <style>
+      @page {
+        size: letter portrait;
+        margin: 0.45in;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Georgia, 'Times New Roman', serif;
+        color: #1c3a4a;
+        background: #e8e4de;
+      }
+
+      .toolbar {
+        text-align: center;
+        padding: 1rem;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+
+      .toolbar button {
+        background: #3d6b5e;
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .toolbar p {
+        margin: 0.75rem 0 0;
+        font-size: 0.875rem;
+        color: rgba(28, 58, 74, 0.7);
+      }
+
+      .flyer {
+        width: 8.5in;
+        min-height: 11in;
+        margin: 0 auto 2rem;
+        padding: 0.5in 0.55in;
+        background: #fff;
+        box-shadow: 0 8px 32px rgba(28, 58, 74, 0.15);
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        border-bottom: 4px solid #3d6b5e;
+        padding-bottom: 1rem;
+      }
+
+      .logo {
+        width: 1.15in;
+        height: 1.15in;
+        flex-shrink: 0;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 42pt;
+        line-height: 1;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 0.5rem 0 0;
+        font-size: 13pt;
+        font-weight: 600;
+        line-height: 1.3;
+        color: #3d6b5e;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+
+      .intro {
+        margin-top: 1rem;
+        font-size: 11pt;
+        line-height: 1.45;
+      }
+
+      .tagline {
+        margin: 0.5rem 0 0;
+        font-size: 11.5pt;
+        font-weight: 700;
+        color: #c4768a;
+        line-height: 1.35;
+      }
+
+      h2 {
+        margin: 1.25rem 0 0.5rem;
+        font-size: 14pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #3d6b5e;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem 1rem;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .steps li {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-start;
+      }
+
+      .step-num {
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 999px;
+        background: #3d6b5e;
+        color: #fff;
+        font-size: 10pt;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+
+      .step-title {
+        margin: 0;
+        font-size: 10.5pt;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .step-desc {
+        margin: 0.15rem 0 0;
+        font-size: 9pt;
+        line-height: 1.35;
+        color: rgba(28, 58, 74, 0.8);
+      }
+
+      .features {
+        margin-top: 1.25rem;
+        background: #f8f4ee;
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+      }
+
+      .features ul {
+        margin: 0.5rem 0 0;
+        padding-left: 1.1rem;
+        columns: 2;
+        column-gap: 1.5rem;
+        font-size: 9.5pt;
+        line-height: 1.35;
+      }
+
+      .features li {
+        margin-bottom: 0.35rem;
+        break-inside: avoid;
+      }
+
+      footer {
+        margin-top: 1.25rem;
+        padding-top: 1rem;
+        border-top: 2px solid #e3ddd4;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 1.5rem;
+      }
+
+      .cta-title {
+        margin: 0;
+        font-size: 16pt;
+        font-weight: 700;
+      }
+
+      .cta-url {
+        margin: 0.25rem 0 0;
+        font-size: 13pt;
+        font-weight: 600;
+        color: #3d6b5e;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+
+      .contact {
+        margin: 0.5rem 0 0;
+        font-size: 10pt;
+      }
+
+      .location {
+        margin: 0.25rem 0 0;
+        font-size: 9pt;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgba(28, 58, 74, 0.6);
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+
+      .fine-print {
+        margin: 0.75rem 0 0;
+        font-size: 8.5pt;
+        font-style: italic;
+        color: rgba(28, 58, 74, 0.55);
+      }
+
+      .qr-wrap {
+        text-align: center;
+        flex-shrink: 0;
+      }
+
+      .qr {
+        width: 1.35in;
+        height: 1.35in;
+        display: block;
+        margin: 0 auto;
+      }
+
+      .qr-label {
+        margin: 0.25rem 0 0;
+        max-width: 1.5in;
+        font-size: 8pt;
+        font-weight: 600;
+        line-height: 1.25;
+        color: rgba(28, 58, 74, 0.7);
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+
+      @media print {
+        html,
+        body {
+          background: #fff;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .toolbar {
+          display: none;
+        }
+
+        .flyer {
+          box-shadow: none;
+          margin: 0;
+          width: 100%;
+          min-height: auto;
+          page-break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <button type="button" onclick="window.print()">Print flyer</button>
+      <p>Use <strong>Print → Save as PDF</strong> for an 8.5×11 inch PDF.</p>
+    </div>
+
+    <article class="flyer" aria-label="KidsRoute printable flyer">
+      <header>
+        <svg class="logo" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KidsRoute logo">
+          <rect width="120" height="120" rx="26" fill="#1C3A4A" />
+          <circle cx="60" cy="27" r="11" fill="#C4768A" />
+          <circle cx="60" cy="27" r="4.5" fill="#FFFFFF" />
+          <path d="M60 38 L51.5 49.5 Q60 45.5 68.5 49.5 Z" fill="#C4768A" />
+          <g stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 46)">
+            <circle cx="36" cy="17" r="9" />
+            <line x1="36" y1="26" x2="36" y2="52" />
+            <line x1="36" y1="36" x2="21" y2="47" />
+            <line x1="36" y1="36" x2="51" y2="36" />
+            <line x1="36" y1="52" x2="27" y2="72" />
+            <line x1="36" y1="52" x2="47" y2="70" />
+            <circle cx="84" cy="17" r="9" />
+            <line x1="84" y1="26" x2="84" y2="52" />
+            <line x1="84" y1="36" x2="99" y2="47" />
+            <line x1="84" y1="36" x2="69" y2="36" />
+            <line x1="84" y1="52" x2="93" y2="72" />
+            <line x1="84" y1="52" x2="73" y2="70" />
+          </g>
+          <line x1="51" y1="82" x2="69" y2="82" stroke="#C4768A" stroke-width="8" stroke-linecap="round" />
+        </svg>
+        <div>
+          <h1>KidsRoute</h1>
+          <p class="subtitle">Safe group walks for kids — to school &amp; after-school activities</p>
+        </div>
+      </header>
+
+      <section>
+        <p class="intro">
+          KidsRoute helps NYC families coordinate safe group walks for kids — to school,
+          after-school activities, and everywhere in between. Match with neighboring
+          families heading the same way, and get real-time check-ins so you always know
+          your child arrived safely.
+        </p>
+        <p class="tagline">
+          Because raising kids takes a village — and KidsRoute helps you find yours.
+        </p>
+      </section>
+
+      <section>
+        <h2>How it works</h2>
+        <ol class="steps">
+          <li>
+            <span class="step-num">1</span>
+            <div>
+              <p class="step-title">Add your kids</p>
+              <p class="step-desc">Create profiles with school and grade.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">2</span>
+            <div>
+              <p class="step-title">Add their activities</p>
+              <p class="step-desc">Enter where they go and when.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">3</span>
+            <div>
+              <p class="step-title">Get matched</p>
+              <p class="step-desc">We notify you when neighbors walk the same route.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">4</span>
+            <div>
+              <p class="step-title">Walk together</p>
+              <p class="step-desc">Join the group, meet up, and track check-ins.</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section class="features">
+        <h2>Why families love KidsRoute</h2>
+        <ul>
+          <li>School walks — morning drop-off &amp; afternoon pick-up with building neighbors</li>
+          <li>After-school activities — match families going to the same classes &amp; programs</li>
+          <li>Walk home groups — coordinate rides home from activities</li>
+          <li>Real-time check-ins — know when your child is picked up and dropped off</li>
+          <li>Group chat &amp; meeting points — plan walks with other parents</li>
+          <li>Privacy first — your info is only shared with matched families</li>
+          <li>Free for families — sign in with Google</li>
+        </ul>
+      </section>
+
+      <footer>
+        <div>
+          <p class="cta-title">Sign up free today</p>
+          <p class="cta-url">kidsroute.org</p>
+          <p class="contact">Questions? <strong>hello@kidsroute.org</strong></p>
+          <p class="location">Lower Manhattan · NYC pilot</p>
+          <p class="fine-print">Parents &amp; guardians only. Google sign-in. Admin-approved access.</p>
+        </div>
+        <div class="qr-wrap">
+          <svg class="qr" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="QR code placeholder">
+            <rect x="1" y="1" width="118" height="118" fill="#fff" stroke="#1C3A4A" stroke-width="2" />
+            <rect x="8" y="8" width="28" height="28" fill="#1C3A4A" />
+            <rect x="12" y="12" width="20" height="20" fill="#fff" />
+            <rect x="16" y="16" width="12" height="12" fill="#1C3A4A" />
+            <rect x="84" y="8" width="28" height="28" fill="#1C3A4A" />
+            <rect x="88" y="12" width="20" height="20" fill="#fff" />
+            <rect x="92" y="16" width="12" height="12" fill="#1C3A4A" />
+            <rect x="8" y="84" width="28" height="28" fill="#1C3A4A" />
+            <rect x="12" y="88" width="20" height="20" fill="#fff" />
+            <rect x="16" y="92" width="12" height="12" fill="#1C3A4A" />
+            <g fill="#1C3A4A">
+              <rect x="44" y="8" width="6" height="6" /><rect x="56" y="8" width="6" height="6" /><rect x="68" y="8" width="6" height="6" />
+              <rect x="44" y="20" width="6" height="6" /><rect x="62" y="20" width="6" height="6" />
+              <rect x="44" y="32" width="6" height="6" /><rect x="56" y="32" width="6" height="6" /><rect x="74" y="32" width="6" height="6" />
+              <rect x="8" y="44" width="6" height="6" /><rect x="20" y="44" width="6" height="6" />
+              <rect x="44" y="44" width="6" height="6" /><rect x="56" y="44" width="6" height="6" /><rect x="68" y="44" width="6" height="6" />
+              <rect x="92" y="44" width="6" height="6" /><rect x="104" y="44" width="6" height="6" />
+              <rect x="20" y="56" width="6" height="6" /><rect x="44" y="56" width="6" height="6" /><rect x="62" y="56" width="6" height="6" />
+              <rect x="80" y="56" width="6" height="6" /><rect x="98" y="56" width="6" height="6" />
+              <rect x="44" y="68" width="6" height="6" /><rect x="56" y="68" width="6" height="6" /><rect x="74" y="68" width="6" height="6" /><rect x="104" y="68" width="6" height="6" />
+              <rect x="44" y="80" width="6" height="6" /><rect x="62" y="80" width="6" height="6" /><rect x="86" y="80" width="6" height="6" />
+              <rect x="44" y="92" width="6" height="6" /><rect x="56" y="92" width="6" height="6" /><rect x="68" y="92" width="6" height="6" /><rect x="92" y="92" width="6" height="6" />
+              <rect x="44" y="104" width="6" height="6" /><rect x="80" y="104" width="6" height="6" /><rect x="104" y="104" width="6" height="6" />
+            </g>
+            <circle cx="60" cy="60" r="10" fill="#C4768A" />
+            <circle cx="60" cy="60" r="4" fill="#fff" />
+          </svg>
+          <p class="qr-label">Scan to visit<br />kidsroute.org</p>
+        </div>
+      </footer>
+    </article>
+  </body>
+</html>
