@@ -9,12 +9,15 @@ export const REPORT_REASONS = [
   { value: 'other', label: 'Other' },
 ]
 
+export const GENERAL_CONCERN_VALUE = 'general'
+
 /**
  * Saves a user report to Firestore and sends a Resend email alert via Vercel API.
  */
 export async function submitUserReport({
   reporterUid,
-  reportedUserUid,
+  reportedUserUid = '',
+  isGeneralConcern = false,
   groupId,
   reason,
   details = '',
@@ -22,16 +25,22 @@ export async function submitUserReport({
   reportedUserName = '',
   groupName = '',
 }) {
-  if (!reporterUid || !reportedUserUid || !groupId || !reason) {
+  if (!reporterUid || !groupId || !reason) {
     throw new Error('Missing required report information.')
+  }
+
+  if (!isGeneralConcern && !reportedUserUid) {
+    throw new Error('Select who you are reporting, or choose general concern.')
   }
 
   const trimmedDetails = details.trim()
   const timestamp = new Date().toISOString()
+  const resolvedReportedUserName = isGeneralConcern ? 'General concern' : reportedUserName
 
   await addDoc(collection(db, 'reports'), {
     reporterUid,
-    reportedUserUid,
+    reportedUserUid: isGeneralConcern ? '' : reportedUserUid,
+    isGeneralConcern,
     groupId,
     reason,
     details: trimmedDetails,
@@ -41,12 +50,12 @@ export async function submitUserReport({
   try {
     await sendReportEmailAlert({
       reporterUid,
-      reportedUserUid,
+      reportedUserUid: isGeneralConcern ? '' : reportedUserUid,
       groupId,
       reason,
       details: trimmedDetails,
       reporterName,
-      reportedUserName,
+      reportedUserName: resolvedReportedUserName,
       groupName,
       timestamp,
     })

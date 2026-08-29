@@ -1,5 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
-import { REPORT_REASONS, submitUserReport } from '../firebase/reports'
+import { useMemo, useState } from 'react'
+import { GENERAL_CONCERN_VALUE, REPORT_REASONS, submitUserReport } from '../firebase/reports'
+
+function firstNameFromParent(parentName) {
+  const trimmed = parentName?.trim()
+  if (!trimmed) return 'Parent'
+  return trimmed.split(/\s+/)[0]
+}
 
 export default function ReportConcernForm({
   groupId,
@@ -9,7 +15,7 @@ export default function ReportConcernForm({
   participants,
 }) {
   const [open, setOpen] = useState(false)
-  const [reportedUserUid, setReportedUserUid] = useState('')
+  const [reportTarget, setReportTarget] = useState('')
   const [reason, setReason] = useState(REPORT_REASONS[0].value)
   const [details, setDetails] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -21,22 +27,12 @@ export default function ReportConcernForm({
     [participants, reporterUid],
   )
 
-  useEffect(() => {
-    if (otherParticipants.length === 1) {
-      setReportedUserUid(otherParticipants[0].userId)
-    }
-  }, [otherParticipants])
-
   function resetForm() {
+    setReportTarget('')
     setReason(REPORT_REASONS[0].value)
     setDetails('')
     setError(null)
     setSubmitted(false)
-    if (otherParticipants.length === 1) {
-      setReportedUserUid(otherParticipants[0].userId)
-    } else {
-      setReportedUserUid('')
-    }
   }
 
   function handleOpen() {
@@ -51,26 +47,30 @@ export default function ReportConcernForm({
 
   async function handleSubmit(event) {
     event.preventDefault()
-    if (!reportedUserUid) {
-      setError('Select the person you are reporting.')
+    if (!reportTarget) {
+      setError('Select who you are reporting, or choose general concern.')
       return
     }
+
+    const isGeneralConcern = reportTarget === GENERAL_CONCERN_VALUE
+    const reportedParticipant = isGeneralConcern
+      ? null
+      : otherParticipants.find((participant) => participant.userId === reportTarget)
 
     setError(null)
     setSubmitting(true)
     try {
-      const reportedParticipant = otherParticipants.find(
-        (participant) => participant.userId === reportedUserUid,
-      )
-
       await submitUserReport({
         reporterUid,
-        reportedUserUid,
+        reportedUserUid: isGeneralConcern ? '' : reportTarget,
+        isGeneralConcern,
         groupId,
         reason,
         details,
         reporterName,
-        reportedUserName: reportedParticipant?.parentName || '',
+        reportedUserName: isGeneralConcern
+          ? 'General concern'
+          : firstNameFromParent(reportedParticipant?.parentName),
         groupName,
       })
       setSubmitted(true)
@@ -87,7 +87,6 @@ export default function ReportConcernForm({
         type="button"
         onClick={handleOpen}
         className="link-accent text-sm"
-        disabled={otherParticipants.length === 0}
       >
         Report a concern
       </button>
@@ -106,27 +105,26 @@ export default function ReportConcernForm({
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          {otherParticipants.length > 1 && (
-            <div>
-              <label htmlFor="report-user" className="block text-sm font-medium text-[var(--color-text)]">
-                Who are you reporting?
-              </label>
-              <select
-                id="report-user"
-                value={reportedUserUid}
-                onChange={(event) => setReportedUserUid(event.target.value)}
-                className="input-kr mt-1 max-w-md"
-                required
-              >
-                <option value="">Select a person</option>
-                {otherParticipants.map((participant) => (
-                  <option key={participant.userId} value={participant.userId}>
-                    {participant.parentName || 'Parent'}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div>
+            <label htmlFor="report-user" className="block text-sm font-medium text-[var(--color-text)]">
+              Who are you reporting?
+            </label>
+            <select
+              id="report-user"
+              value={reportTarget}
+              onChange={(event) => setReportTarget(event.target.value)}
+              className="input-kr mt-1 max-w-md"
+              required
+            >
+              <option value="">Select a person or general concern</option>
+              {otherParticipants.map((participant) => (
+                <option key={participant.userId} value={participant.userId}>
+                  {firstNameFromParent(participant.parentName)}
+                </option>
+              ))}
+              <option value={GENERAL_CONCERN_VALUE}>General concern about this group</option>
+            </select>
+          </div>
 
           <div>
             <label htmlFor="report-reason" className="block text-sm font-medium text-[var(--color-text)]">

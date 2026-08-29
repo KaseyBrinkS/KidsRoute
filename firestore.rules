@@ -130,7 +130,8 @@ service cloud.firestore {
         && request.resource.data.reporterUid == request.auth.uid
         && request.resource.data.reportedUserUid is string
         && request.resource.data.groupId is string
-        && request.resource.data.reason is string;
+        && request.resource.data.reason is string
+        && request.resource.data.isGeneralConcern is bool;
       allow read: if isAdmin();
       allow update, delete: if false;
     }
