@@ -10,6 +10,33 @@ export function getWelcomeFindRoutePath(setupIncomplete) {
   return '/settings'
 }
 
+const KEY_FEATURES = [
+  {
+    emoji: '🏫',
+    title: 'School Routes',
+    description:
+      'Coordinate morning drop-off and afternoon pick-up with families in your building who share your school.',
+  },
+  {
+    emoji: '🎯',
+    title: 'Activity Routes',
+    description:
+      "Add your child's activities and find families heading to the same place at the same time.",
+  },
+  {
+    emoji: '👥',
+    title: 'Shared Walks',
+    description:
+      'Parents can take turns leading, coordinate with caregivers, or add an approved Group Leader.',
+  },
+  {
+    emoji: '✅',
+    title: 'Check-in & Check-out',
+    description:
+      'Group Leaders check children in at pickup and out at arrival, keeping all families updated.',
+  },
+]
+
 const HOW_IT_WORKS_STEPS = [
   {
     emoji: '👤',
@@ -52,6 +79,96 @@ const HOW_IT_WORKS_STEPS = [
 const NAVY = '#1C3A4A'
 const TEAL = '#3d6b5e'
 
+export function WelcomeIntro() {
+  return (
+    <div className="space-y-4 text-center">
+      <p className="text-base leading-relaxed text-[var(--color-text)]">
+        Welcome to KidsRoute — the safe, simple way for school families to coordinate group walks
+        to after-school activities. Match with families heading to the same destination, walk
+        together with a trusted chaperone, and get real-time check-ins so you always know your
+        child arrived safely.
+      </p>
+      <p className="text-base font-medium leading-relaxed text-primary-dark">
+        Because raising kids takes a village — and KidsRoute helps you find yours.
+      </p>
+      <p className="text-sm font-medium tracking-wide text-primary">
+        Your kids. Your circle. Your choice.
+      </p>
+    </div>
+  )
+}
+
+export function GettingStartedSection() {
+  return (
+    <div className="space-y-4 px-6 pb-8 pt-6 text-center sm:px-8 sm:pb-10">
+      <Link
+        to="/settings"
+        className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]"
+      >
+        Get Started
+      </Link>
+      <p className="text-xs leading-relaxed text-muted">
+        Free for families · No App Store download required
+      </p>
+    </div>
+  )
+}
+
+/** @deprecated use GettingStartedSection */
+export function GetStartedButton({ className = '', onClick, busy = false }) {
+  if (onClick) {
+    return (
+      <div className={`text-center ${className}`}>
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={busy}
+          className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]"
+        >
+          {busy ? 'Loading…' : 'Get Started'}
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`text-center ${className}`}>
+      <Link
+        to="/settings"
+        className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]"
+      >
+        Get Started
+      </Link>
+    </div>
+  )
+}
+
+export function KeyFeaturesSection() {
+  return (
+    <section aria-labelledby="key-features-heading">
+      <h2 id="key-features-heading" className="sr-only">
+        What KidsRoute offers
+      </h2>
+      <ul className="space-y-3">
+        {KEY_FEATURES.map((feature) => (
+          <li key={feature.title} className="kr-card flex gap-4 p-5">
+            <span
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xl"
+              aria-hidden="true"
+            >
+              {feature.emoji}
+            </span>
+            <div className="min-w-0 text-left">
+              <p className="font-heading font-semibold text-primary-dark">{feature.title}</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted">{feature.description}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 export function HowItWorksSection({ className = '' }) {
   return (
     <section id="how-it-works" aria-labelledby="how-it-works-heading" className={`scroll-mt-8 ${className}`}>
@@ -85,21 +202,6 @@ export function HowItWorksSection({ className = '' }) {
       </ol>
     </section>
   )
-}
-
-/** @deprecated Welcome page uses WelcomeHero instead */
-export function WelcomeIntro() {
-  return null
-}
-
-/** @deprecated Welcome page uses WelcomeHero instead */
-export function GetStartedButton() {
-  return null
-}
-
-/** @deprecated Welcome page uses WelcomeFeatureCards instead */
-export function KeyFeaturesSection() {
-  return null
 }
 
 export function GetStartedLink({ className = '' }) {
