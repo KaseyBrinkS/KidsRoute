@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom'
 import KidsRouteLogo from '../KidsRouteLogo'
+import {
+  WELCOME_HERO_DESCRIPTION,
+  WELCOME_HERO_HEADLINE_LINES,
+  WELCOME_HERO_TAGLINE,
+} from '../../content/welcomeContent'
 
 const NAVY = '#1C3A4A'
 const PINK = '#C4768A'
-const TEAL = '#3d6b5e'
 
 export default function WelcomeHero({ findRoutePath = '/settings' }) {
   function scrollToHowItWorks() {
@@ -25,24 +29,21 @@ export default function WelcomeHero({ findRoutePath = '/settings' }) {
           className="font-sans text-[1.65rem] font-semibold leading-[1.35] tracking-tight sm:text-[2rem]"
           style={{ color: NAVY }}
         >
-          Same school. Same neighborhood.
+          {WELCOME_HERO_HEADLINE_LINES.map((line, index) => (
+            <span key={line}>
+              {index > 0 && <br />}
+              {line}
+            </span>
+          ))}
           <br />
-          Same direction.
-          <br />
-          <span style={{ color: PINK }}>Let&apos;s get there together.</span>
+          <span style={{ color: PINK }}>{WELCOME_HERO_TAGLINE}</span>
         </h1>
 
         <p
           className="mx-auto max-w-xl text-base leading-relaxed sm:text-[1.05rem]"
           style={{ color: `${NAVY}B3` }}
         >
-          KidsRoute connects local families whose kids are already heading to the same places —
-          making it easier to coordinate walks, share the load, and build a stronger neighborhood
-          community.
-        </p>
-
-        <p className="text-sm font-medium tracking-wide" style={{ color: TEAL }}>
-          Your kids. Your circle. Your choice.
+          {WELCOME_HERO_DESCRIPTION}
         </p>
 
         <div className="flex flex-col items-center justify-center gap-3 pt-2 sm:flex-row sm:gap-4">
