@@ -7,7 +7,6 @@ import { subscribeToUserProfile } from '../firebase/users'
 
 const navLinks = [
   { to: '/dashboard', label: 'Dashboard', mobileLabel: 'Home' },
-  { to: '/my-kids', label: 'My Kids', mobileLabel: 'Kids' },
   { to: '/my-activities', label: 'Activities', mobileLabel: 'Activities' },
   { to: '/groups', label: 'Groups', mobileLabel: 'Groups' },
   { to: '/leader', label: 'Leader', mobileLabel: 'Leader' },

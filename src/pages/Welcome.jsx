@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import AboutHero from '../components/onboarding/AboutHero'
 import {
   GetStartedButton,
@@ -10,13 +10,19 @@ import {
 } from '../components/onboarding/WelcomeAboutContent'
 import WelcomeNavGrid from '../components/onboarding/WelcomeNavGrid'
 import { useAuth } from '../context/AuthContext'
-import { isSetupComplete, subscribeToUserProfile } from '../firebase/users'
+import {
+  advanceOnboardingStep,
+  isSetupComplete,
+  subscribeToUserProfile,
+} from '../firebase/users'
 
 export default function Welcome() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [setupIncomplete, setSetupIncomplete] = useState(false)
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [starting, setStarting] = useState(false)
 
   useEffect(() => {
     if (!user) return undefined
@@ -33,6 +39,17 @@ export default function Welcome() {
 
     return unsubscribe
   }, [user])
+
+  async function handleGetStarted() {
+    if (!user) return
+    setStarting(true)
+    try {
+      await advanceOnboardingStep(user.uid, 2)
+      navigate('/onboarding/details')
+    } catch {
+      navigate('/onboarding/details')
+    }
+  }
 
   if (loading) {
     return (
@@ -60,15 +77,19 @@ export default function Welcome() {
           <div className="space-y-8 px-6 pb-8 pt-6 sm:px-8 sm:pb-10">
             <WelcomeIntro />
 
-            <GetStartedButton />
+            {setupIncomplete ? (
+              <GetStartedButton onClick={handleGetStarted} busy={starting} />
+            ) : null}
 
             <HowItWorksSection />
 
             <KeyFeaturesSection />
 
-            <section aria-label="App navigation" className="border-t border-border pt-6">
-              <WelcomeNavGrid />
-            </section>
+            {!setupIncomplete && (
+              <section aria-label="App navigation" className="border-t border-border pt-6">
+                <WelcomeNavGrid />
+              </section>
+            )}
 
             {!setupIncomplete ? (
               <div className="text-center">
@@ -76,16 +97,7 @@ export default function Welcome() {
                   ← Back to Dashboard
                 </Link>
               </div>
-            ) : (
-              <div className="text-center">
-                <Link
-                  to="/dashboard"
-                  className="text-sm font-semibold text-muted hover:text-primary"
-                >
-                  Skip for now
-                </Link>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

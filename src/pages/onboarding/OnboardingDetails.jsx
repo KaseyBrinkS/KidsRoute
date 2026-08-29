@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import OnboardingShell from '../../components/onboarding/OnboardingShell'
-import { OnboardingStepActions } from '../../components/onboarding/OnboardingStepActions'
 import { useAuth } from '../../context/AuthContext'
-import { validateHomeAddressFields } from '../../firebase/buildingWalks'
+import { syncBuildingWalkChildren, validateHomeAddressFields } from '../../firebase/buildingWalks'
+import { useOnboardingStepGuard } from '../../hooks/useOnboardingStepGuard'
 import { advanceOnboardingStep, subscribeToUserProfile, updateUserProfile } from '../../firebase/users'
 
 export default function OnboardingDetails() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  useOnboardingStepGuard(2)
+
   const [phoneNumber, setPhoneNumber] = useState('')
   const [streetNumber, setStreetNumber] = useState('')
   const [streetName, setStreetName] = useState('')
@@ -38,13 +40,13 @@ export default function OnboardingDetails() {
     return unsubscribe
   }, [user])
 
-  async function handleNext(event) {
-    event?.preventDefault?.()
+  async function handleSave(event) {
+    event.preventDefault()
     setError(null)
 
     const trimmedPhone = phoneNumber.trim()
     if (!trimmedPhone) {
-      setError('Enter a phone number so other parents can reach you during walks.')
+      setError('Enter a phone number so your group can reach you during walks.')
       return
     }
 
@@ -66,8 +68,9 @@ export default function OnboardingDetails() {
         streetName: streetName.trim(),
         zipCode: zipCode.trim(),
       })
-      await advanceOnboardingStep(user.uid, 4)
-      navigate('/onboarding/activity')
+      await syncBuildingWalkChildren(user.uid)
+      await advanceOnboardingStep(user.uid, 3)
+      navigate('/onboarding/kids')
     } catch (err) {
       setError(err.message)
       setSubmitting(false)
@@ -76,32 +79,40 @@ export default function OnboardingDetails() {
 
   return (
     <OnboardingShell
-      step={3}
+      step={2}
       title="Your details"
-      description="Your phone number and home address help us find walking group matches nearby. This information is kept private and only shared with families in your confirmed walk groups."
+      description="We need a few basics to match you with nearby families and keep you updated during walks."
     >
       {loading ? (
         <p className="text-muted">Loading…</p>
       ) : (
-        <>
-          <form id="onboarding-details-form" onSubmit={handleNext} className="space-y-4">
-            <div>
-              <label htmlFor="phoneNumber" className="block text-sm font-medium text-[var(--color-text)]">
-                Phone number
-              </label>
-              <input
-                id="phoneNumber"
-                name="phoneNumber"
-                type="tel"
-                required
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="(555) 555-5555"
-                className="input-kr"
-              />
-            </div>
+        <form onSubmit={handleSave} className="space-y-5">
+          <div>
+            <label htmlFor="phoneNumber" className="block text-sm font-medium text-[var(--color-text)]">
+              Phone number
+            </label>
+            <p className="mt-1 text-sm leading-relaxed text-muted">
+              Used for walk coordination and safety notifications from your group.
+            </p>
+            <input
+              id="phoneNumber"
+              name="phoneNumber"
+              type="tel"
+              required
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="(555) 555-5555"
+              className="input-kr mt-2"
+            />
+          </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <p className="text-sm font-medium text-[var(--color-text)]">Home address</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted">
+              Used to match you with families in your building for morning and afternoon school
+              walks, and after-school walk home coordination. Never shared publicly.
+            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-3">
               <div>
                 <label htmlFor="streetNumber" className="block text-sm font-medium text-[var(--color-text)]">
                   Street number
@@ -133,8 +144,7 @@ export default function OnboardingDetails() {
                 />
               </div>
             </div>
-
-            <div>
+            <div className="mt-4">
               <label htmlFor="zipCode" className="block text-sm font-medium text-[var(--color-text)]">
                 Zip code
               </label>
@@ -149,17 +159,14 @@ export default function OnboardingDetails() {
                 className="input-kr"
               />
             </div>
+          </div>
 
-            {error && <p className="alert-error">{error}</p>}
-          </form>
+          {error && <p className="alert-error">{error}</p>}
 
-          <OnboardingStepActions
-            primaryLabel="Next"
-            onPrimary={handleNext}
-            primaryBusy={submitting}
-            skipLabel="Do this later"
-          />
-        </>
+          <button type="submit" disabled={submitting} className="btn-primary w-full py-3">
+            {submitting ? 'Saving…' : 'Save and continue'}
+          </button>
+        </form>
       )}
     </OnboardingShell>
   )

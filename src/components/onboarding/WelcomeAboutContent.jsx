@@ -2,13 +2,13 @@ import { Link } from 'react-router-dom'
 
 export function getWelcomeLogoPath(setupIncomplete, onboardingStep) {
   if (!setupIncomplete) return '/dashboard'
-  if (onboardingStep === 1) return '/my-kids'
   const paths = {
-    2: '/onboarding/kids',
-    3: '/onboarding/details',
-    4: '/onboarding/activity',
+    1: '/onboarding/details',
+    2: '/onboarding/details',
+    3: '/onboarding/kids',
+    4: '/onboarding/complete',
   }
-  return paths[onboardingStep] ?? '/my-kids'
+  return paths[onboardingStep] ?? '/onboarding/details'
 }
 
 const HOW_IT_WORKS_STEPS = [
@@ -89,10 +89,25 @@ export function WelcomeIntro() {
   )
 }
 
-export function GetStartedButton({ className = '' }) {
+export function GetStartedButton({ className = '', onClick, busy = false }) {
+  if (onClick) {
+    return (
+      <div className={`text-center ${className}`}>
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={busy}
+          className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]"
+        >
+          {busy ? 'Loading…' : 'Get Started'}
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className={`text-center ${className}`}>
-      <Link to="/my-kids" className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]">
+      <Link to="/onboarding/details" className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]">
         Get Started
       </Link>
     </div>

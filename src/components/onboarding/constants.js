@@ -3,14 +3,14 @@ export const APP_DESCRIPTION =
 
 export const ONBOARDING_STEPS = {
   welcome: 1,
-  kids: 2,
-  details: 3,
-  activity: 4,
+  details: 2,
+  kids: 3,
+  complete: 4,
 }
 
 export const ONBOARDING_PATHS = {
   1: '/welcome',
-  2: '/onboarding/kids',
-  3: '/onboarding/details',
-  4: '/onboarding/activity',
+  2: '/onboarding/details',
+  3: '/onboarding/kids',
+  4: '/onboarding/complete',
 }

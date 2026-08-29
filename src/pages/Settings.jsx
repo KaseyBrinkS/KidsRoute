@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
+import MyKidsSection from '../components/settings/MyKidsSection'
 import SchoolSelect from '../components/SchoolSelect'
 import { useAuth } from '../context/AuthContext'
 import { logOut } from '../firebase/auth'
@@ -25,9 +26,9 @@ import {
 
 const inputClass = 'input-kr'
 
-function SettingsSection({ title, description, children }) {
+function SettingsSection({ id, title, description, children }) {
   return (
-    <section className="kr-card p-6">
+    <section id={id} className="kr-card p-6 scroll-mt-24">
       <h2 className="kr-section-title">{title}</h2>
       {description && <p className="kr-section-desc">{description}</p>}
       <div className="mt-4">{children}</div>
@@ -106,6 +107,12 @@ export default function Settings() {
 
     return unsubscribe
   }, [user])
+
+  useEffect(() => {
+    if (window.location.hash === '#my-kids') {
+      document.getElementById('my-kids')?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [])
 
   async function handleSavePhone(event) {
     event.preventDefault()
@@ -356,6 +363,14 @@ export default function Settings() {
                 <p className="mt-2 text-sm text-green-600">Home address saved.</p>
               )}
             </form>
+          </SettingsSection>
+
+          <SettingsSection
+            id="my-kids"
+            title="My Kids"
+            description="Manage your children's profiles — name, grade, and school."
+          >
+            <MyKidsSection onError={setError} />
           </SettingsSection>
 
           <SettingsSection

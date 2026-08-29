@@ -39,9 +39,8 @@ export function needsOnboarding(profile) {
 /** @deprecated use needsOnboarding */
 export const needsWelcome = needsOnboarding
 
-export function shouldShowSetupReminder(profile, kidCount, activityCount) {
-  if (isSetupComplete(profile)) return false
-  return kidCount < 1 || activityCount < 1
+export function shouldShowSetupReminder(profile) {
+  return !isSetupComplete(profile)
 }
 
 export function getOnboardingRedirectPath(profile) {
@@ -49,17 +48,11 @@ export function getOnboardingRedirectPath(profile) {
   const step = profile.onboardingStep ?? 1
   const paths = {
     1: '/welcome',
-    2: '/onboarding/kids',
-    3: '/onboarding/details',
-    4: '/onboarding/activity',
+    2: '/onboarding/details',
+    3: '/onboarding/kids',
+    4: '/onboarding/complete',
   }
   return paths[step] ?? '/welcome'
-}
-
-export async function syncSetupCompletion(userId, kidCount, activityCount) {
-  if (kidCount >= 1 && activityCount >= 1) {
-    await completeOnboarding(userId)
-  }
 }
 
 export async function advanceOnboardingStep(userId, step) {
@@ -76,7 +69,7 @@ export const completeWelcome = completeOnboarding
 export async function getPostLoginPath(userId) {
   const profile = await getUserProfile(userId)
   if (profile.accountType === 'external_leader') return '/leader'
-  if (isSetupComplete(profile)) return '/welcome'
+  if (isSetupComplete(profile)) return '/dashboard'
   if (profile.welcomeCompleted === false && (profile.onboardingStep ?? 1) === 1) {
     return '/welcome'
   }

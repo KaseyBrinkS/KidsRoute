@@ -30,7 +30,6 @@ import {
   getUserProfile,
   shouldShowSetupReminder,
   subscribeToUserProfile,
-  syncSetupCompletion,
 } from '../firebase/users'
 import { syncWalkGroupsForUser } from '../firebase/activities'
 import { getChildColorById } from '../utils/dates'
@@ -104,12 +103,7 @@ export default function Dashboard() {
     }
   }, [user])
 
-  useEffect(() => {
-    if (!user || kidCount < 1 || activityCount < 1) return
-    syncSetupCompletion(user.uid, kidCount, activityCount).catch(() => {})
-  }, [user, kidCount, activityCount])
-
-  const showSetupReminder = shouldShowSetupReminder(profile, kidCount, activityCount)
+  const showSetupReminder = shouldShowSetupReminder(profile)
 
   const dashboardWalkGroups = useMemo(
     () => walkGroups.filter(walkGroupHasMultipleFamilies),

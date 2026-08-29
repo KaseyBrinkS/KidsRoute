@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ChildColorDot from '../../components/ChildColorDot'
-import ChildColorPicker from '../../components/ChildColorPicker'
 import OnboardingShell from '../../components/onboarding/OnboardingShell'
-import { OnboardingStepActions } from '../../components/onboarding/OnboardingStepActions'
 import SchoolSelect from '../../components/SchoolSelect'
 import { useAuth } from '../../context/AuthContext'
 import { advanceOnboardingStep } from '../../firebase/users'
 import { addKid, GRADES, SCHOOLS, subscribeToKids } from '../../firebase/kids'
 import { resolveSchoolValue } from '../../firebase/schools'
+import { useOnboardingStepGuard } from '../../hooks/useOnboardingStepGuard'
 import { defaultColorKeyForNewChild } from '../../utils/dates'
 
 const emptyForm = {
@@ -16,12 +15,13 @@ const emptyForm = {
   grade: 'K',
   schoolSelect: SCHOOLS[0],
   schoolCustom: '',
-  colorKey: 0,
 }
 
 export default function OnboardingKids() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  useOnboardingStepGuard(3)
+
   const [kids, setKids] = useState([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(emptyForm)
@@ -64,14 +64,9 @@ export default function OnboardingKids() {
         firstName: form.firstName,
         grade: form.grade,
         school,
-        colorKey: form.colorKey,
+        colorKey: defaultColorKeyForNewChild(kids),
       })
-      setForm({
-        ...emptyForm,
-        colorKey: defaultColorKeyForNewChild(
-          Array.from({ length: kids.length + 1 }, (_, index) => ({ id: String(index) })),
-        ),
-      })
+      setForm(emptyForm)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -79,17 +74,17 @@ export default function OnboardingKids() {
     }
   }
 
-  async function handleNext() {
+  async function handleDone() {
     if (kids.length === 0) {
-      setError('Add at least one child to continue, or skip for now.')
+      setError('Add at least one child to continue.')
       return
     }
 
     setError(null)
     setAdvancing(true)
     try {
-      await advanceOnboardingStep(user.uid, 3)
-      navigate('/onboarding/details')
+      await advanceOnboardingStep(user.uid, 4)
+      navigate('/onboarding/complete')
     } catch (err) {
       setError(err.message)
       setAdvancing(false)
@@ -98,9 +93,9 @@ export default function OnboardingKids() {
 
   return (
     <OnboardingShell
-      step={2}
+      step={3}
       title="Add your kids"
-      description="Tell us about the children who will be walking to activities."
+      description="Tell us about the children who will be walking. You can always add or edit kids later in Settings."
     >
       <form onSubmit={handleAddChild} className="space-y-4">
         <div>
@@ -155,10 +150,6 @@ export default function OnboardingKids() {
             </div>
           </div>
         </div>
-        <ChildColorPicker
-          value={form.colorKey ?? defaultColorKeyForNewChild(kids)}
-          onChange={(colorKey) => setForm((prev) => ({ ...prev, colorKey }))}
-        />
         <button type="submit" disabled={submitting} className="btn-secondary w-full">
           {submitting ? 'Adding…' : 'Add child'}
         </button>
@@ -183,13 +174,14 @@ export default function OnboardingKids() {
 
       {error && <p className="alert-error mt-4">{error}</p>}
 
-      <OnboardingStepActions
-        primaryLabel="Next"
-        onPrimary={handleNext}
-        primaryDisabled={loading || kids.length === 0}
-        primaryBusy={advancing}
-        skipLabel="Do this later"
-      />
+      <button
+        type="button"
+        onClick={handleDone}
+        disabled={loading || kids.length === 0 || advancing}
+        className="btn-primary mt-6 w-full py-3"
+      >
+        {advancing ? 'Loading…' : 'Done adding kids'}
+      </button>
     </OnboardingShell>
   )
 }

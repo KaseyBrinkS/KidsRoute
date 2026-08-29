@@ -13,19 +13,8 @@ const navItems = [
     ),
   },
   {
-    to: '/my-kids',
-    label: 'My Kids',
-    icon: (
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M16 19v-1a4 4 0 00-4-4H8a4 4 0 00-4 4v1M12 11.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM20 19v-1a3 3 0 00-2.25-2.9M16 5.1a3 3 0 010 5.8"
-      />
-    ),
-  },
-  {
     to: '/my-activities',
-    label: 'My Activities',
+    label: 'Activities',
     icon: (
       <path
         strokeLinecap="round"

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import GuidanceBanner from '../components/GuidanceBanner'
 import ActivitiesWeekCalendar from '../components/ActivitiesWeekCalendar'
 import { ChildNameWithDot } from '../components/ChildColorDot'
 import LocationSearch from '../components/LocationSearch'
@@ -305,6 +306,13 @@ export default function MyActivities() {
         description="After-school activities your kids are signed up for"
       />
 
+      {!activitiesLoading && activities.length === 0 && (
+        <GuidanceBanner className="mb-6">
+          Add your kids&apos; after-school activities here to get matched with families heading
+          the same way!
+        </GuidanceBanner>
+      )}
+
       <div className="mb-6 flex justify-end">
         <ViewToggle
           value={viewMode}
@@ -325,11 +333,11 @@ export default function MyActivities() {
           <p className="mt-4 text-muted">Loading children…</p>
         ) : kids.length === 0 ? (
           <p className="mt-4 text-muted">
-            Add a child on the{' '}
-            <Link to="/my-kids" className="link-accent">
-              My Kids
+            Add a child in{' '}
+            <Link to="/settings#my-kids" className="link-accent">
+              Settings
             </Link>{' '}
-            screen before adding activities.
+            before adding activities.
           </p>
         ) : (
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
