@@ -70,9 +70,9 @@ export function WelcomeIntro() {
   return (
     <div className="space-y-4 text-center">
       <p className="text-base leading-relaxed text-[var(--color-text)]">
-        Let&apos;s get there together. KidsRoute connects local families whose kids are already
-        heading to the same places — making it easier to coordinate walks, share the load, and
-        build a stronger neighborhood community.
+        KidsRoute connects neighboring families attending the same schools and local activities.
+        Coordinate group walks with shared Group Leaders, real-time check-ins, and the support of
+        a community going your way.
       </p>
     </div>
   )
