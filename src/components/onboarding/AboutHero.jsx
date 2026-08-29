@@ -24,8 +24,8 @@ export default function AboutHero({
         )}
         <h1 className="font-heading mt-8 text-4xl font-semibold text-primary-dark">KidsRoute</h1>
         <p
-          className="mt-3 text-xl"
-          style={{ fontFamily: '"Source Serif 4", serif', fontWeight: 800, color: '#1C3A4A' }}
+          className="mt-3 text-2xl"
+          style={{ fontFamily: '"DM Sans", sans-serif', fontWeight: 800, color: '#1C3A4A' }}
         >
           Same school. Same neighborhood. Same direction.
         </p>
