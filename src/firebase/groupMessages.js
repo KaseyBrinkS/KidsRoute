@@ -17,6 +17,7 @@ import {
   getSessionKeyFromTimestamp,
 } from './sessions'
 import { isWalkGroupDocument, walkGroupUserHasAccepted } from './walkGroups'
+import { getWalkLeaderUserIds } from './leaderVolunteers'
 
 const READ_STORAGE_PREFIX = 'kidsroute.chat.read'
 
@@ -169,6 +170,20 @@ export function getPastSessionKeys(messages, currentSessionKey = getCurrentSessi
 
 export function filterMessagesForSession(messages, sessionKey) {
   return messages.filter((message) => message.sessionKey === sessionKey)
+}
+
+export function getLatestWalkLeaderMessage(messages, group, volunteers, sessionKey = getCurrentSessionKey()) {
+  const leaderUserIds = getWalkLeaderUserIds(group, volunteers)
+  if (leaderUserIds.size === 0) return null
+
+  const leaderMessages = filterMessagesForSession(messages, sessionKey).filter(
+    (message) =>
+      !message.isAlert
+      && message.userId !== 'system'
+      && leaderUserIds.has(message.userId),
+  )
+
+  return leaderMessages.length > 0 ? leaderMessages[leaderMessages.length - 1] : null
 }
 
 export function getCurrentSessionConversationLabel(referenceDate = new Date()) {

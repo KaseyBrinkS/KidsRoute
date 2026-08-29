@@ -141,6 +141,10 @@ export default function GroupChat() {
         <Link to="/groups" className="link-accent text-sm">
           ← Groups
         </Link>
+        <span className="text-muted">·</span>
+        <Link to="/leader" className="link-accent text-sm">
+          Leader
+        </Link>
         <h1 className="font-heading mt-2 text-xl font-semibold text-primary">Group messages</h1>
         <p className="mt-1 text-sm text-muted">
           {group.location} · {group.day} · {formatGroupTimes(group)}

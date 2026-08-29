@@ -154,6 +154,47 @@ export function userVolunteerEntries(volunteers, userId) {
   return volunteers.filter((volunteer) => volunteer.userId === userId)
 }
 
+export function userHasVolunteerRecordForGroup(volunteers, userId, groupId = null) {
+  return volunteers.some((volunteer) => {
+    if (volunteer.userId !== userId) return false
+    if (groupId && volunteer.groupId !== groupId) return false
+    return true
+  })
+}
+
+/** User IDs who can send Walk Leader messages for a group. */
+export function getWalkLeaderUserIds(group, volunteers = []) {
+  const ids = new Set()
+  for (const volunteer of volunteers) {
+    if (volunteer.userId) ids.add(volunteer.userId)
+  }
+  for (const leader of getActiveLeaders(group)) {
+    if (leader.userId) ids.add(leader.userId)
+  }
+  return ids
+}
+
+export function userLeadsWalkGroup(group, userId, volunteers = []) {
+  if (!group || !userId) return false
+  if (userHasVolunteerRecordForGroup(volunteers, userId, group.id)) return true
+  return getActiveLeaders(group).some((leader) => leader.userId === userId)
+}
+
+export function subscribeToUserVolunteeredGroupIds(userId, onData, onError) {
+  if (!userId) {
+    onData([])
+    return () => {}
+  }
+
+  return onSnapshot(
+    query(collection(db, 'leaderVolunteers'), where('userId', '==', userId)),
+    (snapshot) => {
+      onData([...new Set(snapshot.docs.map((docSnap) => docSnap.data().groupId).filter(Boolean))])
+    },
+    onError,
+  )
+}
+
 export function getUpcomingScheduleEntries(group, volunteers, absences, fromDateKey = todayKey()) {
   const parties = (group?.parties ?? []).filter((party) => party.response !== 'declined')
   const dateKeys = getGroupUpcomingScheduledDates(group, fromDateKey)

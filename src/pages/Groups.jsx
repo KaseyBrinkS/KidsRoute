@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import GroupsWeekCalendar from '../components/GroupsWeekCalendar'
-import { ChildNameWithDot } from '../components/ChildColorDot'
+import GroupFamilyCard from '../components/GroupFamilyCard'
 import PageHeader from '../components/PageHeader'
 import ViewToggle from '../components/ViewToggle'
 import { useAuth } from '../context/AuthContext'
@@ -21,20 +21,14 @@ import {
   subscribeToGroupAbsences,
   subscribeToUserActiveWalkSessions,
 } from '../firebase/groupWalk'
-import GroupLeaderControls from '../components/GroupLeaderControls'
-import GroupChatButton from '../components/GroupChatButton'
-import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
-import GroupNote from '../components/GroupNote'
 import GuidanceBanner from '../components/GuidanceBanner'
-import MeetingPointControls from '../components/MeetingPointControls'
+import { ChildNameWithDot } from '../components/ChildColorDot'
 import {
   dismissGuidance,
   isGuidanceDismissed,
 } from '../utils/guidanceDismissals'
 import {
   getPartiesForUser,
-  isWalkGroupDocument,
-  leaveWalkGroup,
   subscribeToWalkGroups,
   walkGroupIsVisibleOnGroupsPage,
 } from '../firebase/walkGroups'
@@ -100,21 +94,6 @@ function ChildViewTabs({ groupsByChild, kids, selectedChildId, onSelect }) {
   )
 }
 
-function GroupTypeBadge({ group }) {
-  if (isWalkHomeGroup(group)) {
-    return (
-      <span className="rounded-full bg-[var(--color-walk-blue-bg)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-walk-blue)]">
-        🏠 Walk Home
-      </span>
-    )
-  }
-  return (
-    <span className="rounded-full bg-bg-warm px-2.5 py-0.5 text-xs font-semibold text-muted">
-      Walk To
-    </span>
-  )
-}
-
 function ColorCodedGroupCard({ group, userId, kids, childId, displayStatus }) {
   const color = getChildColorById(childId, kids)
   return (
@@ -125,7 +104,7 @@ function ColorCodedGroupCard({ group, userId, kids, childId, displayStatus }) {
         background: `linear-gradient(90deg, ${color.bg} 0%, var(--color-surface) 2.5rem)`,
       }}
     >
-      <GroupCard group={group} userId={userId} displayStatus={displayStatus} />
+      <GroupFamilyCard group={group} userId={userId} displayStatus={displayStatus} />
     </div>
   )
 }
@@ -401,134 +380,6 @@ function PartyAbsenceControls({ party, group, userId, absences, walkInProgress }
   )
 }
 
-function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
-  const [activeSession, setActiveSession] = useState(null)
-  const [absences, setAbsences] = useState([])
-  const [leaving, setLeaving] = useState(false)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    const unsubSession = subscribeToActiveWalkSession(group.id, userId, setActiveSession)
-    const unsubAbsences = subscribeToGroupAbsences(group.id, userId, setAbsences)
-    return () => {
-      unsubSession()
-      unsubAbsences()
-    }
-  }, [group.id, userId])
-
-  const walkInProgress = Boolean(activeSession)
-  const myParties = getPartiesForUser(group, userId)
-  const displayWalkStatus =
-    displayStatusProp ?? (walkInProgress ? 'in progress' : getGroupWalkStatus(group))
-
-  async function handleLeaveGroup() {
-    setError(null)
-    setLeaving(true)
-    try {
-      await leaveWalkGroup(group.id, userId)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLeaving(false)
-    }
-  }
-
-  return (
-    <div className={`p-5 shadow-[var(--shadow-kr-lg)] ${walkStatusCardClass(displayWalkStatus)}`}>
-      {isWalkGroupDocument(group) && (
-        <GroupNote
-          group={group}
-          userId={userId}
-          editorName={myParties[0]?.parentName || 'A parent'}
-          className="mb-4"
-        />
-      )}
-
-      <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <GroupTypeBadge group={group} />
-          </div>
-          <p className="mt-2 font-heading text-lg font-semibold text-[var(--color-text)]">
-            {group._childName ?? formatGroupChildNames(group)}
-          </p>
-          <p className="mt-1 text-sm font-medium text-primary">{group.location}</p>
-          <p className="mt-0.5 text-sm text-muted">
-            {group.day}
-            {isWalkHomeGroup(group)
-              ? ` · Walk home ${formatWalkHomeWindow(group)}`
-              : ` · ${formatGroupTimes(group)}`}
-          </p>
-          {isWalkHomeGroup(group) && group.homeAddressDisplay && (
-            <p className="mt-0.5 text-xs text-muted">From {group.homeAddressDisplay}</p>
-          )}
-        </div>
-
-        <span className={walkStatusBadgeClass(displayWalkStatus)}>
-          {walkStatusLabel(displayWalkStatus)}
-        </span>
-      </div>
-
-      {!walkInProgress && myParties.length > 0 && (
-        <div className="space-y-3 pt-4">
-          {myParties
-            .filter((party) => !group._childName || party.childFirstName === group._childName)
-            .map((party) => (
-              <PartyAbsenceControls
-                key={party.childId}
-                party={party}
-                group={group}
-                userId={userId}
-                absences={absences}
-                walkInProgress={walkInProgress}
-              />
-            ))}
-        </div>
-      )}
-
-      {walkInProgress && (
-        <p className="mt-4 rounded-xl bg-bg-warm px-3 py-2 text-xs text-muted">
-          Absences can be updated again after today&apos;s walk is completed.
-        </p>
-      )}
-
-      <GroupLeaderControls group={group} userId={userId} absences={absences} />
-
-      {isWalkGroupDocument(group) && (
-        <div className="kr-card-subsection mt-4 space-y-3">
-          <ConfirmedMeetingPoint group={group} />
-          <MeetingPointControls
-            group={group}
-            userId={userId}
-            proposerName={myParties[0]?.parentName || 'A parent'}
-          />
-        </div>
-      )}
-
-      <div className="kr-card-actions mt-5">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <GroupChatButton group={group} userId={userId} className="mt-0 sm:flex-1" />
-          <Link to={`/groups/${group.id}/walk`} className="btn-manage-group mt-0 sm:flex-1">
-            Manage Group
-          </Link>
-        </div>
-      </div>
-
-      {!walkInProgress && (
-        <button
-          type="button"
-          onClick={handleLeaveGroup}
-          disabled={leaving}
-          className="btn-danger mt-4 w-full"
-        >
-          {leaving ? 'Leaving…' : 'Leave group'}
-        </button>
-      )}
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-    </div>
-  )
-}
-
 function BuildingWalkGroupCard({ group, userId, onLeave }) {
   const [activeSession, setActiveSession] = useState(null)
   const [absences, setAbsences] = useState([])
@@ -625,8 +476,8 @@ function BuildingWalkGroupCard({ group, userId, onLeave }) {
       </div>
 
       {group.status === 'connected' && !partnerLeft && (
-        <Link to={`/groups/${group.id}/walk`} className="btn-manage-group">
-          Manage Group
+        <Link to={`/groups/${group.id}/leader`} className="btn-secondary mt-3 w-full justify-center">
+          Group Settings
         </Link>
       )}
 
@@ -678,7 +529,7 @@ export default function Groups() {
   const [activities, setActivities] = useState([])
   const [activeSessions, setActiveSessions] = useState({})
   const [kids, setKids] = useState([])
-  const [viewMode, setViewMode] = useState('calendar')
+  const [viewMode, setViewMode] = useState('byKid')
   const [selectedChildId, setSelectedChildId] = useState(null)
   const [activityGroupsLoading, setActivityGroupsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -840,7 +691,7 @@ export default function Groups() {
     <div>
       <PageHeader
         title="Groups"
-        description="Your walking groups at a glance"
+        description="Your kids' walking groups — mark absences, volunteer, and stay in touch"
       />
 
       {error && <p className="alert-error">{error}</p>}
@@ -851,8 +702,8 @@ export default function Groups() {
             value={viewMode}
             onChange={setViewMode}
             options={[
-              { value: 'calendar', label: 'Calendar' },
               { value: 'byKid', label: 'By Kid' },
+              { value: 'calendar', label: 'Calendar' },
               { value: 'all', label: 'All Groups' },
             ]}
             className="mb-4"
@@ -865,8 +716,8 @@ export default function Groups() {
                 setHideViewsGuidance(true)
               }}
             >
-              Switch between views to see your groups by calendar, by child, or all at once. Tap
-              any group to manage the walk or send a message.
+              Switch between views to see your groups by child, calendar, or all at once. Mark
+              absences, volunteer as a Walk Leader, and coordinate with your group here.
             </GuidanceBanner>
           )}
         </>
@@ -879,8 +730,8 @@ export default function Groups() {
             setHideJoinedGuidance(true)
           }}
         >
-          You&apos;re in a group! Open Manage Group to see your fellow families, propose a meeting
-          point, and start coordinating.
+          You&apos;re in a group! Mark absences, check the meeting point, and volunteer as a Walk
+          Leader when you can.
         </GuidanceBanner>
       )}
 
@@ -935,7 +786,7 @@ export default function Groups() {
                 <div className="space-y-5">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Walk To</h3>
                   {walkToGroupsList.map((group) => (
-                    <GroupCard
+                    <GroupFamilyCard
                       key={group.id}
                       group={group}
                       userId={user.uid}
@@ -950,7 +801,7 @@ export default function Groups() {
                     🏠 Walk Home
                   </h3>
                   {walkHomeGroupsList.map((group) => (
-                    <GroupCard
+                    <GroupFamilyCard
                       key={group.id}
                       group={group}
                       userId={user.uid}

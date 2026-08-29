@@ -6,12 +6,12 @@ import { useAuth } from '../context/AuthContext'
 import { formatGroupTimes } from '../firebase/groups'
 import { BUILDING_WALK_TYPES, isBuildingWalkMatch } from '../firebase/buildingWalks'
 import { formatFirestoreError } from '../firebase/errors'
-import { matchIsConnectedForUser } from '../firebase/matching'
 import {
   endWalkSession,
   ensureSessionChildRecord,
   getChildWalkStatus,
   getGroupWalkParties,
+  markChildArrived,
   markChildDroppedOff,
   mergePartiesWithScheduleStatus,
   mergeWalkSessionChildren,
@@ -20,17 +20,14 @@ import {
   subscribeToGroupDocument,
   subscribeToActiveWalkSession,
   subscribeToWalkSessionChildren,
-  toggleParticipantAttendanceToday,
   verifyDropOffSaved,
 } from '../firebase/groupWalk'
 import {
   isWalkGroupDocument,
-  resolveWalkGroupParticipantIds,
   walkGroupIsReadyForWalk,
-  walkGroupUserHasAccepted,
 } from '../firebase/walkGroups'
 import { subscribeToKids } from '../firebase/kids'
-import { isUserActiveLeader } from '../firebase/groupLeaders'
+import { subscribeToLeaderVolunteers, userLeadsWalkGroup } from '../firebase/leaderVolunteers'
 import { formatParentContactForGroup, formatSharedContactPhone } from '../utils/contactInfo'
 import { formatHistoryTime } from '../firebase/walkHistory'
 
@@ -73,6 +70,7 @@ export default function GroupWalkPage() {
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
   const [actionId, setActionId] = useState(null)
+  const [volunteers, setVolunteers] = useState([])
   const [kids, setKids] = useState([])
 
   useEffect(() => {
@@ -123,10 +121,14 @@ export default function GroupWalkPage() {
       (err) => setError(err.message),
       { leaderAccess: true },
     )
+    const unsubVolunteers = subscribeToLeaderVolunteers(groupId, setVolunteers, (err) =>
+      setError(err.message),
+    )
 
     return () => {
       unsubSession()
       unsubAbsences()
+      unsubVolunteers()
     }
   }, [user, groupId])
 
@@ -143,23 +145,18 @@ export default function GroupWalkPage() {
     )
   }, [activeSession?.id])
 
-  const isBuildingWalk = isBuildingWalkMatch(group)
   const isWalkGroup = isWalkGroupDocument(group)
-  const isParticipant =
-    resolveWalkGroupParticipantIds(group ?? {}).includes(user?.uid)
-    || group?.parties?.some((party) => party.userId === user?.uid)
-  const canManageWalk = isUserActiveLeader(group, user?.uid)
+  const canManageWalk = userLeadsWalkGroup(group, user?.uid, volunteers)
 
   const groupReadyForWalk = useMemo(() => {
-    if (!groupLoaded || !group || !user?.uid) return false
-    if (isWalkGroup && canManageWalk) {
+    if (!groupLoaded || !group || !user?.uid || !canManageWalk) return false
+    if (isWalkGroup) {
       return (
         (group.status === 'active' || walkGroupIsReadyForWalk(group, user.uid))
         && getGroupWalkParties(group).length > 0
       )
     }
-    if (isWalkGroup) return walkGroupIsReadyForWalk(group, user.uid)
-    return matchIsConnectedForUser(group, user.uid) && getGroupWalkParties(group).length > 0
+    return getGroupWalkParties(group).length > 0
   }, [groupLoaded, group, user?.uid, isWalkGroup, canManageWalk])
 
   const walkInProgress = Boolean(activeSession)
@@ -179,7 +176,9 @@ export default function GroupWalkPage() {
     }))
   }, [walkInProgress, sessionChildren, preWalkParties, group?.day, absences])
 
-  const buildingWalkConfig = isBuildingWalk ? BUILDING_WALK_TYPES[group.buildingWalkType] : null
+  const buildingWalkConfig = isBuildingWalkMatch(group)
+    ? BUILDING_WALK_TYPES[group.buildingWalkType]
+    : null
   const pageStatus = walkPageStatus(walkInProgress)
 
   async function handleStartWalk() {
@@ -212,28 +211,22 @@ export default function GroupWalkPage() {
     }
   }
 
-  async function handleToggleAttendance(child) {
-    if (!canManageWalk || walkInProgress || !group) return
+  async function handleArrival(child) {
+    if (!activeSession?.id || !walkInProgress) return
 
-    const toggleId = `toggle_${child.userId}_${child.childId}`
+    const arrivalId = `arrive_${child.id ?? `${child.userId}_${child.childId}`}`
     setError(null)
-    setActionId(toggleId)
+    setSuccessMessage(null)
+    setActionId(arrivalId)
 
     try {
-      const result = await toggleParticipantAttendanceToday({
-        groupId,
-        party: child,
-        absences,
-        group,
-        leaderId: user.uid,
-      })
-      setSuccessMessage(
-        result.status === 'absent'
-          ? `${child.childFirstName} marked absent for today.`
-          : `${child.childFirstName} marked as attending today.`,
-      )
+      if (child._missingFromSession) {
+        await ensureSessionChildRecord(activeSession.id, child, activeSession)
+      }
+      await markChildArrived(activeSession.id, child.userId, child.childId, child.id)
+      setSuccessMessage(`${child.childFirstName} checked in.`)
     } catch (err) {
-      setError(formatFirestoreError(err, 'Could not update attendance.'))
+      setError(formatFirestoreError(err, 'Could not check in. Please try again.'))
     } finally {
       setActionId(null)
     }
@@ -316,17 +309,22 @@ export default function GroupWalkPage() {
     )
   }
 
-  const hasAccess = group && (canManageWalk || isParticipant || activeSession)
+  const hasAccess = group && canManageWalk
 
   if (!hasAccess) {
     return (
       <div>
         <PageHeader title="Manage Walk" description="Today's walk for this group" />
         <p className="text-muted">
-          Group not found or you don&apos;t have access.{' '}
+          You need to volunteer as a Walk Leader for this group to manage walks.{' '}
           <Link to="/groups" className="link-accent">
-            Back to Groups
+            Go to Groups
           </Link>
+          {' '}to volunteer, or{' '}
+          <Link to="/leader" className="link-accent">
+            back to Leader
+          </Link>
+          .
         </p>
       </div>
     )
@@ -337,21 +335,22 @@ export default function GroupWalkPage() {
       <PageHeader
         title="Manage Walk"
         description={
-          isBuildingWalk
+          isBuildingWalkMatch(group)
             ? `${buildingWalkConfig?.route} · ${buildingWalkConfig?.scheduleLabel}`
             : `${group.day} · ${formatGroupTimes(group)}`
         }
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <Link to="/groups" className="link-accent text-sm">
-          ← Back to group
+        <Link to="/leader" className="link-accent text-sm">
+          ← Back to Leader
         </Link>
-        {canManageWalk && (
-          <Link to={`/groups/${groupId}/leader`} className="btn-secondary py-1.5 text-sm">
-            Group Settings
-          </Link>
-        )}
+        <Link to={`/groups/${groupId}/leader`} className="btn-secondary py-1.5 text-sm">
+          Group Settings
+        </Link>
+        <Link to={`/groups/${groupId}/chat`} className="btn-accent py-1.5 text-sm">
+          Messages
+        </Link>
       </div>
 
       <div className="kr-card mb-6 p-6">
@@ -392,12 +391,6 @@ export default function GroupWalkPage() {
             {actionId === 'end' ? 'Ending…' : 'End Walk'}
           </button>
         )}
-
-        {!canManageWalk && isParticipant && !walkInProgress && (
-          <p className="mt-4 text-sm text-muted">
-            A Walk Leader will start the walk when your group meets up.
-          </p>
-        )}
       </div>
 
       {successMessage && (
@@ -408,9 +401,7 @@ export default function GroupWalkPage() {
 
       <h2 className="kr-section-title">Participants</h2>
       <p className="kr-section-desc">
-        {canManageWalk && !walkInProgress
-          ? 'Tap a name to mark absent or confirmed for today.'
-          : 'Walk status for each child in the group.'}
+        Check kids in when they arrive, then mark each as dropped off at their destination.
       </p>
 
       <ul className="kr-card mt-3 divide-y divide-border">
@@ -420,11 +411,14 @@ export default function GroupWalkPage() {
           children.map((child) => {
             const status = getChildWalkStatus(child)
             const childKey = child.id ?? `${child.userId}_${child.childId}`
-            const toggleId = `toggle_${child.userId}_${child.childId}`
+            const arrivalId = `arrive_${childKey}`
             const isAbsent = child.walkStatus === 'absent'
             const isDroppedOff = child.walkStatus === 'dropped_off'
-            const canToggleAttendance = canManageWalk && !walkInProgress && !isDroppedOff
-            const canDropOff = canManageWalk && walkInProgress && !isAbsent && !isDroppedOff
+            const hasArrived =
+              child.walkStatus === 'confirmed' || isDroppedOff || Boolean(child.pickedUpAt)
+            const canArrive =
+              walkInProgress && !isAbsent && !isDroppedOff && !hasArrived
+            const canDropOff = walkInProgress && !isAbsent && !isDroppedOff
 
             return (
               <li key={childKey} className="px-5 py-4">
@@ -434,18 +428,7 @@ export default function GroupWalkPage() {
                       <ChildAvatar {...childAvatarPropsFromParty(child, kids)} size="md" />
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          {canToggleAttendance ? (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleAttendance(child)}
-                              disabled={actionId === toggleId}
-                              className="font-semibold text-[var(--color-text)] underline-offset-2 hover:text-primary hover:underline disabled:opacity-50"
-                            >
-                              {child.childFirstName}
-                            </button>
-                          ) : (
-                            <p className="font-semibold text-[var(--color-text)]">{child.childFirstName}</p>
-                          )}
+                          <p className="font-semibold text-[var(--color-text)]">{child.childFirstName}</p>
                           <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.style}`}>
                             {displayStatusLabel(child, walkInProgress)}
                           </span>
@@ -465,15 +448,29 @@ export default function GroupWalkPage() {
                     )}
                   </div>
 
-                  {canDropOff && (
-                    <button
-                      type="button"
-                      onClick={() => handleDropOff(child)}
-                      disabled={actionId === childKey}
-                      className="btn-primary shrink-0 py-1.5"
-                    >
-                      {actionId === childKey ? 'Saving…' : 'Drop off'}
-                    </button>
+                  {(canArrive || canDropOff) && (
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      {canArrive && (
+                        <button
+                          type="button"
+                          onClick={() => handleArrival(child)}
+                          disabled={actionId === arrivalId}
+                          className="rounded-xl border border-[var(--color-walk-green)] px-3 py-1.5 text-sm font-semibold text-[var(--color-walk-green)] hover:bg-[var(--color-walk-green-bg)] disabled:opacity-50"
+                        >
+                          {actionId === arrivalId ? 'Saving…' : 'Check in'}
+                        </button>
+                      )}
+                      {canDropOff && (
+                        <button
+                          type="button"
+                          onClick={() => handleDropOff(child)}
+                          disabled={actionId === childKey}
+                          className="btn-primary py-1.5"
+                        >
+                          {actionId === childKey ? 'Saving…' : 'Drop off'}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </li>
@@ -483,14 +480,15 @@ export default function GroupWalkPage() {
       </ul>
 
       <p className="mt-6 flex flex-wrap gap-4">
-        <Link to="/groups" className="link-accent text-sm">
-          ← Back to group
+        <Link to="/leader" className="link-accent text-sm">
+          ← Back to Leader
         </Link>
-        {canManageWalk && (
-          <Link to={`/groups/${groupId}/leader`} className="link-accent text-sm">
-            Group Settings
-          </Link>
-        )}
+        <Link to={`/groups/${groupId}/chat`} className="link-accent text-sm">
+          Messages
+        </Link>
+        <Link to={`/groups/${groupId}/leader`} className="link-accent text-sm">
+          Group Settings
+        </Link>
       </p>
     </div>
   )
