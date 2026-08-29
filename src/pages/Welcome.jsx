@@ -9,6 +9,7 @@ import {
   WelcomeIntro,
 } from '../components/onboarding/WelcomeAboutContent'
 import WelcomeNavGrid from '../components/onboarding/WelcomeNavGrid'
+import LegalFooter from '../components/LegalFooter'
 import { useAuth } from '../context/AuthContext'
 import { isSetupComplete, subscribeToUserProfile } from '../firebase/users'
 
@@ -48,8 +49,8 @@ export default function Welcome() {
   const logoPath = getWelcomeLogoPath(setupIncomplete)
 
   return (
-    <div className="min-h-screen bg-bg px-4 py-8 sm:py-10">
-      <div className="mx-auto w-full max-w-2xl">
+    <div className="flex min-h-screen flex-col bg-bg px-4 py-8 sm:py-10">
+      <div className="mx-auto w-full max-w-2xl flex-1">
         <div className="kr-card overflow-hidden p-0">
           <AboutHero
             logoClassName="h-[120px] w-[120px] min-h-[100px] min-w-[100px]"
@@ -81,6 +82,7 @@ export default function Welcome() {
           </div>
         </div>
       </div>
+      <LegalFooter className="mx-auto mt-8 w-full max-w-2xl pb-4" />
     </div>
   )
 }

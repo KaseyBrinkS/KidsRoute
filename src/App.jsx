@@ -10,13 +10,17 @@ import Groups from './pages/Groups'
 import History from './pages/History'
 import Login from './pages/Login'
 import MyActivities from './pages/MyActivities'
+import Privacy from './pages/Privacy'
 import Settings from './pages/Settings'
+import Terms from './pages/Terms'
 import Welcome from './pages/Welcome'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
       <Route path="/pending-approval" element={<Navigate to="/welcome" replace />} />
       <Route path="/rejected" element={<Navigate to="/welcome" replace />} />
       <Route path="/my-kids" element={<Navigate to="/settings" replace />} />

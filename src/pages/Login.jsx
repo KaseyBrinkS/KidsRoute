@@ -12,6 +12,7 @@ import {
 import { claimLeaderInvite, syncLeaderProfileFromInvite } from '../firebase/groupLeaders'
 import { getPostLoginPath, saveUserProfile } from '../firebase/users'
 import KidsRouteLogo from '../components/KidsRouteLogo'
+import LegalFooter from '../components/LegalFooter'
 
 function OrDivider() {
   return (
@@ -147,8 +148,9 @@ export default function Login() {
   const isBusy = busyMethod !== null
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10">
-      <div className="kr-card w-full max-w-md overflow-hidden p-0">
+    <div className="flex min-h-screen flex-col bg-bg px-4 py-10">
+      <div className="flex flex-1 items-center justify-center">
+        <div className="kr-card w-full max-w-md overflow-hidden p-0">
         <div className="login-hero-gradient px-8 pb-8 pt-10">
           <div className="flex flex-col items-center text-center">
             <KidsRouteLogo className="h-[120px] w-[120px] min-h-[100px] min-w-[100px]" />
@@ -281,6 +283,8 @@ export default function Login() {
           )}
         </div>
       </div>
+      </div>
+      <LegalFooter className="mt-8 pb-4" />
     </div>
   )
 }

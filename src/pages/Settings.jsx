@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
+import ConfirmDialog from '../components/ConfirmDialog'
 import SettingsActivitiesPrompt from '../components/settings/SettingsActivitiesPrompt'
 import SettingsOnboardingBanner from '../components/settings/SettingsOnboardingBanner'
 import MyKidsSection from '../components/settings/MyKidsSection'
 import SchoolSelect from '../components/SchoolSelect'
 import { useAuth } from '../context/AuthContext'
 import { logOut } from '../firebase/auth'
+import { deleteUserAccount } from '../firebase/deleteAccount'
 import { isAdmin } from '../firebase/admin'
 import { syncUserMatchingOptOut } from '../firebase/matching'
 import { subscribeToKids } from '../firebase/kids'
@@ -93,6 +95,8 @@ export default function Settings() {
   const [schoolSaved, setSchoolSaved] = useState(false)
   const [bannerRefresh, setBannerRefresh] = useState(0)
   const [showActivitiesPrompt, setShowActivitiesPrompt] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   useEffect(() => {
     if (!user) return undefined
@@ -225,6 +229,22 @@ export default function Settings() {
       setError(err.message)
     } finally {
       setSigningOut(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (!user) return
+
+    setError(null)
+    setDeletingAccount(true)
+    try {
+      await deleteUserAccount(user.uid)
+      navigate('/login', { replace: true })
+    } catch (err) {
+      setError(err.message)
+      setShowDeleteDialog(false)
+    } finally {
+      setDeletingAccount(false)
     }
   }
 
@@ -495,7 +515,35 @@ export default function Settings() {
             {signingOut ? 'Signing out…' : 'Sign out'}
           </button>
         </div>
+
+        <div className="kr-card border-red-200 p-6">
+          <h2 className="font-heading text-lg font-semibold text-red-700">Delete account</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            Permanently remove your account and all associated data from KidsRoute.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={deletingAccount}
+            className="mt-4 rounded-2xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+          >
+            Delete my account
+          </button>
+        </div>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        title="Delete your account?"
+        message="This will permanently delete your account and all your data including your children's profiles, activities, and walk history. This cannot be undone."
+        confirmLabel="Delete my account"
+        cancelLabel="Cancel"
+        busy={deletingAccount}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => {
+          if (!deletingAccount) setShowDeleteDialog(false)
+        }}
+      />
     </div>
   )
 }
