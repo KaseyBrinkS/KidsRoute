@@ -492,7 +492,7 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
         </p>
       )}
 
-      <GroupLeaderControls group={group} userId={userId} />
+      <GroupLeaderControls group={group} userId={userId} absences={absences} />
 
       {isWalkGroupDocument(group) && (
         <div className="kr-card-subsection mt-4 space-y-3">

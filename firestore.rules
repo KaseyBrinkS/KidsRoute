@@ -80,11 +80,20 @@ service cloud.firestore {
           && request.auth.uid in get(/databases/$(database)/documents/walkGroups/$(groupId)).data.participantIds;
         allow create: if isSignedIn()
           && request.auth.uid in get(/databases/$(database)/documents/walkGroups/$(groupId)).data.participantIds
-          && request.resource.data.userId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 500
-          && request.resource.data.displayName is string;
+          && request.resource.data.displayName is string
+          && (
+            (
+              request.resource.data.userId == request.auth.uid
+              && !('isAlert' in request.resource.data)
+            )
+            || (
+              request.resource.data.userId == 'system'
+              && request.resource.data.isAlert == true
+            )
+          );
         allow update, delete: if false;
       }
     }
@@ -109,6 +118,21 @@ service cloud.firestore {
 
     match /groupAbsences/{absenceId} {
       allow read, write: if isSignedIn();
+    }
+
+    match /leaderVolunteers/{volunteerId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.groupId is string
+        && request.resource.data.scope in ['semester', 'date'];
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    match /ratioAlerts/{alertId} {
+      allow read, create, delete: if isSignedIn();
+      allow update: if false;
     }
 
     match /walkHistory/{historyId} {

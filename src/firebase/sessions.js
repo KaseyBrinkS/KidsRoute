@@ -166,6 +166,60 @@ export function getCurrentSessionInfo(referenceDate = new Date()) {
   }
 }
 
+/** Composite key for a school session, e.g. `fall-2026`. */
+export function getSessionKeyForDate(dateKey) {
+  const date = parseDateKey(dateKey)
+  const session = getCurrentSession(date)
+  const year = date.getFullYear()
+  if (session === 'fall') return `fall-${year}`
+  if (session === 'spring') return `spring-${year}`
+  return `summer-${year}`
+}
+
+export function getCurrentSessionKey(referenceDate = new Date()) {
+  return getSessionKeyForDate(formatDateKey(referenceDate))
+}
+
+export function getSessionConversationLabel(sessionKey) {
+  const [session, year] = sessionKey.split('-')
+  if (!session || !year) return 'Conversation'
+  const label = session.charAt(0).toUpperCase() + session.slice(1)
+  return `${label} ${year} conversation`
+}
+
+export function getSessionKeyFromTimestamp(timestamp) {
+  if (!timestamp) return getCurrentSessionKey()
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+  return getSessionKeyForDate(formatDateKey(date))
+}
+
+export function getGroupScheduledDates(group, referenceDate = new Date()) {
+  const parties = group?.parties ?? []
+  const fallbackDay = group?.day
+  const dates = new Set()
+
+  for (const party of parties) {
+    if (party.response === 'declined') continue
+    const schedule = partyScheduleSource(party, fallbackDay)
+    getScheduledDates(schedule, referenceDate).forEach((dateKey) => dates.add(dateKey))
+  }
+
+  if (dates.size === 0 && fallbackDay) {
+    getScheduledDates({ days: [fallbackDay], sessions: defaultSessions() }, referenceDate)
+      .forEach((dateKey) => dates.add(dateKey))
+  }
+
+  return [...dates].sort()
+}
+
+export function getGroupUpcomingScheduledDates(group, fromDateKey = todayKey()) {
+  return getGroupScheduledDates(group).filter((dateKey) => dateKey >= fromDateKey)
+}
+
+export function isDateInSession(dateKey, sessionKey) {
+  return getSessionKeyForDate(dateKey) === sessionKey
+}
+
 export function isActivityActiveInCurrentSession(activity, referenceDate = new Date()) {
   const sessions = activity.sessions ?? defaultSessions()
   return sessions.includes(getCurrentSession(referenceDate))

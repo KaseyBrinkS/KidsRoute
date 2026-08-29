@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
+import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminOnlyRoute from './components/AdminOnlyRoute'
 import Dashboard from './pages/Dashboard'
@@ -33,7 +34,14 @@ export default function App() {
         <Route path="/" element={<Navigate to="/welcome" replace />} />
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/my-activities" element={<MyActivities />} />
+          <Route
+            path="/my-activities"
+            element={
+              <ErrorBoundary message="The Activities page couldn't load. Try again, or head back to the dashboard.">
+                <MyActivities />
+              </ErrorBoundary>
+            }
+          />
           <Route path="/groups" element={<Groups />} />
           <Route path="/leader" element={<GroupLeaderHome />} />
           <Route path="/groups/:groupId/chat" element={<GroupChat />} />

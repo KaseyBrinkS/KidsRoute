@@ -35,6 +35,13 @@ import GroupLeaderControls from '../components/GroupLeaderControls'
 import ReportConcernForm from '../components/ReportConcernForm'
 import GuidanceBanner from '../components/GuidanceBanner'
 import {
+  getUpcomingScheduleEntries,
+  recordRatioAlertMessage,
+  subscribeToLeaderVolunteers,
+  syncRatioAlert,
+} from '../firebase/leaderVolunteers'
+import { formatDisplayDate, todayKey } from '../firebase/sessions'
+import {
   dismissGuidance,
   isGuidanceDismissed,
 } from '../utils/guidanceDismissals'
@@ -54,6 +61,7 @@ export default function GroupLeaderView() {
   const [successMessage, setSuccessMessage] = useState(null)
   const [actionId, setActionId] = useState(null)
   const [kids, setKids] = useState([])
+  const [volunteers, setVolunteers] = useState([])
   const preWalkGuidanceKey = `manage-pre-walk:${groupId}`
   const [hidePreWalkGuidance, setHidePreWalkGuidance] = useState(() =>
     isGuidanceDismissed(preWalkGuidanceKey),
@@ -143,6 +151,42 @@ export default function GroupLeaderView() {
 
     return unsubscribe
   }, [activeSession?.id])
+
+  useEffect(() => {
+    if (!groupId) return undefined
+    return subscribeToLeaderVolunteers(groupId, setVolunteers, (err) => setError(err.message))
+  }, [groupId])
+
+  const ratioWarnings = useMemo(() => {
+    if (!group) return []
+    return getUpcomingScheduleEntries(group, volunteers, absences)
+      .filter((entry) => entry.hasWalk && !entry.sufficient)
+  }, [group, volunteers, absences])
+
+  useEffect(() => {
+    if (!groupId || !group) return undefined
+
+    let cancelled = false
+
+    async function syncAlerts() {
+      const entries = getUpcomingScheduleEntries(group, volunteers, absences)
+      await Promise.all(
+        entries.map(async (entry) => {
+          if (cancelled) return
+          const needsAlert = entry.hasWalk && !entry.sufficient
+          await syncRatioAlert(groupId, entry.dateKey, needsAlert, recordRatioAlertMessage.bind(null, groupId))
+        }),
+      )
+    }
+
+    syncAlerts().catch((err) => {
+      console.warn('[GroupLeaderView] ratio alert sync failed', err)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [groupId, group, volunteers, absences])
 
   const isBuildingWalk = isBuildingWalkMatch(group)
   const isWalkGroup = isWalkGroupDocument(group)
@@ -520,9 +564,25 @@ export default function GroupLeaderView() {
         <p className="alert-error mb-4">{error}</p>
       )}
 
+      {ratioWarnings.length > 0 && (
+        <div className="mb-4 space-y-3">
+          {ratioWarnings.slice(0, 3).map((entry) => (
+            <div
+              key={entry.dateKey}
+              className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            >
+              Heads up — {entry.kidCount} kid{entry.kidCount === 1 ? '' : 's'} are signed up for{' '}
+              {entry.dateKey === todayKey() ? 'today' : formatDisplayDate(entry.dateKey)} but only{' '}
+              {entry.leaderCount} adult{entry.leaderCount === 1 ? '' : 's'} have volunteered. Consider adding more leaders or
+              coordinating in the group chat.
+            </div>
+          ))}
+        </div>
+      )}
+
       {isWalkGroup && user && (
         <div id="group-leaders" className="mb-6 scroll-mt-24">
-          <GroupLeaderControls group={group} userId={user.uid} />
+          <GroupLeaderControls group={group} userId={user.uid} absences={absences} />
         </div>
       )}
 

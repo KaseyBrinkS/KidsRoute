@@ -9,6 +9,8 @@ import {
   WelcomeIntro,
 } from '../components/onboarding/WelcomeAboutContent'
 import WelcomeNavGrid from '../components/onboarding/WelcomeNavGrid'
+import AddToHomeScreenBanner from '../components/AddToHomeScreenBanner'
+import AddToHomeScreenCollapsible from '../components/AddToHomeScreenCollapsible'
 import LegalFooter from '../components/LegalFooter'
 import { useAuth } from '../context/AuthContext'
 import { isSetupComplete, subscribeToUserProfile } from '../firebase/users'
@@ -51,6 +53,8 @@ export default function Welcome() {
   return (
     <div className="flex min-h-screen flex-col bg-bg px-4 py-8 sm:py-10">
       <div className="mx-auto w-full max-w-2xl flex-1">
+        <AddToHomeScreenBanner />
+
         <div className="kr-card overflow-hidden p-0">
           <AboutHero
             logoClassName="h-[120px] w-[120px] min-h-[100px] min-w-[100px]"
@@ -82,7 +86,8 @@ export default function Welcome() {
           </div>
         </div>
       </div>
-      <LegalFooter className="mx-auto mt-8 w-full max-w-2xl pb-4" />
+      <AddToHomeScreenCollapsible className="mx-auto mt-6 w-full max-w-2xl" />
+      <LegalFooter className="mx-auto mt-4 w-full max-w-2xl pb-4" />
     </div>
   )
 }

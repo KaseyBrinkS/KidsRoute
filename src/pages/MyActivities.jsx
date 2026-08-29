@@ -6,6 +6,7 @@ import { ChildNameWithDot } from '../components/ChildColorDot'
 import LocationSearch from '../components/LocationSearch'
 import PageHeader from '../components/PageHeader'
 import ViewToggle from '../components/ViewToggle'
+import { startOfWeek } from '../utils/dates'
 import { useAuth } from '../context/AuthContext'
 import {
   addActivityAndFindMatches,

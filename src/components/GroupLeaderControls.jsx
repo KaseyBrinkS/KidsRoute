@@ -1,16 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   EXTERNAL_LEADER_ROLES,
   LEADER_ROLES,
   getActiveLeaders,
   getLeaderInviteUrl,
   getPendingProposalForUser,
+  groupCanBeLed,
   proposeExternalLeader,
   respondToLeaderProposal,
-  userCanVolunteerAsLeader,
-  userHasVolunteeredAsParentLeader,
-  volunteerAsParentLeader,
 } from '../firebase/groupLeaders'
+import {
+  getUpcomingScheduleEntries,
+  removeLeaderVolunteer,
+  subscribeToLeaderVolunteers,
+} from '../firebase/leaderVolunteers'
+import { getUserProfile } from '../firebase/users'
+import LeaderScheduleCalendar from './LeaderScheduleCalendar'
+import LeaderVolunteerPanel from './LeaderVolunteerPanel'
 
 function LeaderPersonIcon({ className = '' }) {
   return (
@@ -58,7 +64,7 @@ function AddExternalLeaderCard({ onClick, disabled }) {
   )
 }
 
-export default function GroupLeaderControls({ group, userId }) {
+export default function GroupLeaderControls({ group, userId, absences = [] }) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -66,23 +72,30 @@ export default function GroupLeaderControls({ group, userId }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [copiedToken, setCopiedToken] = useState(null)
+  const [volunteers, setVolunteers] = useState([])
+  const [leaderName, setLeaderName] = useState('Parent')
+  const [removingId, setRemovingId] = useState(null)
 
   const activeLeaders = getActiveLeaders(group)
   const pendingForUser = getPendingProposalForUser(group, userId)
-  const canVolunteer = userCanVolunteerAsLeader(group, userId)
-  const hasVolunteered = userHasVolunteeredAsParentLeader(group, userId)
+  const canVolunteer = groupCanBeLed(group)
 
-  async function handleVolunteer() {
-    setError(null)
-    setBusy(true)
-    try {
-      await volunteerAsParentLeader(group.id, userId)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusy(false)
-    }
-  }
+  useEffect(() => {
+    if (!group?.id) return undefined
+    return subscribeToLeaderVolunteers(group.id, setVolunteers, (err) => setError(err.message))
+  }, [group?.id])
+
+  useEffect(() => {
+    if (!userId) return
+    getUserProfile(userId).then((profile) => {
+      setLeaderName(profile.displayName || 'Parent')
+    })
+  }, [userId])
+
+  const scheduleEntries = useMemo(
+    () => getUpcomingScheduleEntries(group, volunteers, absences),
+    [group, volunteers, absences],
+  )
 
   async function handlePropose(event) {
     event.preventDefault()
@@ -109,6 +122,18 @@ export default function GroupLeaderControls({ group, userId }) {
       setError(err.message)
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleRemoveVolunteer(volunteerId) {
+    setError(null)
+    setRemovingId(volunteerId)
+    try {
+      await removeLeaderVolunteer(volunteerId)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setRemovingId(null)
     }
   }
 
@@ -184,25 +209,21 @@ export default function GroupLeaderControls({ group, userId }) {
         </div>
       )}
 
-      {(canVolunteer || hasVolunteered) && (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {canVolunteer && (
-            <button
-              type="button"
-              onClick={handleVolunteer}
-              disabled={busy}
-              className="btn-secondary py-1.5 text-xs"
-            >
-              {busy ? 'Saving…' : 'Volunteer as group leader'}
-            </button>
-          )}
-          {hasVolunteered && (
-            <span className="text-xs font-semibold text-[var(--color-walk-green)]">
-              You are a group leader
-            </span>
-          )}
-        </div>
+      {canVolunteer && (
+        <LeaderVolunteerPanel
+          group={group}
+          userId={userId}
+          leaderName={leaderName}
+        />
       )}
+
+      <LeaderScheduleCalendar
+        scheduleEntries={scheduleEntries}
+        volunteers={volunteers}
+        currentUserId={userId}
+        onRemoveVolunteer={handleRemoveVolunteer}
+        removingId={removingId}
+      />
 
       {!showAddForm ? (
         <div className="mt-4">

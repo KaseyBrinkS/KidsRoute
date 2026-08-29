@@ -4,6 +4,7 @@ import PageHeader from '../components/PageHeader'
 import ConfirmDialog from '../components/ConfirmDialog'
 import SettingsActivitiesPrompt from '../components/settings/SettingsActivitiesPrompt'
 import SettingsOnboardingBanner from '../components/settings/SettingsOnboardingBanner'
+import AddToHomeScreenBanner from '../components/AddToHomeScreenBanner'
 import MyKidsSection from '../components/settings/MyKidsSection'
 import SchoolSelect from '../components/SchoolSelect'
 import SchoolVerifiedBadge from '../components/SchoolVerifiedBadge'
@@ -301,6 +302,8 @@ export default function Settings() {
         title="Settings"
         description="Your profile, kids, and notification preferences"
       />
+
+      <AddToHomeScreenBanner />
 
       {error && (
         <p className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
