@@ -23,7 +23,7 @@ export default function AboutHero({
           logo
         )}
         <h1 className="font-heading mt-8 text-4xl font-semibold text-primary-dark">KidsRoute</h1>
-        <p className="mt-3 text-xl font-medium text-muted">Safe walks, together.</p>
+        <p className="mt-3 text-xl font-medium text-muted">Same school. Same neighborhood. Same direction.</p>
       </div>
     </div>
   )

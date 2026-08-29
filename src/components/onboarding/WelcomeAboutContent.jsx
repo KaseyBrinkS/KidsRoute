@@ -70,14 +70,9 @@ export function WelcomeIntro() {
   return (
     <div className="space-y-4 text-center">
       <p className="text-base leading-relaxed text-[var(--color-text)]">
-        KidsRoute helps families coordinate safe group walks for kids — to school,
-        after-school activities, and everywhere in between. Match with neighboring
-        families heading the same way, hire approved nannies or trusted older students
-        for extra support, and get real-time check-ins so you always know your child
-        arrived safely.
-      </p>
-      <p className="text-base font-medium leading-relaxed text-primary-dark">
-        Because raising kids takes a village — and KidsRoute helps you find yours.
+        Let&apos;s get there together. KidsRoute connects local families whose kids are already
+        heading to the same places — making it easier to coordinate walks, share the load, and
+        build a stronger neighborhood community.
       </p>
     </div>
   )
