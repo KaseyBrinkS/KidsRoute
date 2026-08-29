@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { subscribeToUserProfile } from '../firebase/users'
 
 const navLinks = [
-  { to: '/dashboard', label: 'Dashboard', mobileLabel: 'Home' },
+  { to: '/dashboard', label: 'Dashboard', mobileLabel: 'Dashboard' },
   { to: '/my-activities', label: 'Activities', mobileLabel: 'Activities' },
   { to: '/groups', label: 'Groups', mobileLabel: 'Groups' },
   { to: '/leader', label: 'Leader', mobileLabel: 'Leader' },

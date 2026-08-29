@@ -16,13 +16,14 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 | Route | Screen |
 |---|---|
 | `/login` | Login |
+| `/welcome` | Welcome / About |
 | `/dashboard` | Dashboard |
-| `/my-kids` | My Kids |
-| `/my-activities` | My Activities |
+| `/my-activities` | Activities |
 | `/groups` | Groups |
-| `/leader` | My Groups |
-| `/groups/:groupId/leader` | Manage Group |
-| `/settings` | Settings |
+| `/leader` | Leader |
+| `/history` | History |
+| `/settings` | Settings (includes My Kids) |
+| `/my-kids` | Redirects to `/settings` |
 
 All routes are currently open (no auth guards). The Login screen's "Sign in" button navigates to the Dashboard as a placeholder.
 
