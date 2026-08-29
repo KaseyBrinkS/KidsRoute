@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import AboutHero from '../components/onboarding/AboutHero'
 import {
   GetStartedButton,
@@ -9,14 +9,13 @@ import {
   WelcomeIntro,
 } from '../components/onboarding/WelcomeAboutContent'
 import WelcomeNavGrid from '../components/onboarding/WelcomeNavGrid'
-import LegalFooter from '../components/LegalFooter'
 import { useAuth } from '../context/AuthContext'
 import { isSetupComplete, subscribeToUserProfile } from '../firebase/users'
 
 export default function Welcome() {
-  const navigate = useNavigate()
   const { user } = useAuth()
   const [setupIncomplete, setSetupIncomplete] = useState(false)
+  const [onboardingStep, setOnboardingStep] = useState(1)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,6 +25,7 @@ export default function Welcome() {
       user.uid,
       (profile) => {
         setSetupIncomplete(!isSetupComplete(profile))
+        setOnboardingStep(profile.onboardingStep ?? 1)
         setLoading(false)
       },
       () => setLoading(false),
@@ -33,10 +33,6 @@ export default function Welcome() {
 
     return unsubscribe
   }, [user])
-
-  function handleGetStarted() {
-    navigate('/settings')
-  }
 
   if (loading) {
     return (
@@ -46,11 +42,15 @@ export default function Welcome() {
     )
   }
 
-  const logoPath = getWelcomeLogoPath(setupIncomplete)
+  const logoPath = getWelcomeLogoPath(setupIncomplete, onboardingStep)
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg px-4 py-8 sm:py-10">
-      <div className="mx-auto w-full max-w-2xl flex-1">
+    <div className="min-h-screen bg-bg px-4 py-8 sm:py-10">
+      <div className="mx-auto w-full max-w-2xl">
+        {setupIncomplete && onboardingStep === 1 && (
+          <p className="mb-4 text-center text-sm font-semibold text-support-blue">Step 1 of 4</p>
+        )}
+
         <div className="kr-card overflow-hidden p-0">
           <AboutHero
             logoClassName="h-[120px] w-[120px] min-h-[100px] min-w-[100px]"
@@ -60,17 +60,15 @@ export default function Welcome() {
           <div className="space-y-8 px-6 pb-8 pt-6 sm:px-8 sm:pb-10">
             <WelcomeIntro />
 
-            <GetStartedButton onClick={handleGetStarted} />
+            <GetStartedButton />
 
             <HowItWorksSection />
 
             <KeyFeaturesSection />
 
-            {!setupIncomplete && (
-              <section aria-label="App navigation" className="border-t border-border pt-6">
-                <WelcomeNavGrid />
-              </section>
-            )}
+            <section aria-label="App navigation" className="border-t border-border pt-6">
+              <WelcomeNavGrid />
+            </section>
 
             {!setupIncomplete ? (
               <div className="text-center">
@@ -78,11 +76,19 @@ export default function Welcome() {
                   ← Back to Dashboard
                 </Link>
               </div>
-            ) : null}
+            ) : (
+              <div className="text-center">
+                <Link
+                  to="/dashboard"
+                  className="text-sm font-semibold text-muted hover:text-primary"
+                >
+                  Skip for now
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
-      <LegalFooter className="mx-auto mt-8 w-full max-w-2xl pb-4" />
     </div>
   )
 }
