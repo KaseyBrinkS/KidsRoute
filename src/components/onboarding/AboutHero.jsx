@@ -23,7 +23,18 @@ export default function AboutHero({
           logo
         )}
         <h1 className="font-heading mt-8 text-4xl font-semibold text-primary-dark">KidsRoute</h1>
-        <p className="mt-3 text-xl font-medium text-muted">Same school. Same neighborhood. Same direction.</p>
+        <p
+          className="mt-3 text-xl"
+          style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, color: '#1C3A4A' }}
+        >
+          Same school. Same neighborhood. Same direction.
+        </p>
+        <p
+          className="mt-2 text-xl"
+          style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, color: '#C4768A' }}
+        >
+          Let&apos;s get there together.
+        </p>
       </div>
     </div>
   )
