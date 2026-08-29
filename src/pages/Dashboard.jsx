@@ -26,8 +26,6 @@ import {
 import { subscribeToUserActiveWalkSessions } from '../firebase/groupWalk'
 import { subscribeToKids } from '../firebase/kids'
 import {
-  getOnboardingRedirectPath,
-  getUserProfile,
   shouldShowSetupReminder,
   subscribeToUserProfile,
 } from '../firebase/users'
@@ -54,7 +52,6 @@ export default function Dashboard() {
   const [kidCount, setKidCount] = useState(0)
   const [activityCount, setActivityCount] = useState(0)
   const [profile, setProfile] = useState(null)
-  const [setupContinuePath, setSetupContinuePath] = useState('/welcome')
   const [guidanceRefresh, setGuidanceRefresh] = useState(0)
 
   useEffect(() => {
@@ -89,10 +86,7 @@ export default function Dashboard() {
     const unsubActivities = subscribeToActivities(user.uid, (activities) =>
       setActivityCount(activities.length),
     )
-    const unsubProfile = subscribeToUserProfile(user.uid, (data) => {
-      setProfile(data)
-      setSetupContinuePath(getOnboardingRedirectPath(data))
-    })
+    const unsubProfile = subscribeToUserProfile(user.uid, setProfile)
 
     return () => {
       unsubGroups()
@@ -103,7 +97,7 @@ export default function Dashboard() {
     }
   }, [user])
 
-  const showSetupReminder = shouldShowSetupReminder(profile)
+  const showSetupReminder = shouldShowSetupReminder(profile, kidCount)
 
   const dashboardWalkGroups = useMemo(
     () => walkGroups.filter(walkGroupHasMultipleFamilies),
@@ -189,7 +183,7 @@ export default function Dashboard() {
       {error && <p className="alert-error">{error}</p>}
 
       {showSetupReminder && (
-        <OnboardingReminderBanner continuePath={setupContinuePath} />
+        <OnboardingReminderBanner />
       )}
 
       {!loading && user && (

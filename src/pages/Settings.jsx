@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
+import SettingsActivitiesPrompt from '../components/settings/SettingsActivitiesPrompt'
+import SettingsOnboardingBanner from '../components/settings/SettingsOnboardingBanner'
 import MyKidsSection from '../components/settings/MyKidsSection'
 import SchoolSelect from '../components/SchoolSelect'
 import { useAuth } from '../context/AuthContext'
 import { logOut } from '../firebase/auth'
 import { isAdmin } from '../firebase/admin'
 import { syncUserMatchingOptOut } from '../firebase/matching'
+import { subscribeToKids } from '../firebase/kids'
 import {
   formatSchoolDisplay,
   resolveSchoolValue,
@@ -14,7 +17,9 @@ import {
   schoolSelectValue,
 } from '../firebase/schools'
 import {
+  completeOnboarding,
   DEFAULT_SCHOOL,
+  hasCompletedBasicSetup,
   subscribeToUserProfile,
   updateUserProfile,
 } from '../firebase/users'
@@ -26,9 +31,11 @@ import {
 
 const inputClass = 'input-kr'
 
-function SettingsSection({ id, title, description, children }) {
+function SettingsSection({ title, description, children, prominent = false }) {
   return (
-    <section id={id} className="kr-card p-6 scroll-mt-24">
+    <section
+      className={`kr-card p-6 ${prominent ? 'ring-2 ring-primary/15' : ''}`}
+    >
       <h2 className="kr-section-title">{title}</h2>
       {description && <p className="kr-section-desc">{description}</p>}
       <div className="mt-4">{children}</div>
@@ -67,6 +74,7 @@ export default function Settings() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
+  const [kidCount, setKidCount] = useState(0)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [streetNumber, setStreetNumber] = useState('')
   const [streetName, setStreetName] = useState('')
@@ -83,11 +91,13 @@ export default function Settings() {
   const [schoolCustom, setSchoolCustom] = useState('')
   const [savingSchool, setSavingSchool] = useState(false)
   const [schoolSaved, setSchoolSaved] = useState(false)
+  const [bannerRefresh, setBannerRefresh] = useState(0)
+  const [showActivitiesPrompt, setShowActivitiesPrompt] = useState(false)
 
   useEffect(() => {
-    if (!user) return
+    if (!user) return undefined
 
-    const unsubscribe = subscribeToUserProfile(
+    const unsubProfile = subscribeToUserProfile(
       user.uid,
       (data) => {
         setProfile(data)
@@ -105,14 +115,22 @@ export default function Settings() {
       },
     )
 
-    return unsubscribe
+    const unsubKids = subscribeToKids(user.uid, (kids) => {
+      setKidCount(kids.length)
+    })
+
+    return () => {
+      unsubProfile()
+      unsubKids()
+    }
   }, [user])
 
   useEffect(() => {
-    if (window.location.hash === '#my-kids') {
-      document.getElementById('my-kids')?.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [])
+    if (!user || !profile) return
+    if (!hasCompletedBasicSetup(profile, kidCount)) return
+
+    completeOnboarding(user.uid).catch(() => {})
+  }, [user, profile, kidCount])
 
   async function handleSavePhone(event) {
     event.preventDefault()
@@ -124,6 +142,7 @@ export default function Settings() {
     try {
       await updateUserProfile(user.uid, { phoneNumber: phoneNumber.trim() })
       setPhoneSaved(true)
+      setShowActivitiesPrompt(true)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -152,6 +171,7 @@ export default function Settings() {
       })
       await syncBuildingWalkChildren(user.uid)
       setHomeAddressSaved(true)
+      setShowActivitiesPrompt(true)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -218,260 +238,264 @@ export default function Settings() {
     <div>
       <PageHeader
         title="Settings"
-        description="Account and notification preferences"
+        description="Your profile, kids, and notification preferences"
       />
 
       {error && (
         <p className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
       )}
 
+      <SettingsOnboardingBanner
+        key={bannerRefresh}
+        profile={profile}
+        kidCount={kidCount}
+        onDismiss={() => setBannerRefresh((value) => value + 1)}
+      />
+
+      {showActivitiesPrompt && <SettingsActivitiesPrompt />}
+
       <div className="space-y-6">
-          <SettingsSection
-            title="Parent profile"
-            description="Your phone number is used for group coordination and SMS notifications."
-          >
-            <dl className="space-y-4">
-              <div>
-                <dt className="text-sm font-medium text-[var(--color-text)]">Name</dt>
-                <dd className="mt-1 text-sm text-[var(--color-text)]">
-                  {loading ? 'Loading…' : displayName}
-                </dd>
-              </div>
-            </dl>
+        <SettingsSection
+          title="Parent profile"
+          description="Your phone number is used for group coordination and SMS notifications."
+        >
+          <dl className="space-y-4">
+            <div>
+              <dt className="text-sm font-medium text-[var(--color-text)]">Name</dt>
+              <dd className="mt-1 text-sm text-[var(--color-text)]">
+                {loading ? 'Loading…' : displayName}
+              </dd>
+            </div>
+          </dl>
 
-            <form onSubmit={handleSavePhone} className="mt-4">
-              <label htmlFor="phoneNumber" className="block text-sm font-semibold text-[var(--color-text)]">
-                Phone number
-              </label>
-              <p className="mt-1 text-sm text-muted">
-                Your primary contact for group coordination and SMS notifications.
-              </p>
-              <div className="mt-1 flex flex-wrap gap-2">
-                <input
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(event) => {
-                    setPhoneNumber(event.target.value)
-                    setPhoneSaved(false)
-                  }}
-                  placeholder="(555) 555-5555"
-                  className={`${inputClass} mt-0 max-w-xs flex-1`}
-                />
-                <button
-                  type="submit"
-                  disabled={savingPhone}
-                  className="btn-primary"
-                >
-                  {savingPhone ? 'Saving…' : 'Save'}
-                </button>
-              </div>
-              {phoneSaved && (
-                <p className="mt-2 text-sm text-green-600">Phone number saved.</p>
-              )}
-            </form>
-
-            <dl className="mt-6 space-y-4">
-              <div>
-                <dt className="text-sm font-medium text-[var(--color-text)]">Email</dt>
-                <dd className="mt-1 text-sm text-muted">
-                  {loading ? 'Loading…' : email}
-                </dd>
-              </div>
-            </dl>
-          </SettingsSection>
-
-          <SettingsSection
-            title="Home address"
-            description="Used to match you with neighbors for building walks. Neighbors are matched by street number and zip code."
-          >
-            <form onSubmit={handleSaveHomeAddress}>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <label htmlFor="streetNumber" className="block text-sm font-medium text-[var(--color-text)]">
-                    Street number
-                  </label>
-                  <input
-                    id="streetNumber"
-                    name="streetNumber"
-                    type="text"
-                    inputMode="numeric"
-                    value={streetNumber}
-                    onChange={(event) => {
-                      setStreetNumber(event.target.value)
-                      setHomeAddressSaved(false)
-                    }}
-                    placeholder="123"
-                    className={inputClass}
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label htmlFor="streetName" className="block text-sm font-medium text-[var(--color-text)]">
-                    Street name
-                  </label>
-                  <input
-                    id="streetName"
-                    name="streetName"
-                    type="text"
-                    value={streetName}
-                    onChange={(event) => {
-                      setStreetName(event.target.value)
-                      setHomeAddressSaved(false)
-                    }}
-                    placeholder="Warren Street"
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="zipCode" className="block text-sm font-medium text-[var(--color-text)]">
-                    Zip code
-                  </label>
-                  <input
-                    id="zipCode"
-                    name="zipCode"
-                    type="text"
-                    inputMode="numeric"
-                    value={zipCode}
-                    onChange={(event) => {
-                      setZipCode(event.target.value)
-                      setHomeAddressSaved(false)
-                    }}
-                    placeholder="10013"
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-
-              {formattedHomeAddress && (
-                <p className="mt-3 text-sm text-gray-600">
-                  <span className="font-medium text-gray-700">Your address: </span>
-                  {formattedHomeAddress}
-                </p>
-              )}
-
-              <div className="mt-4">
-                <button
-                  type="submit"
-                  disabled={savingHomeAddress}
-                  className="btn-primary"
-                >
-                  {savingHomeAddress ? 'Saving…' : 'Save address'}
-                </button>
-              </div>
-              {homeAddressSaved && (
-                <p className="mt-2 text-sm text-green-600">Home address saved.</p>
-              )}
-            </form>
-          </SettingsSection>
-
-          <SettingsSection
-            id="my-kids"
-            title="My Kids"
-            description="Manage your children's profiles — name, grade, and school."
-          >
-            <MyKidsSection onError={setError} />
-          </SettingsSection>
-
-          <SettingsSection
-            title="Notification preferences"
-            description="Choose how you'd like to hear from KidsRoute."
-          >
-            <div className="space-y-4 divide-y divide-gray-100">
-              <Toggle
-                label="SMS notifications"
-                description="Get text message alerts for walk updates and group coordination."
-                checked={profile?.smsNotifications ?? true}
-                disabled={savingToggle === 'smsNotifications'}
-                onChange={(value) => handleToggleChange('smsNotifications', value)}
+          <form onSubmit={handleSavePhone} className="mt-4">
+            <label htmlFor="phoneNumber" className="block text-sm font-semibold text-[var(--color-text)]">
+              Phone number
+            </label>
+            <p className="mt-1 text-sm text-muted">
+              Used for walk coordination and safety notifications from your group.
+            </p>
+            <div className="mt-1 flex flex-wrap gap-2">
+              <input
+                id="phoneNumber"
+                name="phoneNumber"
+                type="tel"
+                value={phoneNumber}
+                onChange={(event) => {
+                  setPhoneNumber(event.target.value)
+                  setPhoneSaved(false)
+                }}
+                placeholder="(555) 555-5555"
+                className={`${inputClass} mt-0 max-w-xs flex-1`}
               />
-              <div className="pt-4">
-                <Toggle
-                  label="Email notifications"
-                  description="Get updates about matches, groups, and walks by email."
-                  checked={profile?.emailNotifications ?? false}
-                  disabled={savingToggle === 'emailNotifications'}
-                  onChange={(value) => handleToggleChange('emailNotifications', value)}
+              <button type="submit" disabled={savingPhone} className="btn-primary">
+                {savingPhone ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            {phoneSaved && (
+              <p className="mt-2 text-sm text-green-600">Phone number saved.</p>
+            )}
+          </form>
+
+          <dl className="mt-6 space-y-4">
+            <div>
+              <dt className="text-sm font-medium text-[var(--color-text)]">Email</dt>
+              <dd className="mt-1 text-sm text-muted">
+                {loading ? 'Loading…' : email}
+              </dd>
+            </div>
+          </dl>
+        </SettingsSection>
+
+        <SettingsSection
+          prominent
+          title="My Kids"
+          description="Add each child’s name, grade, and school so we can match your family with nearby walk groups."
+        >
+          <MyKidsSection
+            onError={setError}
+            onKidsChanged={() => setShowActivitiesPrompt(true)}
+          />
+        </SettingsSection>
+
+        <SettingsSection
+          title="Home address"
+          description="Used to match you with families in your building for morning and afternoon school walks, and after-school walk home coordination. Never shared publicly."
+        >
+          <form onSubmit={handleSaveHomeAddress}>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label htmlFor="streetNumber" className="block text-sm font-medium text-[var(--color-text)]">
+                  Street number
+                </label>
+                <input
+                  id="streetNumber"
+                  name="streetNumber"
+                  type="text"
+                  inputMode="numeric"
+                  value={streetNumber}
+                  onChange={(event) => {
+                    setStreetNumber(event.target.value)
+                    setHomeAddressSaved(false)
+                  }}
+                  placeholder="123"
+                  className={inputClass}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="streetName" className="block text-sm font-medium text-[var(--color-text)]">
+                  Street name
+                </label>
+                <input
+                  id="streetName"
+                  name="streetName"
+                  type="text"
+                  value={streetName}
+                  onChange={(event) => {
+                    setStreetName(event.target.value)
+                    setHomeAddressSaved(false)
+                  }}
+                  placeholder="Warren Street"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="zipCode" className="block text-sm font-medium text-[var(--color-text)]">
+                  Zip code
+                </label>
+                <input
+                  id="zipCode"
+                  name="zipCode"
+                  type="text"
+                  inputMode="numeric"
+                  value={zipCode}
+                  onChange={(event) => {
+                    setZipCode(event.target.value)
+                    setHomeAddressSaved(false)
+                  }}
+                  placeholder="10013"
+                  className={inputClass}
                 />
               </div>
             </div>
-          </SettingsSection>
 
-          <SettingsSection
-            title="Privacy"
-            description="Control whether your family appears in the matching pool."
-          >
+            {formattedHomeAddress && (
+              <p className="mt-3 text-sm text-gray-600">
+                <span className="font-medium text-gray-700">Your address: </span>
+                {formattedHomeAddress}
+              </p>
+            )}
+
+            <div className="mt-4">
+              <button type="submit" disabled={savingHomeAddress} className="btn-primary">
+                {savingHomeAddress ? 'Saving…' : 'Save address'}
+              </button>
+            </div>
+            {homeAddressSaved && (
+              <p className="mt-2 text-sm text-green-600">Home address saved.</p>
+            )}
+          </form>
+        </SettingsSection>
+
+        <SettingsSection
+          title="Notification preferences"
+          description="Choose how you'd like to hear from KidsRoute."
+        >
+          <div className="space-y-4 divide-y divide-gray-100">
             <Toggle
-              label="Opt out of matching"
-              description="When enabled, your kids won't appear in the matching pool and no new matches will be suggested."
-              checked={profile?.matchingOptOut ?? false}
-              disabled={savingToggle === 'matchingOptOut'}
-              onChange={(value) => handleToggleChange('matchingOptOut', value)}
+              label="SMS notifications"
+              description="Get text message alerts for walk updates and group coordination."
+              checked={profile?.smsNotifications ?? true}
+              disabled={savingToggle === 'smsNotifications'}
+              onChange={(value) => handleToggleChange('smsNotifications', value)}
             />
-          </SettingsSection>
-
-          <SettingsSection
-            title="School"
-            description="Used for morning and afternoon building walks — kids must attend this school to join those walks. Activity matching works across all schools."
-          >
-            <form onSubmit={handleSaveSchool}>
-              <label htmlFor="settings-school" className="block text-sm font-medium text-[var(--color-text)]">
-                Your school
-              </label>
-              <div className="mt-1 max-w-md">
-                <SchoolSelect
-                  selectId="settings-school"
-                  customId="settings-school-custom"
-                  selectValue={schoolSelect}
-                  customValue={schoolCustom}
-                  onSelectChange={(event) => {
-                    setSchoolSelect(event.target.value)
-                    setSchoolSaved(false)
-                  }}
-                  onCustomChange={(event) => {
-                    setSchoolCustom(event.target.value)
-                    setSchoolSaved(false)
-                  }}
-                />
-              </div>
-              <div className="mt-4">
-                <button type="submit" disabled={savingSchool || loading} className="btn-primary">
-                  {savingSchool ? 'Saving…' : 'Save school'}
-                </button>
-              </div>
-              {schoolSaved && (
-                <p className="mt-2 text-sm text-green-600">School saved.</p>
-              )}
-              {!loading && profile?.school && (
-                <p className="mt-3 text-sm text-muted">
-                  Current: {formatSchoolDisplay(profile.school)}
-                </p>
-              )}
-            </form>
-          </SettingsSection>
-
-          {isAdmin(user.uid) && (
-            <SettingsSection
-              title="Admin"
-              description="View families who have signed up for KidsRoute."
-            >
-              <Link to="/admin" className="btn-secondary inline-flex">
-                Open admin panel
-              </Link>
-            </SettingsSection>
-          )}
-
-          <div className="kr-card p-6">
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className="btn-secondary"
-            >
-              {signingOut ? 'Signing out…' : 'Sign out'}
-            </button>
+            <div className="pt-4">
+              <Toggle
+                label="Email notifications"
+                description="Get updates about matches, groups, and walks by email."
+                checked={profile?.emailNotifications ?? false}
+                disabled={savingToggle === 'emailNotifications'}
+                onChange={(value) => handleToggleChange('emailNotifications', value)}
+              />
+            </div>
           </div>
+        </SettingsSection>
+
+        <SettingsSection
+          title="Privacy"
+          description="Control whether your family appears in the matching pool."
+        >
+          <Toggle
+            label="Opt out of matching"
+            description="When enabled, your kids won't appear in the matching pool and no new matches will be suggested."
+            checked={profile?.matchingOptOut ?? false}
+            disabled={savingToggle === 'matchingOptOut'}
+            onChange={(value) => handleToggleChange('matchingOptOut', value)}
+          />
+        </SettingsSection>
+
+        <SettingsSection
+          title="School"
+          description="Used for morning and afternoon building walks — kids must attend this school to join those walks. Activity matching works across all schools."
+        >
+          <form onSubmit={handleSaveSchool}>
+            <label htmlFor="settings-school" className="block text-sm font-medium text-[var(--color-text)]">
+              Your school
+            </label>
+            <div className="mt-1 max-w-md">
+              <SchoolSelect
+                selectId="settings-school"
+                customId="settings-school-custom"
+                selectValue={schoolSelect}
+                customValue={schoolCustom}
+                onSelectChange={(event) => {
+                  setSchoolSelect(event.target.value)
+                  setSchoolSaved(false)
+                }}
+                onCustomChange={(event) => {
+                  setSchoolCustom(event.target.value)
+                  setSchoolSaved(false)
+                }}
+              />
+            </div>
+            <div className="mt-4">
+              <button type="submit" disabled={savingSchool || loading} className="btn-primary">
+                {savingSchool ? 'Saving…' : 'Save school'}
+              </button>
+            </div>
+            {schoolSaved && (
+              <p className="mt-2 text-sm text-green-600">School saved.</p>
+            )}
+            {!loading && profile?.school && (
+              <p className="mt-3 text-sm text-muted">
+                Current: {formatSchoolDisplay(profile.school)}
+              </p>
+            )}
+          </form>
+        </SettingsSection>
+
+        {isAdmin(user.uid) && (
+          <SettingsSection
+            title="Admin"
+            description="View families who have signed up for KidsRoute."
+          >
+            <Link to="/admin" className="btn-secondary inline-flex">
+              Open admin panel
+            </Link>
+          </SettingsSection>
+        )}
+
+        <div className="kr-card p-6">
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="btn-secondary"
+          >
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
         </div>
+      </div>
     </div>
   )
 }

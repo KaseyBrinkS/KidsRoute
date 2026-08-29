@@ -28,31 +28,27 @@ export function normalizeUserProfile(data) {
   }
 }
 
+export function hasCompletedBasicSetup(profile, kidCount = 0) {
+  return Boolean(profile?.phoneNumber?.trim()) && kidCount >= 1
+}
+
 export function isSetupComplete(profile) {
   return profile?.welcomeCompleted === true
 }
 
-export function needsOnboarding(profile) {
-  return !isSetupComplete(profile)
+export function needsOnboarding(profile, kidCount = 0) {
+  return !isSetupComplete(profile) && !hasCompletedBasicSetup(profile, kidCount)
 }
 
 /** @deprecated use needsOnboarding */
 export const needsWelcome = needsOnboarding
 
-export function shouldShowSetupReminder(profile) {
-  return !isSetupComplete(profile)
+export function shouldShowSetupReminder(profile, kidCount = 0) {
+  return !hasCompletedBasicSetup(profile, kidCount)
 }
 
-export function getOnboardingRedirectPath(profile) {
-  if (isSetupComplete(profile)) return '/welcome'
-  const step = profile.onboardingStep ?? 1
-  const paths = {
-    1: '/welcome',
-    2: '/onboarding/details',
-    3: '/onboarding/kids',
-    4: '/onboarding/complete',
-  }
-  return paths[step] ?? '/welcome'
+export function getOnboardingRedirectPath() {
+  return '/settings'
 }
 
 export async function advanceOnboardingStep(userId, step) {
@@ -70,10 +66,7 @@ export async function getPostLoginPath(userId) {
   const profile = await getUserProfile(userId)
   if (profile.accountType === 'external_leader') return '/leader'
   if (isSetupComplete(profile)) return '/dashboard'
-  if (profile.welcomeCompleted === false && (profile.onboardingStep ?? 1) === 1) {
-    return '/welcome'
-  }
-  return getOnboardingRedirectPath(profile)
+  return '/welcome'
 }
 
 export async function saveUserProfile(user) {

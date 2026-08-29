@@ -334,7 +334,7 @@ export default function MyActivities() {
         ) : kids.length === 0 ? (
           <p className="mt-4 text-muted">
             Add a child in{' '}
-            <Link to="/settings#my-kids" className="link-accent">
+            <Link to="/settings" className="link-accent">
               Settings
             </Link>{' '}
             before adding activities.

@@ -36,7 +36,7 @@ function newChildForm(kids) {
   }
 }
 
-export default function MyKidsSection({ onError }) {
+export default function MyKidsSection({ onError, onKidsChanged }) {
   const { user } = useAuth()
   const [kids, setKids] = useState([])
   const [loading, setLoading] = useState(true)
@@ -91,6 +91,7 @@ export default function MyKidsSection({ onError }) {
         await addKid(user.uid, payload)
       }
       setForm(newChildForm(kids))
+      onKidsChanged?.()
     } catch (err) {
       setError(err.message)
       onError?.(err.message)
@@ -103,7 +104,6 @@ export default function MyKidsSection({ onError }) {
     setError(null)
     setEditingId(kid.id)
     setForm(formFromKid(kid, kids))
-    document.getElementById('my-kids')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   function handleCancelEdit() {
@@ -120,6 +120,7 @@ export default function MyKidsSection({ onError }) {
         setEditingId(null)
         setForm(newChildForm(kids.filter((kid) => kid.id !== kidId)))
       }
+      onKidsChanged?.()
     } catch (err) {
       setError(err.message)
       onError?.(err.message)

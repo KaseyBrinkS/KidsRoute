@@ -1,14 +1,8 @@
 import { Link } from 'react-router-dom'
 
-export function getWelcomeLogoPath(setupIncomplete, onboardingStep) {
+export function getWelcomeLogoPath(setupIncomplete) {
   if (!setupIncomplete) return '/dashboard'
-  const paths = {
-    1: '/onboarding/details',
-    2: '/onboarding/details',
-    3: '/onboarding/kids',
-    4: '/onboarding/complete',
-  }
-  return paths[onboardingStep] ?? '/onboarding/details'
+  return '/settings'
 }
 
 const HOW_IT_WORKS_STEPS = [
@@ -107,7 +101,7 @@ export function GetStartedButton({ className = '', onClick, busy = false }) {
 
   return (
     <div className={`text-center ${className}`}>
-      <Link to="/onboarding/details" className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]">
+      <Link to="/settings" className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]">
         Get Started
       </Link>
     </div>
