@@ -52,7 +52,7 @@ function AddExternalLeaderCard({ onClick, disabled }) {
           <LeaderPersonIcon className="h-6 w-6" />
         </div>
         <div className="min-w-0">
-          <p className="font-heading text-sm font-semibold text-primary">Add group leader</p>
+          <p className="font-heading text-sm font-semibold text-primary">Add Walk Leader</p>
           <p className="mt-1.5 text-xs leading-relaxed text-muted">
             Add a nanny, older child, or trusted chaperone to lead this group. All families in the
             group must approve before they are accepted. We recommend messaging the group first to
@@ -150,7 +150,7 @@ export default function GroupLeaderControls({ group, userId, absences = [] }) {
 
   return (
     <div className="kr-card-subsection mt-4">
-      <p className="font-heading text-sm font-semibold text-primary">Group leaders</p>
+      <p className="font-heading text-sm font-semibold text-primary">Walk Leaders</p>
       <p className="mt-1 text-xs leading-relaxed text-muted">
         Parent volunteers or approved chaperones who can start and manage walks for this group.
       </p>
@@ -183,8 +183,8 @@ export default function GroupLeaderControls({ group, userId, absences = [] }) {
           {pendingForUser.map((leader) => (
             <div key={leader.id} className="rounded-xl border border-accent/30 bg-accent-soft p-3">
               <p className="text-sm text-[var(--color-text)]">
-                <span className="font-semibold">{leader.name}</span> has been proposed as a group
-                leader ({LEADER_ROLES[leader.role]}). Approve?
+                <span className="font-semibold">{leader.name}</span> has been proposed as a Walk
+                Leader ({LEADER_ROLES[leader.role]}). Approve?
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
@@ -236,7 +236,7 @@ export default function GroupLeaderControls({ group, userId, absences = [] }) {
               <LeaderPersonIcon className="h-6 w-6" />
             </div>
             <div>
-              <p className="font-heading text-sm font-semibold text-primary">Propose a group leader</p>
+              <p className="font-heading text-sm font-semibold text-primary">Propose a Walk Leader</p>
               <p className="mt-1 text-xs leading-relaxed text-muted">
                 All families must approve before they get access.
               </p>

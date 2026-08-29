@@ -11,7 +11,7 @@ export const TERMS_OF_SERVICE = {
     {
       heading: 'What KidsRoute is',
       blocks: [
-        'KidsRoute is a coordination tool that helps parents organize group walks for children. KidsRoute is not a licensed childcare provider, transportation service, or babysitting agency. We facilitate connections between families — we do not employ, license, or background-check group leaders or chaperones.',
+        'KidsRoute is a coordination tool that helps parents organize group walks for children. KidsRoute is not a licensed childcare provider, transportation service, or babysitting agency. We facilitate connections between families — we do not employ, license, or background-check Walk Leaders or chaperones.',
       ],
     },
     {
@@ -32,9 +32,9 @@ export const TERMS_OF_SERVICE = {
       ],
     },
     {
-      heading: 'Group leaders and chaperones',
+      heading: 'Walk Leaders and chaperones',
       blocks: [
-        'KidsRoute allows parents to volunteer as group leaders or propose trusted chaperones such as nannies, older siblings, or students. KidsRoute does not verify, background-check, or endorse any group leader or chaperone. Parents are solely responsible for deciding who they trust to escort their child. KidsRoute is not liable for the actions of any group leader or chaperone.',
+        'KidsRoute allows parents to volunteer as Walk Leaders or propose trusted chaperones such as nannies, older siblings, or students. KidsRoute does not verify, background-check, or endorse any Walk Leader or chaperone. Parents are solely responsible for deciding who they trust to escort their child. KidsRoute is not liable for the actions of any Walk Leader or chaperone.',
       ],
     },
     {
@@ -45,7 +45,7 @@ export const TERMS_OF_SERVICE = {
           type: 'list',
           items: [
             'Any injury, loss, or harm that occurs during a group walk',
-            'The conduct of any group leader, chaperone, or other user',
+            'The conduct of any Walk Leader, chaperone, or other user',
             'Any technical issues, outages, or data loss',
             'Any failure to match families or deliver notifications',
           ],

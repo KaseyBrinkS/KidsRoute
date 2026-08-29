@@ -41,6 +41,7 @@ import {
   syncRatioAlert,
 } from '../firebase/leaderVolunteers'
 import { formatDisplayDate, todayKey } from '../firebase/sessions'
+import { formatHistoryTime } from '../firebase/walkHistory'
 import {
   dismissGuidance,
   isGuidanceDismissed,

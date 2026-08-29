@@ -83,7 +83,7 @@ export default function History() {
         <p className="text-muted">Loading walk history…</p>
       ) : entries.length === 0 ? (
         <p className="kr-card-flat">
-          No walk history yet. Completed walks will appear here after a group leader
+          No walk history yet. Completed walks will appear here after a Walk Leader
           starts a walk and marks drop-offs.
         </p>
       ) : viewMode === 'calendar' ? (

@@ -29,7 +29,7 @@ export default function GroupLeaderButton({ group, userId, className = '' }) {
       to={`/groups/${group.id}/leader#group-leaders`}
       className={`btn-group-leader relative ${className}`}
     >
-      Group Leader
+      Walk Leader
       {hasConfirmedLeader && (
         <span
           className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-walk-green)] text-white"

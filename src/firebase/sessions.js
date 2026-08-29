@@ -166,6 +166,29 @@ export function getCurrentSessionInfo(referenceDate = new Date()) {
   }
 }
 
+/** Fall, Spring, and Summer Camp options for walk leader volunteering. */
+export function getVolunteerSessionOptions(referenceDate = new Date()) {
+  const month = referenceDate.getMonth()
+  let anchor = getSchoolYearStart(referenceDate)
+  // In July–August, the upcoming fall belongs to the next school-year anchor.
+  if (month >= 6 && month <= 7) {
+    anchor = referenceDate.getFullYear()
+  }
+
+  const representativeDates = {
+    fall: formatDateKey(new Date(anchor, 8, 15)),
+    spring: formatDateKey(new Date(anchor + 1, 2, 15)),
+    summer: formatDateKey(new Date(anchor + 1, 6, 15)),
+  }
+
+  return SESSION_TYPES.map((session) => ({
+    id: session.id,
+    label: session.label,
+    period: SESSION_PERIOD_LABELS[session.id] ?? session.description,
+    sessionKey: getSessionKeyForDate(representativeDates[session.id]),
+  }))
+}
+
 /** Composite key for a school session, e.g. `fall-2026`. */
 export function getSessionKeyForDate(dateKey) {
   const date = parseDateKey(dateKey)

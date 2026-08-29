@@ -3,12 +3,21 @@ import {
   formatDisplayDate,
   getCurrentSessionInfo,
   getGroupUpcomingScheduledDates,
+  getVolunteerSessionOptions,
 } from '../firebase/sessions'
 import { volunteerForDates, volunteerForSemester } from '../firebase/leaderVolunteers'
 
 export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolunteered }) {
+  const sessionOptions = useMemo(() => getVolunteerSessionOptions(), [])
+  const defaultSessionKey = useMemo(() => {
+    const current = getCurrentSessionInfo()
+    return sessionOptions.find((option) => option.id === current.id)?.sessionKey
+      ?? sessionOptions[0]?.sessionKey
+  }, [sessionOptions])
+
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState('semester')
+  const [selectedSessionKey, setSelectedSessionKey] = useState(defaultSessionKey)
   const [selectedDates, setSelectedDates] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -18,10 +27,9 @@ export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolu
     [group],
   )
 
-  const sessionInfo = getCurrentSessionInfo()
-
   function handleOpen() {
     setMode('semester')
+    setSelectedSessionKey(defaultSessionKey)
     setSelectedDates(scheduledDates.length > 0 ? [scheduledDates[0]] : [])
     setError(null)
     setOpen(true)
@@ -42,7 +50,7 @@ export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolu
 
     try {
       if (mode === 'semester') {
-        await volunteerForSemester(group.id, userId, leaderName)
+        await volunteerForSemester(group.id, userId, leaderName, selectedSessionKey)
       } else {
         await volunteerForDates(group.id, userId, leaderName, selectedDates)
       }
@@ -58,7 +66,7 @@ export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolu
   if (!open) {
     return (
       <button type="button" onClick={handleOpen} className="btn-secondary py-1.5 text-xs">
-        Volunteer as Group Leader
+        Volunteer as Walk Leader
       </button>
     )
   }
@@ -66,7 +74,7 @@ export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolu
   return (
     <form onSubmit={handleSubmit} className="mt-4 space-y-4 rounded-2xl border border-border bg-bg-warm p-4">
       <div>
-        <p className="font-heading text-sm font-semibold text-primary">Volunteer as Group Leader</p>
+        <p className="font-heading text-sm font-semibold text-primary">Volunteer as Walk Leader</p>
         <p className="mt-1 text-xs leading-relaxed text-muted">
           Choose when you can lead walks for this group.
         </p>
@@ -84,9 +92,9 @@ export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolu
             className="mt-1"
           />
           <span>
-            <span className="font-medium">The whole semester</span>
+            <span className="font-medium">A full session</span>
             <span className="mt-0.5 block text-xs text-muted">
-              {sessionInfo.label} ({sessionInfo.period})
+              Fall, Spring, or Summer Camp
             </span>
           </span>
         </label>
@@ -107,6 +115,28 @@ export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolu
           </span>
         </label>
       </fieldset>
+
+      {mode === 'semester' && (
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-[var(--color-text)]">Select session</legend>
+          {sessionOptions.map((option) => (
+            <label key={option.sessionKey} className="flex cursor-pointer items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="volunteer-session"
+                value={option.sessionKey}
+                checked={selectedSessionKey === option.sessionKey}
+                onChange={() => setSelectedSessionKey(option.sessionKey)}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium">{option.label}</span>
+                <span className="mt-0.5 block text-xs text-muted">{option.period}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
 
       {mode === 'dates' && (
         <div>

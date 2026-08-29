@@ -39,7 +39,7 @@ export const SAFETY_FAQ = {
     {
       question: 'What does check-in/check-out mean?',
       answer:
-        'When a walk begins, the Group Leader marks each child as picked up. When each child arrives at their destination, the Group Leader marks them as dropped off. This creates a timestamped record parents can view anytime.',
+        'When a walk begins, the Walk Leader marks each child as picked up. When each child arrives at their destination, the Walk Leader marks them as dropped off. This creates a timestamped record parents can view anytime.',
     },
     {
       question: "Does KidsRoute track my child's live location?",

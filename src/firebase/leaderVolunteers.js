@@ -95,8 +95,7 @@ export function subscribeToLeaderVolunteers(groupId, onData, onError) {
   )
 }
 
-export async function volunteerForSemester(groupId, userId, leaderName) {
-  const sessionKey = getCurrentSessionKey()
+export async function volunteerForSemester(groupId, userId, leaderName, sessionKey = getCurrentSessionKey()) {
   const docId = volunteerDocId(groupId, userId, 'semester', sessionKey)
 
   await setDoc(doc(db, 'leaderVolunteers', docId), {

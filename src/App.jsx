@@ -18,6 +18,7 @@ import Flyer from './pages/Flyer'
 import Welcome from './pages/Welcome'
 import Activation from './pages/Activation'
 import Safety from './pages/Safety'
+import HowItWorks from './pages/HowItWorks'
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/safety" element={<Safety />} />
+      <Route path="/how-it-works" element={<HowItWorks />} />
       <Route path="/flyer" element={<Flyer />} />
       <Route path="/pending-approval" element={<Navigate to="/welcome" replace />} />
       <Route path="/rejected" element={<Navigate to="/welcome" replace />} />

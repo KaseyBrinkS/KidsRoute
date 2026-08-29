@@ -275,7 +275,7 @@ export async function proposeExternalLeader(groupId, proposedBy, { name, phone, 
         type: 'leader_proposed',
         groupId,
         leaderId: leaderRecord.id,
-        message: `${trimmedName} has been proposed as a group leader. Approve?`,
+        message: `${trimmedName} has been proposed as a Walk Leader. Approve?`,
       }),
     ),
   )
@@ -359,7 +359,7 @@ export async function respondToLeaderProposal(groupId, userId, leaderId, respons
       type: 'leader_rejected',
       groupId,
       leaderId,
-      message: `${result.leader.name} was not approved as group leader. The request was declined.`,
+      message: `${result.leader.name} was not approved as Walk Leader. The request was declined.`,
     })
   }
 
@@ -369,7 +369,7 @@ export async function respondToLeaderProposal(groupId, userId, leaderId, respons
       groupId,
       leaderId,
       inviteToken: result.inviteToken,
-      message: `${result.leader.name} was approved as group leader. Share the invite link so they can sign in.`,
+      message: `${result.leader.name} was approved as Walk Leader. Share the invite link so they can sign in.`,
     })
   }
 

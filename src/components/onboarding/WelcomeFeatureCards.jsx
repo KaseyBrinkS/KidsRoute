@@ -18,13 +18,13 @@ const FEATURES = [
     emoji: '👥',
     title: 'Shared Walks',
     description:
-      'Parents can take turns leading, coordinate with caregivers, or add an approved Group Leader.',
+      'Parents can take turns leading, coordinate with caregivers, or add an approved Walk Leader.',
   },
   {
     emoji: '✅',
     title: 'Check-in & Check-out',
     description:
-      'Group Leaders check children in at pickup and out at arrival, keeping all families updated.',
+      'Walk Leaders check children in at pickup and out at arrival, keeping all families updated.',
   },
 ]
 

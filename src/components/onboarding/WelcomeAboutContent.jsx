@@ -14,19 +14,19 @@ const HOW_IT_WORKS_STEPS = [
   {
     emoji: '📍',
     title: 'Add their activities',
-    description: 'Enter where they go and when. We handle the matching.',
+    description: 'Enter where they go and class time. We handle the matching.',
   },
   {
     emoji: '🔔',
     title: 'Get matched automatically',
     description:
-      "When a neighboring family is heading the same way at the same time, you'll be notified instantly.",
+      "When a neighboring family is heading to the same place at the same time, you'll be notified instantly.",
   },
   {
     emoji: '✅',
     title: 'Walk together safely',
     description:
-      'Join the group, set a meeting point, and get real-time updates when your child is picked up and dropped off.',
+      'Join matched groups, set a meeting point, and get real-time updates when your child is picked up and dropped off.',
   },
 ]
 
@@ -49,7 +49,7 @@ const KEY_FEATURES = [
   {
     title: 'Village support',
     description:
-      'Running late? Your group leader has it covered and will check your child in safely.',
+      'Running late? Your Walk Leader has it covered and will check your child in safely.',
   },
   {
     title: 'Real-time check-ins',
@@ -71,7 +71,7 @@ export function WelcomeIntro() {
     <div className="space-y-4 text-center">
       <p className="text-base leading-relaxed text-[var(--color-text)]">
         KidsRoute connects neighboring families attending the same schools and local activities.
-        Coordinate group walks with shared Group Leaders, real-time check-ins, and the support of
+        Coordinate group walks with shared Walk Leaders, real-time check-ins, and the support of
         a community going your way.
       </p>
     </div>
@@ -131,6 +131,11 @@ export function HowItWorksSection() {
           </li>
         ))}
       </ol>
+      <p className="mt-4 text-center">
+        <Link to="/how-it-works" className="link-accent text-sm font-medium">
+          Read the full step-by-step guide →
+        </Link>
+      </p>
     </section>
   )
 }

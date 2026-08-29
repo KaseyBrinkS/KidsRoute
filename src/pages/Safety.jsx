@@ -43,6 +43,14 @@ export default function Safety() {
             </div>
 
             <p className="rounded-2xl border border-primary/15 bg-primary/5 px-5 py-4 text-sm leading-relaxed text-[var(--color-text)]">
+              New to KidsRoute?{' '}
+              <Link to="/how-it-works" className="link-accent font-semibold">
+                See how it works
+              </Link>
+              {' '}— a step-by-step guide to getting set up.
+            </p>
+
+            <p className="rounded-2xl border border-primary/15 bg-primary/5 px-5 py-4 text-sm leading-relaxed text-[var(--color-text)]">
               Still have questions? We&apos;re real people — email us at{' '}
               <a href="mailto:hello@kidsroute.org" className="link-accent font-semibold">
                 hello@kidsroute.org
