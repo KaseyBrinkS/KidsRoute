@@ -31,6 +31,28 @@ export function todayKey() {
   return formatDateKey(new Date())
 }
 
+export function daysUntilDateKey(dateKey, fromDateKey = todayKey()) {
+  const from = parseDateKey(fromDateKey)
+  const to = parseDateKey(dateKey)
+  const msPerDay = 24 * 60 * 60 * 1000
+  return Math.round((to.getTime() - from.getTime()) / msPerDay)
+}
+
+/** Walk dates within the next 7 days (inclusive) are eligible for ratio alerts. */
+export function isWithinRatioAlertWindow(dateKey, fromDateKey = todayKey(), maxDaysAhead = 7) {
+  const daysUntil = daysUntilDateKey(dateKey, fromDateKey)
+  return daysUntil >= 0 && daysUntil <= maxDaysAhead
+}
+
+export function getUpcomingWeekDateKeys(fromDateKey = todayKey(), dayCount = 7) {
+  const start = parseDateKey(fromDateKey)
+  return Array.from({ length: dayCount }, (_, index) => {
+    const date = new Date(start)
+    date.setDate(date.getDate() + index)
+    return formatDateKey(date)
+  })
+}
+
 function getSchoolYearStart(referenceDate = new Date()) {
   const year = referenceDate.getFullYear()
   const month = referenceDate.getMonth()

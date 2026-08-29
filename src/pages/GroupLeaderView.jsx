@@ -19,6 +19,7 @@ import GroupNote from '../components/GroupNote'
 import GroupLeaderControls from '../components/GroupLeaderControls'
 import ReportConcernForm from '../components/ReportConcernForm'
 import {
+  getRatioAlertScheduleEntries,
   getUpcomingScheduleEntries,
   recordRatioAlertMessage,
   subscribeToLeaderVolunteers,
@@ -98,12 +99,14 @@ export default function GroupLeaderView() {
     let cancelled = false
 
     async function syncAlerts() {
-      const entries = getUpcomingScheduleEntries(group, volunteers, absences)
+      const entries = getRatioAlertScheduleEntries(group, volunteers, absences)
       await Promise.all(
         entries.map(async (entry) => {
           if (cancelled) return
           const needsAlert = entry.hasWalk && !entry.sufficient
-          await syncRatioAlert(groupId, entry.dateKey, needsAlert, recordRatioAlertMessage.bind(null, groupId))
+          await syncRatioAlert(groupId, entry.dateKey, needsAlert, recordRatioAlertMessage.bind(null, groupId), {
+            group,
+          })
         }),
       )
     }

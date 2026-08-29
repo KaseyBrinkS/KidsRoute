@@ -20,8 +20,12 @@ import {
   getSessionKeyForDate,
   isDateInSession,
   isPartyScheduledOnDate,
+  isWithinRatioAlertWindow,
   todayKey,
 } from './sessions'
+
+export const RATIO_ALERT_WINDOW_DAYS = 7
+export const RATIO_ALERT_FORMATION_GRACE_MS = 24 * 60 * 60 * 1000
 
 export const KIDS_PER_LEADER = 4
 
@@ -213,7 +217,43 @@ export function getUpcomingScheduleEntries(group, volunteers, absences, fromDate
   })
 }
 
-export async function syncRatioAlert(groupId, dateKey, needsAlert, sendAlert) {
+/** Upcoming week only — used for ratio alert evaluation. */
+export function getRatioAlertScheduleEntries(
+  group,
+  volunteers,
+  absences,
+  fromDateKey = todayKey(),
+) {
+  return getUpcomingScheduleEntries(group, volunteers, absences, fromDateKey).filter((entry) =>
+    isWithinRatioAlertWindow(entry.dateKey, fromDateKey, RATIO_ALERT_WINDOW_DAYS),
+  )
+}
+
+export function getGroupCreatedAtMs(group) {
+  const timestamp = group?.createdAt
+  if (!timestamp) return null
+  if (typeof timestamp.toMillis === 'function') return timestamp.toMillis()
+  const parsed = new Date(timestamp).getTime()
+  return Number.isNaN(parsed) ? null : parsed
+}
+
+export function isGroupPastRatioAlertGracePeriod(
+  group,
+  referenceDate = new Date(),
+  graceMs = RATIO_ALERT_FORMATION_GRACE_MS,
+) {
+  const createdAtMs = getGroupCreatedAtMs(group)
+  if (createdAtMs == null) return true
+  return referenceDate.getTime() - createdAtMs >= graceMs
+}
+
+export function shouldSendRatioAlert(group, dateKey, needsAlert, fromDateKey = todayKey()) {
+  if (!needsAlert) return false
+  if (!isGroupPastRatioAlertGracePeriod(group)) return false
+  return isWithinRatioAlertWindow(dateKey, fromDateKey, RATIO_ALERT_WINDOW_DAYS)
+}
+
+export async function syncRatioAlert(groupId, dateKey, needsAlert, sendAlert, { group = null } = {}) {
   const alertRef = doc(db, 'ratioAlerts', `${groupId}_${dateKey}`)
 
   if (!needsAlert) {
@@ -221,6 +261,10 @@ export async function syncRatioAlert(groupId, dateKey, needsAlert, sendAlert) {
     if (existing.exists()) {
       await deleteDoc(alertRef)
     }
+    return
+  }
+
+  if (!shouldSendRatioAlert(group, dateKey, needsAlert)) {
     return
   }
 
