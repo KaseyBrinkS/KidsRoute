@@ -10,7 +10,6 @@ import GroupLeaderHome from './pages/GroupLeaderHome'
 import GroupChat from './pages/GroupChat'
 import Groups from './pages/Groups'
 import History from './pages/History'
-import InviteCode from './pages/InviteCode'
 import Login from './pages/Login'
 import MyActivities from './pages/MyActivities'
 import MyKids from './pages/MyKids'
@@ -28,7 +27,6 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AccessGate />}>
-          <Route path="/invite-code" element={<InviteCode />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/rejected" element={<Rejected />} />
           <Route path="/admin" element={<AdminOnlyRoute />} />

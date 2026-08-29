@@ -1,0 +1,13 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "firebase/auth": ["node_modules/@firebase/auth/dist/rn/index.rn.d.ts"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}

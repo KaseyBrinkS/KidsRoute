@@ -2,11 +2,9 @@ import {
   addDoc,
   collection,
   doc,
-  getDoc,
   onSnapshot,
   query,
   serverTimestamp,
-  setDoc,
   updateDoc,
   where,
 } from 'firebase/firestore'
@@ -26,7 +24,7 @@ export function isAdmin(userId) {
 export function subscribeToPendingAccounts(onData, onError) {
   const pendingQuery = query(
     collection(db, 'users'),
-    where('accountStatus', '==', ACCOUNT_STATUS.PENDING),
+    where('accountStatus', 'in', [ACCOUNT_STATUS.PENDING, ACCOUNT_STATUS.NEEDS_INVITE]),
   )
 
   return onSnapshot(
@@ -69,23 +67,4 @@ export async function rejectAccount(userId) {
     rejectedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
-}
-
-export async function ensureDefaultInviteCode(code = 'PS150FALL26') {
-  const normalized = code.trim().toUpperCase()
-  const codeRef = doc(db, 'inviteCodes', normalized)
-  const snapshot = await getDoc(codeRef)
-
-  if (snapshot.exists()) {
-    if (snapshot.data().active !== false) return { created: false, code: normalized }
-    await updateDoc(codeRef, { active: true, updatedAt: serverTimestamp() })
-    return { created: false, reactivated: true, code: normalized }
-  }
-
-  await setDoc(codeRef, {
-    code: normalized,
-    active: true,
-    createdAt: serverTimestamp(),
-  })
-  return { created: true, code: normalized }
 }

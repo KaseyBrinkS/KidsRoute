@@ -20,8 +20,13 @@ export function hasFullAccess(profile) {
 export function getAccessGatePath(profile) {
   if (!profile || hasFullAccess(profile)) return null
   if (profile.accountStatus === ACCOUNT_STATUS.REJECTED) return '/rejected'
-  if (profile.accountStatus === ACCOUNT_STATUS.PENDING) return '/pending-approval'
-  return '/invite-code'
+  if (
+    profile.accountStatus === ACCOUNT_STATUS.PENDING
+    || profile.accountStatus === ACCOUNT_STATUS.NEEDS_INVITE
+  ) {
+    return '/pending-approval'
+  }
+  return '/pending-approval'
 }
 
-export const ACCESS_GATE_PATHS = ['/invite-code', '/pending-approval', '/rejected']
+export const ACCESS_GATE_PATHS = ['/pending-approval', '/rejected']

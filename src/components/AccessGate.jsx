@@ -63,7 +63,7 @@ export default function AccessGate() {
   }
 
   if (!hasFullAccess(profile)) {
-    return <Navigate to={getAccessGatePath(profile) ?? '/invite-code'} replace />
+    return <Navigate to={getAccessGatePath(profile) ?? '/pending-approval'} replace />
   }
 
   return <Outlet />

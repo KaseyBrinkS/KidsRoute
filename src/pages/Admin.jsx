@@ -4,7 +4,6 @@ import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
 import {
   approveAccount,
-  ensureDefaultInviteCode,
   rejectAccount,
   subscribeToPendingAccounts,
 } from '../firebase/admin'
@@ -16,7 +15,6 @@ export default function Admin() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [busyId, setBusyId] = useState(null)
-  const [seedMessage, setSeedMessage] = useState(null)
 
   useEffect(() => {
     const unsub = subscribeToPendingAccounts(
@@ -30,18 +28,6 @@ export default function Admin() {
       },
     )
     return unsub
-  }, [])
-
-  useEffect(() => {
-    ensureDefaultInviteCode('PS150FALL26')
-      .then((result) => {
-        if (result.created) {
-          setSeedMessage('Default invite code PS150FALL26 is ready.')
-        }
-      })
-      .catch(() => {
-        // Non-blocking — admin can seed manually in Firestore if needed.
-      })
   }, [])
 
   async function handleApprove(accountId) {
@@ -75,12 +61,6 @@ export default function Admin() {
           title="Admin"
           description="Review and approve new family accounts"
         />
-
-        {seedMessage && (
-          <p className="mb-4 rounded-xl border border-border-warm bg-accent-soft px-4 py-3 text-sm text-[var(--color-text)]">
-            {seedMessage}
-          </p>
-        )}
 
         {error && <p className="alert-error mb-4">{error}</p>}
 

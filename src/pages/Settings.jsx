@@ -221,7 +221,7 @@ export default function Settings() {
       <div className="space-y-6">
           <SettingsSection
             title="Parent profile"
-            description="Your phone number is shared with matched families when both parents accept a connection."
+            description="Your phone number is used for group coordination and SMS notifications."
           >
             <dl className="space-y-4">
               <div>
@@ -230,18 +230,15 @@ export default function Settings() {
                   {loading ? 'Loading…' : displayName}
                 </dd>
               </div>
-              <div>
-                <dt className="text-sm font-medium text-[var(--color-text)]">Email</dt>
-                <dd className="mt-1 text-sm text-[var(--color-text)]">
-                  {loading ? 'Loading…' : email}
-                </dd>
-              </div>
             </dl>
 
             <form onSubmit={handleSavePhone} className="mt-4">
-              <label htmlFor="phoneNumber" className="block text-sm font-medium text-[var(--color-text)]">
+              <label htmlFor="phoneNumber" className="block text-sm font-semibold text-[var(--color-text)]">
                 Phone number
               </label>
+              <p className="mt-1 text-sm text-muted">
+                Your primary contact for group coordination and SMS notifications.
+              </p>
               <div className="mt-1 flex flex-wrap gap-2">
                 <input
                   id="phoneNumber"
@@ -267,6 +264,15 @@ export default function Settings() {
                 <p className="mt-2 text-sm text-green-600">Phone number saved.</p>
               )}
             </form>
+
+            <dl className="mt-6 space-y-4">
+              <div>
+                <dt className="text-sm font-medium text-[var(--color-text)]">Email</dt>
+                <dd className="mt-1 text-sm text-muted">
+                  {loading ? 'Loading…' : email}
+                </dd>
+              </div>
+            </dl>
           </SettingsSection>
 
           <SettingsSection
@@ -358,19 +364,19 @@ export default function Settings() {
           >
             <div className="space-y-4 divide-y divide-gray-100">
               <Toggle
-                label="Email notifications"
-                description="Get updates about matches, groups, and walks by email."
-                checked={profile?.emailNotifications ?? true}
-                disabled={savingToggle === 'emailNotifications'}
-                onChange={(value) => handleToggleChange('emailNotifications', value)}
+                label="SMS notifications"
+                description="Get text message alerts for walk updates and group coordination."
+                checked={profile?.smsNotifications ?? true}
+                disabled={savingToggle === 'smsNotifications'}
+                onChange={(value) => handleToggleChange('smsNotifications', value)}
               />
               <div className="pt-4">
                 <Toggle
-                  label="SMS notifications"
-                  description="Get text message alerts for walk updates. Coming soon."
-                  checked={profile?.smsNotifications ?? false}
-                  disabled={savingToggle === 'smsNotifications'}
-                  onChange={(value) => handleToggleChange('smsNotifications', value)}
+                  label="Email notifications"
+                  description="Get updates about matches, groups, and walks by email."
+                  checked={profile?.emailNotifications ?? false}
+                  disabled={savingToggle === 'emailNotifications'}
+                  onChange={(value) => handleToggleChange('emailNotifications', value)}
                 />
               </div>
             </div>

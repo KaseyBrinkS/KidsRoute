@@ -32,14 +32,7 @@ service cloud.firestore {
       allow create: if isOwner(userId);
       allow update: if isAdmin() || (
         isOwner(userId)
-        && (
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['accountStatus'])
-          || (
-            resource.data.accountStatus == 'needs_invite'
-            && request.resource.data.accountStatus == 'pending'
-            && request.resource.data.inviteCodeVerified == true
-          )
-        )
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['accountStatus'])
       );
       allow delete: if isOwner(userId);
 

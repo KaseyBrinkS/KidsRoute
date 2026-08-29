@@ -62,7 +62,7 @@ const KEY_FEATURES = [
   {
     title: 'Privacy first',
     description:
-      'Invite-only access. Your information is only shared with families in your matched groups.',
+      'Admin-approved access. Your information is only shared with families in your matched groups.',
   },
 ]
 
