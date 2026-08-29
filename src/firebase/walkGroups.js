@@ -18,6 +18,7 @@ import { MATCH_WINDOW_MINUTES, timesWithinWindow } from './matching'
 import { defaultSessions } from './sessions'
 import { getUserProfile } from './users'
 import { getKid } from './kids'
+import { formatWalkHomeWindow } from './walkHome'
 
 export const MAX_WALK_GROUP_FAMILIES = 20
 
@@ -139,7 +140,8 @@ export function isWalkGroupDocument(group) {
   if (group.source === 'walkGroup') return true
   if (group.matchType || group.buildingWalkType) return false
   return (
-    group.groupType === 'location_window'
+    group.groupType === 'walk_home'
+    || group.groupType === 'location_window'
     || (Array.isArray(group.parties) && Boolean(group.day) && Boolean(group.location))
   )
 }
@@ -218,6 +220,7 @@ async function findWalkGroupForActivity(location, day, startTime) {
 
   const candidates = snapshot.docs
     .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+    .filter((group) => (group.groupType ?? 'location_window') === 'location_window')
     .filter((group) => group.status === 'open' || group.status === 'active')
     .filter((group) => activityFitsGroupWindow(group, startTime))
     .filter((group) => countWalkGroupFamilies(group) < MAX_WALK_GROUP_FAMILIES)
@@ -460,6 +463,11 @@ export function walkGroupIsDeclinedForUser(group, userId) {
 
 export function formatWalkGroupInvitation(group, userId) {
   const otherCount = countOtherJoiningFamilies(group, userId)
+  if (group.groupType === 'walk_home') {
+    const windowLabel = formatWalkHomeWindow(group)
+    const familyLabel = otherCount === 1 ? 'family is' : 'families are'
+    return `Walk home group at ${group.location} on ${group.day} (${windowLabel}) — ${otherCount} other ${familyLabel} walking home from the same building. Join this group?`
+  }
   const time = formatTimeLabel(group.windowStartTime)
   const familyLabel = otherCount === 1 ? 'family is' : 'families are'
   return `You have a group match at ${group.location} on ${group.day} at ${time} — ${otherCount} other ${familyLabel} joining. Want to join this group?`
@@ -586,6 +594,8 @@ export async function syncWalkGroupPartiesForActivity(userId, activityId, activi
   await Promise.all(
     snapshot.docs.map(async (docSnap) => {
       const group = docSnap.data()
+      if (group.groupType === 'walk_home') return
+
       let changed = false
 
       const parties = (group.parties ?? []).map((party) => {

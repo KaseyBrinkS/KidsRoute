@@ -14,10 +14,15 @@ import { syncUserMatchingOptOut } from '../firebase/matching'
 import { subscribeToKids } from '../firebase/kids'
 import {
   formatSchoolDisplay,
-  resolveSchoolValue,
+  resolveAndRegisterSchool,
   schoolCustomValue,
   schoolSelectValue,
 } from '../firebase/schools'
+import {
+  allSchoolNames,
+  registerCommunitySchool,
+  subscribeToSchools,
+} from '../firebase/schoolsRegistry'
 import {
   completeOnboarding,
   DEFAULT_SCHOOL,
@@ -91,6 +96,7 @@ export default function Settings() {
   const [homeAddressSaved, setHomeAddressSaved] = useState(false)
   const [schoolSelect, setSchoolSelect] = useState(DEFAULT_SCHOOL)
   const [schoolCustom, setSchoolCustom] = useState('')
+  const [schoolOptions, setSchoolOptions] = useState([])
   const [savingSchool, setSavingSchool] = useState(false)
   const [schoolSaved, setSchoolSaved] = useState(false)
   const [bannerRefresh, setBannerRefresh] = useState(0)
@@ -101,6 +107,8 @@ export default function Settings() {
   useEffect(() => {
     if (!user) return undefined
 
+    const unsubSchools = subscribeToSchools(setSchoolOptions, (err) => setError(err.message))
+
     const unsubProfile = subscribeToUserProfile(
       user.uid,
       (data) => {
@@ -109,8 +117,6 @@ export default function Settings() {
         setStreetNumber(data.streetNumber ?? '')
         setStreetName(data.streetName ?? '')
         setZipCode(data.zipCode ?? '')
-        setSchoolSelect(schoolSelectValue(data.school))
-        setSchoolCustom(schoolCustomValue(data.school))
         setLoading(false)
       },
       (err) => {
@@ -124,10 +130,18 @@ export default function Settings() {
     })
 
     return () => {
+      unsubSchools()
       unsubProfile()
       unsubKids()
     }
   }, [user])
+
+  useEffect(() => {
+    if (!profile?.school || schoolOptions.length === 0) return
+    const names = allSchoolNames(schoolOptions)
+    setSchoolSelect(schoolSelectValue(profile.school, names))
+    setSchoolCustom(schoolCustomValue(profile.school, names))
+  }, [profile?.school, schoolOptions])
 
   useEffect(() => {
     if (!user || !profile) return
@@ -209,7 +223,11 @@ export default function Settings() {
     setSchoolSaved(false)
     setSavingSchool(true)
     try {
-      const school = resolveSchoolValue(schoolSelect, schoolCustom)
+      const school = await resolveAndRegisterSchool(
+        schoolSelect,
+        schoolCustom,
+        registerCommunitySchool,
+      )
       await updateUserProfile(user.uid, { school })
       setSchoolSaved(true)
     } catch (err) {
@@ -468,6 +486,7 @@ export default function Settings() {
                 customId="settings-school-custom"
                 selectValue={schoolSelect}
                 customValue={schoolCustom}
+                schoolOptions={schoolOptions}
                 onSelectChange={(event) => {
                   setSchoolSelect(event.target.value)
                   setSchoolSaved(false)

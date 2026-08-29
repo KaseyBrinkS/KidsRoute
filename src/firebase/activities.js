@@ -15,6 +15,11 @@ import { db } from './db'
 import { defaultSessions } from './sessions'
 import { getUserProfile } from './users'
 import { processActivityWalkGrouping, repairWalkGroupParticipantIds, syncWalkGroupPartiesForActivity } from './walkGroups'
+import {
+  processWalkHomeGrouping,
+  removeWalkHomePartiesForActivity,
+  syncWalkHomePartiesForActivity,
+} from './walkHome'
 
 export function activityMatchingPayload(activityData) {
   return {
@@ -27,6 +32,7 @@ export function activityMatchingPayload(activityData) {
     sessions: activityData.sessions ?? defaultSessions(),
     summerStartDate: activityData.summerStartDate ?? null,
     summerEndDate: activityData.summerEndDate ?? null,
+    walkHomeEnabled: Boolean(activityData.walkHomeEnabled),
   }
 }
 
@@ -80,6 +86,7 @@ export function addActivity(userId, {
   sessions,
   summerStartDate,
   summerEndDate,
+  walkHomeEnabled,
 }) {
   return addDoc(activitiesCollection(userId), {
     childId,
@@ -93,6 +100,7 @@ export function addActivity(userId, {
     sessions: sessions ?? ['fall', 'spring'],
     summerStartDate: summerStartDate ?? null,
     summerEndDate: summerEndDate ?? null,
+    walkHomeEnabled: Boolean(walkHomeEnabled),
     createdAt: serverTimestamp(),
   })
 }
@@ -119,7 +127,9 @@ export async function syncWalkGroupsForUser(userId) {
 
   let synced = 0
   for (const activity of activities) {
-    await processActivityWalkGrouping(userId, activity.id, activityMatchingPayload(activity))
+    const payload = activityMatchingPayload(activity)
+    await processActivityWalkGrouping(userId, activity.id, payload)
+    await processWalkHomeGrouping(userId, activity.id, payload)
     synced += 1
   }
 
@@ -133,7 +143,9 @@ export async function addActivityAndFindMatches(userId, activityData) {
   const activityRef = await addActivity(userId, activityData)
 
   try {
-    await processActivityWalkGrouping(userId, activityRef.id, activityMatchingPayload(activityData))
+    const payload = activityMatchingPayload(activityData)
+    await processActivityWalkGrouping(userId, activityRef.id, payload)
+    await processWalkHomeGrouping(userId, activityRef.id, payload)
   } catch (err) {
     console.error('Activity saved but matching failed:', err)
     throw err
@@ -183,6 +195,7 @@ export async function updateActivityAndFindMatches(userId, activityId, activityD
     sessions: activityData.sessions ?? ['fall', 'spring'],
     summerStartDate: activityData.summerStartDate ?? null,
     summerEndDate: activityData.summerEndDate ?? null,
+    walkHomeEnabled: Boolean(activityData.walkHomeEnabled),
     updatedAt: serverTimestamp(),
   })
 
@@ -192,14 +205,18 @@ export async function updateActivityAndFindMatches(userId, activityId, activityD
 
   try {
     await syncWalkGroupPartiesForActivity(userId, activityId, matchingPayload)
+    await syncWalkHomePartiesForActivity(userId, activityId, matchingPayload)
     await processActivityWalkGrouping(userId, activityId, matchingPayload)
+    await processWalkHomeGrouping(userId, activityId, matchingPayload)
   } catch (err) {
     console.error('Activity updated but matching sync failed:', err)
     throw err
   }
 }
 
-export function deleteActivity(userId, activityId) {
+export async function deleteActivity(userId, activityId) {
+  await removeWalkHomePartiesForActivity(userId, activityId)
+  await deleteActivitySlots(userId, activityId)
   return deleteDoc(doc(db, 'users', userId, 'activities', activityId))
 }
 

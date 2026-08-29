@@ -30,7 +30,9 @@ import {
   validateSessionForm,
 } from '../firebase/sessions'
 import { subscribeToKids } from '../firebase/kids'
-import { startOfWeek } from '../utils/dates'
+import {
+  calculateWalkHomeDeparture,
+} from '../firebase/walkHome'
 
 const inputClass = 'input-kr'
 
@@ -47,6 +49,7 @@ function emptyForm(kids) {
     summerStartDate: '',
     summerEndDate: '',
     time: { ...DEFAULT_TIME },
+    walkHomeEnabled: false,
   }
 }
 
@@ -64,6 +67,7 @@ function formFromActivity(activity) {
     summerStartDate: activity.summerStartDate ?? '',
     summerEndDate: activity.summerEndDate ?? '',
     time: from24HourTime(activity.startTime),
+    walkHomeEnabled: Boolean(activity.walkHomeEnabled),
   }
 }
 
@@ -252,6 +256,7 @@ export default function MyActivities() {
       sessions: form.sessions,
       summerStartDate: form.sessions.includes('summer') ? form.summerStartDate : null,
       summerEndDate: form.sessions.includes('summer') ? form.summerEndDate : null,
+      walkHomeEnabled: form.walkHomeEnabled,
     }
 
     setError(null)
@@ -550,6 +555,26 @@ export default function MyActivities() {
                     </select>
                   </div>
                 </div>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={form.walkHomeEnabled}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, walkHomeEnabled: event.target.checked }))
+                    }
+                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-[var(--color-text)]">
+                      Add walk home group
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-muted">
+                      Match with neighbors at your building walking home from this activity. Requires
+                      a home address in Settings.
+                    </span>
+                  </span>
+                </label>
               </>
             )}
 
@@ -643,6 +668,12 @@ export default function MyActivities() {
                           <p className="mt-1 text-sm text-muted">
                             {formatSessionLabels(activity.sessions)}
                           </p>
+                          {activity.walkHomeEnabled && (
+                            <p className="mt-1 text-sm font-medium text-[var(--color-walk-blue)]">
+                              🏠 Walk home group · departs ~
+                              {formatStartTime(calculateWalkHomeDeparture(activity.startTime))}
+                            </p>
+                          )}
                         </div>
                         <div className="flex shrink-0 gap-2">
                           <button

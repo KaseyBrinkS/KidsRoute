@@ -1,6 +1,7 @@
 import { WEEKDAYS, formatStartTime } from './activities'
 import { BUILDING_WEEKDAYS } from './buildingWalks'
 import { MATCH_WINDOW_MINUTES } from './matching'
+import { WALK_HOME_MATCH_WINDOW_MINUTES } from './walkHome'
 
 const JS_TO_OUR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const BUILDING_WALK_WINDOW_MINUTES = 30
@@ -73,6 +74,27 @@ export function getGroupWalkStatus(group) {
       startTime: group.startTime,
     })
   }
+  if (group.groupType === 'walk_home') {
+    const windowMinutes = group.windowMinutes ?? WALK_HOME_MATCH_WINDOW_MINUTES
+    const startTimes = getPartyStartTimes(group)
+    const day = group.day
+    const now = new Date()
+    const today = JS_TO_OUR[now.getDay()]
+    const nowMinutes = now.getHours() * 60 + now.getMinutes()
+
+    if (!day || startTimes.length === 0) return 'upcoming'
+
+    const startMinutes = Math.min(...startTimes.map(timeToMinutes))
+    const endMinutes = Math.max(...startTimes.map(timeToMinutes)) + windowMinutes
+
+    if (day === today) {
+      if (nowMinutes < startMinutes) return 'upcoming'
+      if (nowMinutes <= endMinutes) return 'in progress'
+      return 'completed'
+    }
+
+    return daysUntilWalkDay(today, day) > 0 ? 'upcoming' : 'completed'
+  }
   return getWalkStatus(group.day, getPartyStartTimes(group))
 }
 
@@ -86,7 +108,19 @@ export function formatGroupChildNames(group) {
   return group.parties.map((party) => party.childFirstName).join(', ')
 }
 
+export function formatWalkHomeGroupTimes(group) {
+  if (!group || group.groupType !== 'walk_home') return ''
+  const start = group.windowStartTime
+  const end = group.windowEndTime ?? start
+  if (!start) return ''
+  if (!end || start === end) return formatStartTime(start)
+  return `${formatStartTime(start)} – ${formatStartTime(end)}`
+}
+
 export function formatGroupTimes(match) {
+  if (match.groupType === 'walk_home') {
+    return formatWalkHomeGroupTimes(match)
+  }
   if (match.matchType === 'building' && match.startTime) {
     return formatStartTime(match.startTime)
   }

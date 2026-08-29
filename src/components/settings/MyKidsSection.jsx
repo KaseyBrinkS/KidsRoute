@@ -3,28 +3,34 @@ import ChildAvatar from '../ChildAvatar'
 import ChildColorPicker from '../ChildColorPicker'
 import SchoolSelect from '../SchoolSelect'
 import { useAuth } from '../../context/AuthContext'
-import { addKid, deleteKid, GRADES, SCHOOLS, subscribeToKids, updateKid } from '../../firebase/kids'
+import { addKid, deleteKid, GRADES, subscribeToKids, updateKid } from '../../firebase/kids'
 import {
-  resolveSchoolValue,
+  resolveAndRegisterSchool,
   schoolCustomValue,
   schoolSelectValue,
 } from '../../firebase/schools'
+import {
+  allSchoolNames,
+  DEFAULT_SCHOOL,
+  registerCommunitySchool,
+  subscribeToSchools,
+} from '../../firebase/schoolsRegistry'
 import { defaultColorKeyForNewChild, getChildColorKey } from '../../utils/dates'
 
 const emptyForm = {
   firstName: '',
   grade: 'K',
-  schoolSelect: SCHOOLS[0],
+  schoolSelect: DEFAULT_SCHOOL,
   schoolCustom: '',
   colorKey: 0,
 }
 
-function formFromKid(kid, kids) {
+function formFromKid(kid, kids, names) {
   return {
     firstName: kid.firstName,
     grade: kid.grade,
-    schoolSelect: schoolSelectValue(kid.school),
-    schoolCustom: schoolCustomValue(kid.school),
+    schoolSelect: schoolSelectValue(kid.school, names),
+    schoolCustom: schoolCustomValue(kid.school, names),
     colorKey: getChildColorKey(kid, kids),
   }
 }
@@ -45,6 +51,16 @@ export default function MyKidsSection({ onError, onKidsChanged }) {
   const [editingId, setEditingId] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
+  const [schoolOptions, setSchoolOptions] = useState([])
+
+  useEffect(() => {
+    if (!user) return
+    const unsubSchools = subscribeToSchools(setSchoolOptions, (err) => {
+      setError(err.message)
+      onError?.(err.message)
+    })
+    return unsubSchools
+  }, [user, onError])
 
   useEffect(() => {
     if (!user) return
@@ -77,7 +93,11 @@ export default function MyKidsSection({ onError, onKidsChanged }) {
     setError(null)
     setSubmitting(true)
     try {
-      const school = resolveSchoolValue(form.schoolSelect, form.schoolCustom)
+      const school = await resolveAndRegisterSchool(
+        form.schoolSelect,
+        form.schoolCustom,
+        registerCommunitySchool,
+      )
       const payload = {
         firstName: form.firstName,
         grade: form.grade,
@@ -103,7 +123,7 @@ export default function MyKidsSection({ onError, onKidsChanged }) {
   function handleEdit(kid) {
     setError(null)
     setEditingId(kid.id)
-    setForm(formFromKid(kid, kids))
+    setForm(formFromKid(kid, kids, allSchoolNames(schoolOptions)))
   }
 
   function handleCancelEdit() {
@@ -180,6 +200,7 @@ export default function MyKidsSection({ onError, onKidsChanged }) {
               customId="kids-school-custom"
               selectValue={form.schoolSelect}
               customValue={form.schoolCustom}
+              schoolOptions={schoolOptions}
               onSelectChange={(event) =>
                 setForm((prev) => ({ ...prev, schoolSelect: event.target.value }))
               }

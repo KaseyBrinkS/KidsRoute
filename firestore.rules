@@ -114,5 +114,15 @@ service cloud.firestore {
     match /walkHistory/{historyId} {
       allow read, write: if isSignedIn();
     }
+
+    match /schools/{schoolId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.isCommunity == true
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120;
+      allow update, delete: if isAdmin();
+    }
   }
 }

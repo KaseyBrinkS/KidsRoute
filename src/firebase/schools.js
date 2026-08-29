@@ -10,17 +10,17 @@ export const OTHER_SCHOOL_LABEL = 'Other / Suggest a school'
 
 export const DEFAULT_SCHOOL = SCHOOLS[0]
 
-export function isListedSchool(school) {
-  return SCHOOLS.includes(school)
+export function isListedSchool(school, allSchoolNames = SCHOOLS) {
+  return allSchoolNames.includes(school)
 }
 
-export function schoolSelectValue(school) {
-  if (!school || isListedSchool(school)) return school || DEFAULT_SCHOOL
+export function schoolSelectValue(school, allSchoolNames = SCHOOLS) {
+  if (!school || isListedSchool(school, allSchoolNames)) return school || DEFAULT_SCHOOL
   return OTHER_SCHOOL_LABEL
 }
 
-export function schoolCustomValue(school) {
-  if (!school || isListedSchool(school)) return ''
+export function schoolCustomValue(school, allSchoolNames = SCHOOLS) {
+  if (!school || isListedSchool(school, allSchoolNames)) return ''
   return school
 }
 
@@ -36,6 +36,14 @@ export function resolveSchoolValue(selectValue, customValue) {
     throw new Error('Select a school.')
   }
   return selectValue
+}
+
+export async function resolveAndRegisterSchool(selectValue, customValue, registerFn) {
+  const school = resolveSchoolValue(selectValue, customValue)
+  if (selectValue === OTHER_SCHOOL_LABEL && registerFn) {
+    await registerFn(school)
+  }
+  return school
 }
 
 export function formatSchoolDisplay(school) {

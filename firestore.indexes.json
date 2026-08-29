@@ -28,6 +28,7 @@
       "collectionGroup": "walkGroups",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "groupType", "order": "ASCENDING" },
         { "fieldPath": "location", "order": "ASCENDING" },
         { "fieldPath": "day", "order": "ASCENDING" }
       ]

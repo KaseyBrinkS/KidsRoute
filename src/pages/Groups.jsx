@@ -10,6 +10,7 @@ import {
   formatGroupTimes,
   getGroupWalkStatus,
 } from '../firebase/groups'
+import { formatWalkHomeWindow, isWalkHomeGroup } from '../firebase/walkHome'
 import {
   clearAbsence,
   getUpcomingAbsences,
@@ -96,6 +97,21 @@ function ChildViewTabs({ groupsByChild, kids, selectedChildId, onSelect }) {
         )
       })}
     </div>
+  )
+}
+
+function GroupTypeBadge({ group }) {
+  if (isWalkHomeGroup(group)) {
+    return (
+      <span className="rounded-full bg-[var(--color-walk-blue-bg)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-walk-blue)]">
+        🏠 Walk Home
+      </span>
+    )
+  }
+  return (
+    <span className="rounded-full bg-bg-warm px-2.5 py-0.5 text-xs font-semibold text-muted">
+      Walk To
+    </span>
   )
 }
 
@@ -430,13 +446,22 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
 
       <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
         <div className="min-w-0 flex-1">
-          <p className="font-heading text-lg font-semibold text-[var(--color-text)]">
+          <div className="flex flex-wrap items-center gap-2">
+            <GroupTypeBadge group={group} />
+          </div>
+          <p className="mt-2 font-heading text-lg font-semibold text-[var(--color-text)]">
             {group._childName ?? formatGroupChildNames(group)}
           </p>
           <p className="mt-1 text-sm font-medium text-primary">{group.location}</p>
           <p className="mt-0.5 text-sm text-muted">
-            {group.day} · {formatGroupTimes(group)}
+            {group.day}
+            {isWalkHomeGroup(group)
+              ? ` · Walk home ${formatWalkHomeWindow(group)}`
+              : ` · ${formatGroupTimes(group)}`}
           </p>
+          {isWalkHomeGroup(group) && group.homeAddressDisplay && (
+            <p className="mt-0.5 text-xs text-muted">From {group.homeAddressDisplay}</p>
+          )}
         </div>
 
         <span className={walkStatusBadgeClass(displayWalkStatus)}>
@@ -746,6 +771,16 @@ export default function Groups() {
     )
   }, [groups, user, activeSessions])
 
+  const walkToGroupsList = useMemo(
+    () => allGroupsList.filter((group) => !isWalkHomeGroup(group)),
+    [allGroupsList],
+  )
+
+  const walkHomeGroupsList = useMemo(
+    () => allGroupsList.filter((group) => isWalkHomeGroup(group)),
+    [allGroupsList],
+  )
+
   const selectedChildGroups = useMemo(() => {
     if (!selectedChildId) return null
     const childEntry = groupsByChild.find((entry) => entry.childId === selectedChildId)
@@ -895,15 +930,35 @@ export default function Groups() {
               )}
             </div>
           ) : (
-            <div className="mt-5 space-y-5">
-              {allGroupsList.map((group) => (
-                <GroupCard
-                  key={group.id}
-                  group={group}
-                  userId={user.uid}
-                  displayStatus={group._displayStatus}
-                />
-              ))}
+            <div className="mt-5 space-y-8">
+              {walkToGroupsList.length > 0 && (
+                <div className="space-y-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Walk To</h3>
+                  {walkToGroupsList.map((group) => (
+                    <GroupCard
+                      key={group.id}
+                      group={group}
+                      userId={user.uid}
+                      displayStatus={group._displayStatus}
+                    />
+                  ))}
+                </div>
+              )}
+              {walkHomeGroupsList.length > 0 && (
+                <div className="space-y-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
+                    🏠 Walk Home
+                  </h3>
+                  {walkHomeGroupsList.map((group) => (
+                    <GroupCard
+                      key={group.id}
+                      group={group}
+                      userId={user.uid}
+                      displayStatus={group._displayStatus}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </section>
