@@ -1,17 +1,50 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { completeGoogleRedirectSignIn, signInWithGoogle } from '../firebase/auth'
+import {
+  completeOAuthRedirectSignIn,
+  createAccountWithEmailPassword,
+  isIosSafari,
+  signInWithApple,
+  signInWithEmailPassword,
+  signInWithGoogle,
+} from '../firebase/auth'
 import { claimLeaderInvite, syncLeaderProfileFromInvite } from '../firebase/groupLeaders'
 import { getPostLoginPath, saveUserProfile } from '../firebase/users'
 import KidsRouteLogo from '../components/KidsRouteLogo'
+
+function OrDivider() {
+  return (
+    <div className="my-4 flex items-center gap-3">
+      <div className="h-px flex-1 bg-border" />
+      <span className="text-sm font-medium text-muted">or</span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  )
+}
+
+function AppleIcon() {
+  return (
+    <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
+      />
+    </svg>
+  )
+}
 
 export default function Login() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const [error, setError] = useState(null)
-  const [signingIn, setSigningIn] = useState(false)
+  const [busyMethod, setBusyMethod] = useState(null)
+  const [emailExpanded, setEmailExpanded] = useState(false)
+  const [emailMode, setEmailMode] = useState('signIn')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const showAppleSignIn = isIosSafari()
 
   useEffect(() => {
     const inviteToken = searchParams.get('invite')
@@ -51,7 +84,7 @@ export default function Login() {
 
     async function handleRedirectResult() {
       try {
-        const result = await completeGoogleRedirectSignIn()
+        const result = await completeOAuthRedirectSignIn()
         if (cancelled || !result) return
 
         await saveUserProfile(result.user)
@@ -67,21 +100,51 @@ export default function Login() {
     }
   }, [navigate])
 
-  async function handleGoogleSignIn() {
+  async function handleAuth(method, fn) {
     setError(null)
-    setSigningIn(true)
+    setBusyMethod(method)
     try {
-      const result = await signInWithGoogle()
+      const result = await fn()
       if (!result) return
 
       await saveUserProfile(result.user)
       await finishLogin(result.user.uid)
     } catch (err) {
-      setError(err.message)
+      if (err.message) setError(err.message)
     } finally {
-      setSigningIn(false)
+      setBusyMethod(null)
     }
   }
+
+  function handleGoogleSignIn() {
+    return handleAuth('google', signInWithGoogle)
+  }
+
+  function handleAppleSignIn() {
+    return handleAuth('apple', signInWithApple)
+  }
+
+  function handleEmailSubmit(event) {
+    event.preventDefault()
+    if (!email.trim() || !password) {
+      setError('Enter your email and password.')
+      return
+    }
+
+    const action =
+      emailMode === 'createAccount'
+        ? () => createAccountWithEmailPassword(email, password)
+        : () => signInWithEmailPassword(email, password)
+
+    return handleAuth('email', action)
+  }
+
+  function toggleEmailMode() {
+    setEmailMode((current) => (current === 'signIn' ? 'createAccount' : 'signIn'))
+    setError(null)
+  }
+
+  const isBusy = busyMethod !== null
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10">
@@ -100,7 +163,7 @@ export default function Login() {
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            disabled={signingIn}
+            disabled={isBusy}
             className="btn-secondary w-full gap-3 py-3.5"
           >
             <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
@@ -121,8 +184,97 @@ export default function Login() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            {signingIn ? 'Signing in…' : 'Sign in with Google'}
+            {busyMethod === 'google' ? 'Signing in…' : 'Sign in with Google'}
           </button>
+
+          <OrDivider />
+
+          {!emailExpanded ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEmailExpanded(true)
+                setError(null)
+              }}
+              disabled={isBusy}
+              className="btn-secondary w-full py-3.5"
+            >
+              Continue with email
+            </button>
+          ) : (
+            <form onSubmit={handleEmailSubmit} className="space-y-3">
+              <div>
+                <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-[var(--color-text)]">
+                  Email
+                </label>
+                <input
+                  id="login-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  disabled={isBusy}
+                  className="input-kr"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-[var(--color-text)]">
+                  Password
+                </label>
+                <input
+                  id="login-password"
+                  type="password"
+                  autoComplete={emailMode === 'createAccount' ? 'new-password' : 'current-password'}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="••••••••"
+                  disabled={isBusy}
+                  className="input-kr"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isBusy}
+                className="btn-primary w-full py-3"
+              >
+                {busyMethod === 'email'
+                  ? 'Please wait…'
+                  : emailMode === 'createAccount'
+                    ? 'Create account'
+                    : 'Sign in'}
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleEmailMode}
+                disabled={isBusy}
+                className="link-accent mx-auto block text-sm font-semibold"
+              >
+                {emailMode === 'createAccount'
+                  ? 'Already have an account? Sign in'
+                  : 'New here? Create account'}
+              </button>
+            </form>
+          )}
+
+          {showAppleSignIn && (
+            <>
+              <OrDivider />
+
+              <button
+                type="button"
+                onClick={handleAppleSignIn}
+                disabled={isBusy}
+                className="inline-flex w-full items-center justify-center gap-2.5 rounded-2xl bg-black px-5 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                <AppleIcon />
+                {busyMethod === 'apple' ? 'Signing in…' : 'Sign in with Apple'}
+              </button>
+            </>
+          )}
 
           {error && (
             <p className="alert-error mt-4 text-center">{error}</p>
