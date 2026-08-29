@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -38,6 +38,7 @@ import {
   syncBuildingWalkChildren,
   validateHomeAddressFields,
 } from '../firebase/buildingWalks'
+import { isActivationDismissed } from '../utils/activationDismissal'
 
 const inputClass = 'input-kr'
 
@@ -107,6 +108,7 @@ export default function Settings() {
   const [showActivitiesPrompt, setShowActivitiesPrompt] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deletingAccount, setDeletingAccount] = useState(false)
+  const setupCompleteRef = useRef(null)
 
   useEffect(() => {
     if (!user) return undefined
@@ -161,6 +163,22 @@ export default function Settings() {
       setSchoolConfirmedChecked(true)
     }
   }, [pendingSchoolName, profile?.school, profile?.schoolConfirmed])
+
+  useEffect(() => {
+    if (!user || !profile || kidsLoading) return
+
+    const setupComplete = hasCompletedBasicSetup(profile, kidCount)
+    if (setupCompleteRef.current === null) {
+      setupCompleteRef.current = setupComplete
+      return
+    }
+
+    if (setupComplete && !setupCompleteRef.current && !isActivationDismissed()) {
+      navigate('/activation', { replace: true })
+    }
+
+    setupCompleteRef.current = setupComplete
+  }, [user, profile, kidCount, kidsLoading, navigate])
 
   useEffect(() => {
     if (!user || !profile) return

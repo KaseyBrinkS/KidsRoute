@@ -16,6 +16,8 @@ import Settings from './pages/Settings'
 import Terms from './pages/Terms'
 import Flyer from './pages/Flyer'
 import Welcome from './pages/Welcome'
+import Activation from './pages/Activation'
+import Safety from './pages/Safety'
 
 export default function App() {
   return (
@@ -23,6 +25,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
+      <Route path="/safety" element={<Safety />} />
       <Route path="/flyer" element={<Flyer />} />
       <Route path="/pending-approval" element={<Navigate to="/welcome" replace />} />
       <Route path="/rejected" element={<Navigate to="/welcome" replace />} />
@@ -31,6 +34,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/admin" element={<AdminOnlyRoute />} />
         <Route path="/welcome" element={<Welcome />} />
+        <Route path="/activation" element={<Activation />} />
         <Route path="/" element={<Navigate to="/welcome" replace />} />
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />

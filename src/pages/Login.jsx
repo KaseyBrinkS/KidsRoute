@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   completeOAuthRedirectSignIn,
@@ -149,6 +149,12 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg px-4 py-10">
+      <nav className="mx-auto mb-4 flex w-full max-w-md justify-center">
+        <Link to="/safety" className="link-accent text-sm font-semibold">
+          Safety &amp; Privacy
+        </Link>
+      </nav>
+
       <div className="flex flex-1 items-center justify-center">
         <div className="kr-card w-full max-w-md overflow-hidden p-0">
         <div className="login-hero-gradient px-8 pb-8 pt-10">

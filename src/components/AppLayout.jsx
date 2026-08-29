@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import KidsRouteLogo from './KidsRouteLogo'
+import AppFooter from './AppFooter'
 import { logOut } from '../firebase/auth'
 import { useAuth } from '../context/AuthContext'
 import { subscribeToUserProfile } from '../firebase/users'
@@ -162,6 +163,7 @@ export default function AppLayout() {
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 pb-24 sm:py-8 sm:pb-8">
         <Outlet />
+        <AppFooter />
       </main>
 
       <nav className="kr-nav-bar fixed inset-x-0 bottom-0 z-10 sm:hidden">

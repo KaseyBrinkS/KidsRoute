@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom'
 export default function LegalFooter({ className = '' }) {
   return (
     <footer className={`text-center text-xs text-muted ${className}`}>
+      <Link to="/safety" className="hover:text-primary hover:underline">
+        Safety &amp; Privacy
+      </Link>
+      <span className="mx-2 text-border">·</span>
       <Link to="/privacy" className="hover:text-primary hover:underline">
         Privacy Policy
       </Link>
