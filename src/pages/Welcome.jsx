@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AboutHero from '../components/onboarding/AboutHero'
 import {
-  GetStartedButton,
+  WelcomeActionButtons,
   getWelcomeLogoPath,
   HowItWorksSection,
   KeyFeaturesSection,
@@ -64,7 +64,7 @@ export default function Welcome() {
           <div className="space-y-8 px-6 pb-8 pt-6 sm:px-8 sm:pb-10">
             <WelcomeIntro />
 
-            <GetStartedButton onClick={handleGetStarted} />
+            <WelcomeActionButtons onGetStarted={handleGetStarted} />
 
             <HowItWorksSection />
 

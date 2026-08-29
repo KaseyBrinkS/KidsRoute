@@ -54,7 +54,7 @@ export default function LeaderWeekCalendar({ groupsByDay, kids }) {
                   return (
                     <li key={group.id}>
                       <Link
-                        to={`/groups/${group.id}/leader`}
+                        to={`/groups/${group.id}/walk`}
                         className="block rounded-xl border p-3 transition-opacity hover:opacity-90"
                         style={cardColorStyle(group._childId, kids)}
                       >

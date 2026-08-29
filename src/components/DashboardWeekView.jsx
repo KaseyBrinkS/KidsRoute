@@ -75,7 +75,7 @@ export default function DashboardWeekView({
                         </span>
                       </div>
                       {status === 'in progress' && (
-                        <Link to={`/groups/${group.id}/leader`} className="btn-leader mt-3">
+                        <Link to={`/groups/${group.id}/walk`} className="btn-leader mt-3">
                           Manage Group
                         </Link>
                       )}

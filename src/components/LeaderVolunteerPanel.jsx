@@ -5,19 +5,19 @@ import {
   getGroupUpcomingScheduledDates,
   getVolunteerSessionOptions,
 } from '../firebase/sessions'
-import { volunteerForDates, volunteerForSemester } from '../firebase/leaderVolunteers'
+import { volunteerForDates, volunteerForSemesters } from '../firebase/leaderVolunteers'
 
 export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolunteered }) {
   const sessionOptions = useMemo(() => getVolunteerSessionOptions(), [])
-  const defaultSessionKey = useMemo(() => {
+  const defaultSessionKeys = useMemo(() => {
     const current = getCurrentSessionInfo()
-    return sessionOptions.find((option) => option.id === current.id)?.sessionKey
-      ?? sessionOptions[0]?.sessionKey
+    const currentKey = sessionOptions.find((option) => option.id === current.id)?.sessionKey
+    return currentKey ? [currentKey] : sessionOptions[0]?.sessionKey ? [sessionOptions[0].sessionKey] : []
   }, [sessionOptions])
 
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState('semester')
-  const [selectedSessionKey, setSelectedSessionKey] = useState(defaultSessionKey)
+  const [selectedSessionKeys, setSelectedSessionKeys] = useState(defaultSessionKeys)
   const [selectedDates, setSelectedDates] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -29,10 +29,18 @@ export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolu
 
   function handleOpen() {
     setMode('semester')
-    setSelectedSessionKey(defaultSessionKey)
+    setSelectedSessionKeys(defaultSessionKeys)
     setSelectedDates(scheduledDates.length > 0 ? [scheduledDates[0]] : [])
     setError(null)
     setOpen(true)
+  }
+
+  function toggleSessionKey(sessionKey) {
+    setSelectedSessionKeys((current) =>
+      current.includes(sessionKey)
+        ? current.filter((value) => value !== sessionKey)
+        : [...current, sessionKey],
+    )
   }
 
   function toggleDate(dateKey) {
@@ -50,7 +58,7 @@ export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolu
 
     try {
       if (mode === 'semester') {
-        await volunteerForSemester(group.id, userId, leaderName, selectedSessionKey)
+        await volunteerForSemesters(group.id, userId, leaderName, selectedSessionKeys)
       } else {
         await volunteerForDates(group.id, userId, leaderName, selectedDates)
       }
@@ -92,9 +100,9 @@ export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolu
             className="mt-1"
           />
           <span>
-            <span className="font-medium">A full session</span>
+            <span className="font-medium">Full session(s)</span>
             <span className="mt-0.5 block text-xs text-muted">
-              Fall, Spring, or Summer Camp
+              Select one or more: Fall, Spring, Summer Camp
             </span>
           </span>
         </label>
@@ -118,15 +126,13 @@ export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolu
 
       {mode === 'semester' && (
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-[var(--color-text)]">Select session</legend>
+          <legend className="text-sm font-medium text-[var(--color-text)]">Select session(s)</legend>
           {sessionOptions.map((option) => (
             <label key={option.sessionKey} className="flex cursor-pointer items-start gap-2 text-sm">
               <input
-                type="radio"
-                name="volunteer-session"
-                value={option.sessionKey}
-                checked={selectedSessionKey === option.sessionKey}
-                onChange={() => setSelectedSessionKey(option.sessionKey)}
+                type="checkbox"
+                checked={selectedSessionKeys.includes(option.sessionKey)}
+                onChange={() => toggleSessionKey(option.sessionKey)}
                 className="mt-1"
               />
               <span>
@@ -167,7 +173,11 @@ export default function LeaderVolunteerPanel({ group, userId, leaderName, onVolu
       <div className="flex flex-wrap gap-2">
         <button
           type="submit"
-          disabled={busy || (mode === 'dates' && selectedDates.length === 0)}
+          disabled={
+            busy
+            || (mode === 'semester' && selectedSessionKeys.length === 0)
+            || (mode === 'dates' && selectedDates.length === 0)
+          }
           className="btn-primary py-1.5 text-xs"
         >
           {busy ? 'Saving…' : 'Save volunteer dates'}

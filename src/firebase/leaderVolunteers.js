@@ -110,6 +110,17 @@ export async function volunteerForSemester(groupId, userId, leaderName, sessionK
   })
 }
 
+export async function volunteerForSemesters(groupId, userId, leaderName, sessionKeys) {
+  const uniqueKeys = [...new Set(sessionKeys.filter(Boolean))]
+  if (uniqueKeys.length === 0) {
+    throw new Error('Select at least one session to volunteer.')
+  }
+
+  await Promise.all(
+    uniqueKeys.map((sessionKey) => volunteerForSemester(groupId, userId, leaderName, sessionKey)),
+  )
+}
+
 export async function volunteerForDates(groupId, userId, leaderName, dateKeys) {
   const trimmedName = leaderName?.trim() || 'Parent'
   const uniqueDates = [...new Set(dateKeys.filter(Boolean))]

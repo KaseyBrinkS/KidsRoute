@@ -253,6 +253,34 @@ export function subscribeToActiveWalkSession(groupId, userId, onData, onError, o
   )
 }
 
+/** Today's walk session for a group, including completed sessions. */
+export function subscribeToTodayWalkSession(groupId, userId, onData, onError, options = {}) {
+  if (!groupId || !userId) {
+    onData(null)
+    return () => {}
+  }
+
+  const leaderAccess = options.leaderAccess === true
+  const today = todayKey()
+
+  return onSnapshot(
+    walkSessionsQuery(groupId, userId, { leaderAccess }),
+    (snapshot) => {
+      const session =
+        snapshot.docs
+          .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+          .filter((entry) => entry.dateKey === today)
+          .sort((left, right) => {
+            const leftTime = left.startedAt?.toMillis?.() ?? 0
+            const rightTime = right.startedAt?.toMillis?.() ?? 0
+            return rightTime - leftTime
+          })[0] ?? null
+      onData(session)
+    },
+    onError,
+  )
+}
+
 export function subscribeToWalkSessionChildren(sessionId, onData, onError) {
   return onSnapshot(
     collection(db, 'walkSessions', sessionId, 'children'),
@@ -571,6 +599,78 @@ export async function completeWalkSession(sessionId) {
     status: 'completed',
     completedAt: serverTimestamp(),
   })
+}
+
+export async function endWalkSession(sessionId) {
+  if (!sessionId) {
+    throw new Error('No active walk session.')
+  }
+
+  const sessionSnap = await getDoc(doc(db, 'walkSessions', sessionId))
+  if (!sessionSnap.exists()) {
+    throw new Error('This walk session no longer exists.')
+  }
+
+  const session = sessionSnap.data()
+  if (session.status === 'completed') {
+    return { sessionId, alreadyCompleted: true }
+  }
+
+  const children = await loadSessionChildren(sessionId)
+  for (const child of children) {
+    if (child.walkStatus === 'absent' || child.walkStatus === 'dropped_off') continue
+    try {
+      await markChildDroppedOff(sessionId, child.userId, child.childId, child.id)
+    } catch (error) {
+      console.error('[endWalk] drop-off failed', { child, error })
+    }
+  }
+
+  await completeWalkSession(sessionId)
+  return { sessionId, alreadyCompleted: false }
+}
+
+export function findAbsenceForDate(absences, userId, childId, dateKey = todayKey()) {
+  return (
+    absences.find((absence) => {
+      if (absence.userId !== userId || absence.childId !== childId) return false
+      if (absence.type === 'range') {
+        return dateKey >= absence.startDateKey && dateKey <= absence.endDateKey
+      }
+      return absence.dateKey === dateKey
+    }) ?? null
+  )
+}
+
+export async function toggleParticipantAttendanceToday({
+  groupId,
+  party,
+  absences,
+  group,
+  leaderId,
+  dateKey = todayKey(),
+}) {
+  const activeSession = await getActiveSession(groupId, leaderId, { leaderAccess: true })
+  if (activeSession) {
+    throw new Error('Cannot change attendance while a walk is in progress.')
+  }
+
+  const existing = findAbsenceForDate(absences, party.userId, party.childId, dateKey)
+  if (existing) {
+    await clearAbsence(existing.id)
+    return { status: 'confirmed' }
+  }
+
+  await markAbsentSingleDate({
+    groupId,
+    userId: party.userId,
+    childId: party.childId,
+    childFirstName: party.childFirstName,
+    activityId: party.activityId,
+    dateKey,
+    participantIds: resolveGroupParticipantIds(group),
+  })
+  return { status: 'absent' }
 }
 
 async function loadSessionChildren(sessionId) {

@@ -81,23 +81,33 @@ export function WelcomeIntro() {
 export function GetStartedButton({ className = '', onClick, busy = false }) {
   if (onClick) {
     return (
-      <div className={`text-center ${className}`}>
-        <button
-          type="button"
-          onClick={onClick}
-          disabled={busy}
-          className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]"
-        >
-          {busy ? 'Loading…' : 'Get Started'}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={busy}
+        className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]"
+      >
+        {busy ? 'Loading…' : 'Get Started'}
+      </button>
     )
   }
 
   return (
-    <div className={`text-center ${className}`}>
-      <Link to="/settings" className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]">
-        Get Started
+    <Link to="/settings" className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]">
+      Get Started
+    </Link>
+  )
+}
+
+export function WelcomeActionButtons({ className = '', onGetStarted, busy = false }) {
+  return (
+    <div className={`flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center ${className}`}>
+      <GetStartedButton onClick={onGetStarted} busy={busy} />
+      <Link
+        to="/how-it-works"
+        className="btn-secondary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]"
+      >
+        How It Works →
       </Link>
     </div>
   )

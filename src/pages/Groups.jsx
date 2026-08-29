@@ -508,7 +508,7 @@ function GroupCard({ group, userId, displayStatus: displayStatusProp }) {
       <div className="kr-card-actions mt-5">
         <div className="flex flex-col gap-2 sm:flex-row">
           <GroupChatButton group={group} userId={userId} className="mt-0 sm:flex-1" />
-          <Link to={`/groups/${group.id}/leader`} className="btn-manage-group mt-0 sm:flex-1">
+          <Link to={`/groups/${group.id}/walk`} className="btn-manage-group mt-0 sm:flex-1">
             Manage Group
           </Link>
         </div>
@@ -625,7 +625,7 @@ function BuildingWalkGroupCard({ group, userId, onLeave }) {
       </div>
 
       {group.status === 'connected' && !partnerLeft && (
-        <Link to={`/groups/${group.id}/leader`} className="btn-manage-group">
+        <Link to={`/groups/${group.id}/walk`} className="btn-manage-group">
           Manage Group
         </Link>
       )}

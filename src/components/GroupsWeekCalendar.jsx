@@ -91,7 +91,7 @@ export default function GroupsWeekCalendar({
                       <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
                         <GroupChatButton group={group} userId={userId} className="mt-0" />
                         <GroupLeaderButton group={group} userId={userId} />
-                        <Link to={`/groups/${group.id}/leader`} className="btn-manage-group mt-0">
+                        <Link to={`/groups/${group.id}/walk`} className="btn-manage-group mt-0">
                           Manage Group
                         </Link>
                       </div>

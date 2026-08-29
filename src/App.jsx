@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AdminOnlyRoute from './components/AdminOnlyRoute'
 import Dashboard from './pages/Dashboard'
 import GroupLeaderView from './pages/GroupLeaderView'
+import GroupWalkPage from './pages/GroupWalkPage'
 import GroupLeaderHome from './pages/GroupLeaderHome'
 import GroupChat from './pages/GroupChat'
 import Groups from './pages/Groups'
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/groups" element={<Groups />} />
           <Route path="/leader" element={<GroupLeaderHome />} />
           <Route path="/groups/:groupId/chat" element={<GroupChat />} />
+          <Route path="/groups/:groupId/walk" element={<GroupWalkPage />} />
           <Route path="/groups/:groupId/leader" element={<GroupLeaderView />} />
           <Route path="/history" element={<History />} />
           <Route path="/settings" element={<Settings />} />
