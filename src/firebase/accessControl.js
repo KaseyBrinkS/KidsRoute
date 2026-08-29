@@ -3,4 +3,9 @@ export const ACCOUNT_STATUS = {
   PENDING: 'pending',
   APPROVED: 'approved',
   REJECTED: 'rejected',
+  REMOVED: 'removed',
+}
+
+export function isAccountRemoved(profile) {
+  return profile?.accountStatus === ACCOUNT_STATUS.REMOVED
 }

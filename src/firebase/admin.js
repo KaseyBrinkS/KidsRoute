@@ -1,5 +1,7 @@
 import { collection, onSnapshot } from 'firebase/firestore'
+import { ACCOUNT_STATUS } from './accessControl'
 import { db } from './db'
+import { updateUserProfile } from './users'
 
 /**
  * Set VITE_ADMIN_UID in .env.local to your Firebase Auth UID
@@ -31,9 +33,15 @@ export function subscribeToAllAccounts(onData, onError) {
   )
 }
 
-function formatAccountStatus(status) {
-  if (!status) return 'Active'
+export function formatAccountStatus(status) {
+  if (!status || status === ACCOUNT_STATUS.APPROVED) return 'Active'
   return status.replace(/_/g, ' ')
 }
 
-export { formatAccountStatus }
+export function isRemovedAccountStatus(status) {
+  return status === ACCOUNT_STATUS.REMOVED
+}
+
+export async function removeUserAccount(userId) {
+  await updateUserProfile(userId, { accountStatus: ACCOUNT_STATUS.REMOVED })
+}

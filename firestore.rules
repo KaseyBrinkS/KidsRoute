@@ -124,5 +124,24 @@ service cloud.firestore {
         && request.resource.data.name.size() <= 120;
       allow update, delete: if isAdmin();
     }
+
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.reportedUserUid is string
+        && request.resource.data.groupId is string
+        && request.resource.data.reason is string;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Queued by the app; delivered via Firebase Trigger Email extension (admin SDK).
+    match /mail/{mailId} {
+      allow create: if isSignedIn()
+        && request.resource.data.to is string
+        && request.resource.data.message.subject is string
+        && request.resource.data.message.text is string;
+      allow read, update, delete: if false;
+    }
   }
 }

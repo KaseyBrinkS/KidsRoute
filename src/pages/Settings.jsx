@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -6,6 +6,7 @@ import SettingsActivitiesPrompt from '../components/settings/SettingsActivitiesP
 import SettingsOnboardingBanner from '../components/settings/SettingsOnboardingBanner'
 import MyKidsSection from '../components/settings/MyKidsSection'
 import SchoolSelect from '../components/SchoolSelect'
+import SchoolVerifiedBadge from '../components/SchoolVerifiedBadge'
 import { useAuth } from '../context/AuthContext'
 import { logOut } from '../firebase/auth'
 import { deleteUserAccount } from '../firebase/deleteAccount'
@@ -15,6 +16,7 @@ import { subscribeToKids } from '../firebase/kids'
 import {
   formatSchoolDisplay,
   resolveAndRegisterSchool,
+  resolveSchoolValue,
   schoolCustomValue,
   schoolSelectValue,
 } from '../firebase/schools'
@@ -99,6 +101,7 @@ export default function Settings() {
   const [schoolOptions, setSchoolOptions] = useState([])
   const [savingSchool, setSavingSchool] = useState(false)
   const [schoolSaved, setSchoolSaved] = useState(false)
+  const [schoolConfirmedChecked, setSchoolConfirmedChecked] = useState(false)
   const [bannerRefresh, setBannerRefresh] = useState(0)
   const [showActivitiesPrompt, setShowActivitiesPrompt] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -142,6 +145,21 @@ export default function Settings() {
     setSchoolSelect(schoolSelectValue(profile.school, names))
     setSchoolCustom(schoolCustomValue(profile.school, names))
   }, [profile?.school, schoolOptions])
+
+  const pendingSchoolName = useMemo(() => {
+    try {
+      return resolveSchoolValue(schoolSelect, schoolCustom)
+    } catch {
+      return null
+    }
+  }, [schoolSelect, schoolCustom])
+
+  useEffect(() => {
+    if (!pendingSchoolName || !profile?.school) return
+    if (profile.school === pendingSchoolName && profile.schoolConfirmed) {
+      setSchoolConfirmedChecked(true)
+    }
+  }, [pendingSchoolName, profile?.school, profile?.schoolConfirmed])
 
   useEffect(() => {
     if (!user || !profile) return
@@ -219,6 +237,11 @@ export default function Settings() {
     event.preventDefault()
     if (!user) return
 
+    if (!schoolConfirmedChecked) {
+      setError('Please confirm you are a parent or guardian of a child enrolled at this school.')
+      return
+    }
+
     setError(null)
     setSchoolSaved(false)
     setSavingSchool(true)
@@ -228,7 +251,7 @@ export default function Settings() {
         schoolCustom,
         registerCommunitySchool,
       )
-      await updateUserProfile(user.uid, { school })
+      await updateUserProfile(user.uid, { school, schoolConfirmed: true })
       setSchoolSaved(true)
     } catch (err) {
       setError(err.message)
@@ -490,15 +513,38 @@ export default function Settings() {
                 onSelectChange={(event) => {
                   setSchoolSelect(event.target.value)
                   setSchoolSaved(false)
+                  setSchoolConfirmedChecked(false)
                 }}
                 onCustomChange={(event) => {
                   setSchoolCustom(event.target.value)
                   setSchoolSaved(false)
+                  setSchoolConfirmedChecked(false)
                 }}
               />
             </div>
+            {pendingSchoolName && (
+              <label className="mt-4 flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={schoolConfirmedChecked}
+                  onChange={(event) => {
+                    setSchoolConfirmedChecked(event.target.checked)
+                    setSchoolSaved(false)
+                  }}
+                  className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <span className="text-sm leading-relaxed text-[var(--color-text)]">
+                  I confirm I am a parent or guardian of a child enrolled at{' '}
+                  <span className="font-medium">{formatSchoolDisplay(pendingSchoolName)}</span>.
+                </span>
+              </label>
+            )}
             <div className="mt-4">
-              <button type="submit" disabled={savingSchool || loading} className="btn-primary">
+              <button
+                type="submit"
+                disabled={savingSchool || loading || !schoolConfirmedChecked || !pendingSchoolName}
+                className="btn-primary"
+              >
                 {savingSchool ? 'Saving…' : 'Save school'}
               </button>
             </div>
@@ -506,8 +552,9 @@ export default function Settings() {
               <p className="mt-2 text-sm text-green-600">School saved.</p>
             )}
             {!loading && profile?.school && (
-              <p className="mt-3 text-sm text-muted">
-                Current: {formatSchoolDisplay(profile.school)}
+              <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
+                <span>Current: {formatSchoolDisplay(profile.school)}</span>
+                {profile.schoolConfirmed && <SchoolVerifiedBadge />}
               </p>
             )}
           </form>

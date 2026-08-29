@@ -32,6 +32,7 @@ import ConfirmedMeetingPoint from '../components/ConfirmedMeetingPoint'
 import ChildAvatar, { childAvatarPropsFromParty } from '../components/ChildAvatar'
 import GroupNote from '../components/GroupNote'
 import GroupLeaderControls from '../components/GroupLeaderControls'
+import ReportConcernForm from '../components/ReportConcernForm'
 import GuidanceBanner from '../components/GuidanceBanner'
 import {
   dismissGuidance,
@@ -173,6 +174,15 @@ export default function GroupLeaderView() {
     () => getGroupWalkParties(group ?? {}).map((party) => normalizePartyForDisplay(party)),
     [group],
   )
+
+  const reportParticipants = useMemo(() => {
+    const seen = new Set()
+    return preWalkParties.filter((party) => {
+      if (!party.userId || seen.has(party.userId)) return false
+      seen.add(party.userId)
+      return true
+    })
+  }, [preWalkParties])
 
   const children = useMemo(() => {
     if (walkInProgress) {
@@ -624,6 +634,14 @@ export default function GroupLeaderView() {
           Back to Groups
         </Link>
       </p>
+
+      {user && (
+        <ReportConcernForm
+          groupId={groupId}
+          reporterUid={user.uid}
+          participants={reportParticipants}
+        />
+      )}
     </div>
   )
 }

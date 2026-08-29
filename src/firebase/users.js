@@ -15,6 +15,7 @@ export const DEFAULT_USER_SETTINGS = {
   smsNotifications: true,
   matchingOptOut: false,
   school: DEFAULT_SCHOOL,
+  schoolConfirmed: false,
 }
 
 export function userProfileRef(userId) {
