@@ -149,22 +149,21 @@ export function KeyFeaturesSection() {
       <h2 id="key-features-heading" className="sr-only">
         What KidsRoute offers
       </h2>
-      <ul className="space-y-3">
-        {KEY_FEATURES.map((feature) => (
-          <li key={feature.title} className="kr-card flex gap-4 p-5">
-            <span
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xl"
-              aria-hidden="true"
-            >
-              {feature.emoji}
-            </span>
-            <div className="min-w-0 text-left">
-              <p className="font-heading font-semibold text-primary-dark">{feature.title}</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted">{feature.description}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <div className="kr-card overflow-hidden">
+        <ul className="divide-y divide-border">
+          {KEY_FEATURES.map((feature) => (
+            <li key={feature.title} className="flex gap-3 px-5 py-4">
+              <span className="shrink-0 text-xl leading-none" aria-hidden="true">
+                {feature.emoji}
+              </span>
+              <p className="min-w-0 text-left text-sm leading-relaxed">
+                <span className="font-heading font-semibold text-primary-dark">{feature.title}</span>
+                <span className="text-muted"> — {feature.description}</span>
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   )
 }
