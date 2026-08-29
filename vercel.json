@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/send-report.js": {
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]

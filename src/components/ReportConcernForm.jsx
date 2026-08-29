@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { REPORT_REASONS, submitUserReport } from '../firebase/reports'
 
-export default function ReportConcernForm({ groupId, reporterUid, participants }) {
+export default function ReportConcernForm({
+  groupId,
+  reporterUid,
+  reporterName,
+  groupName,
+  participants,
+}) {
   const [open, setOpen] = useState(false)
   const [reportedUserUid, setReportedUserUid] = useState('')
   const [reason, setReason] = useState(REPORT_REASONS[0].value)
@@ -53,12 +59,19 @@ export default function ReportConcernForm({ groupId, reporterUid, participants }
     setError(null)
     setSubmitting(true)
     try {
+      const reportedParticipant = otherParticipants.find(
+        (participant) => participant.userId === reportedUserUid,
+      )
+
       await submitUserReport({
         reporterUid,
         reportedUserUid,
         groupId,
         reason,
         details,
+        reporterName,
+        reportedUserName: reportedParticipant?.parentName || '',
+        groupName,
       })
       setSubmitted(true)
     } catch (err) {

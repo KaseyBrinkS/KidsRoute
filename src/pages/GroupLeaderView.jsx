@@ -639,6 +639,8 @@ export default function GroupLeaderView() {
         <ReportConcernForm
           groupId={groupId}
           reporterUid={user.uid}
+          reporterName={editorName}
+          groupName={group?.location || ''}
           participants={reportParticipants}
         />
       )}

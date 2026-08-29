@@ -1,5 +1,6 @@
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from './db'
+import { sendReportEmailAlert } from './reportEmail'
 
 export const REPORT_REASONS = [
   { value: 'suspicious_account', label: 'Suspicious account' },
@@ -8,14 +9,8 @@ export const REPORT_REASONS = [
   { value: 'other', label: 'Other' },
 ]
 
-const REPORT_EMAIL = 'hello@kidsroute.org'
-
-function reasonLabel(reason) {
-  return REPORT_REASONS.find((entry) => entry.value === reason)?.label ?? reason
-}
-
 /**
- * Saves a user report and queues an email alert (Firebase Trigger Email extension on `mail`).
+ * Saves a user report to Firestore and sends a Resend email alert via Vercel API.
  */
 export async function submitUserReport({
   reporterUid,
@@ -23,12 +18,16 @@ export async function submitUserReport({
   groupId,
   reason,
   details = '',
+  reporterName = '',
+  reportedUserName = '',
+  groupName = '',
 }) {
   if (!reporterUid || !reportedUserUid || !groupId || !reason) {
     throw new Error('Missing required report information.')
   }
 
   const trimmedDetails = details.trim()
+  const timestamp = new Date().toISOString()
 
   await addDoc(collection(db, 'reports'), {
     reporterUid,
@@ -39,27 +38,19 @@ export async function submitUserReport({
     createdAt: serverTimestamp(),
   })
 
-  const emailBody = [
-    'KidsRoute user report',
-    '',
-    `Reporter UID: ${reporterUid}`,
-    `Reported user UID: ${reportedUserUid}`,
-    `Group ID: ${groupId}`,
-    `Reason: ${reasonLabel(reason)}`,
-    trimmedDetails ? `Details: ${trimmedDetails}` : 'Details: (none)',
-    '',
-    `Submitted: ${new Date().toISOString()}`,
-  ].join('\n')
-
   try {
-    await addDoc(collection(db, 'mail'), {
-      to: REPORT_EMAIL,
-      message: {
-        subject: `KidsRoute report: ${reasonLabel(reason)}`,
-        text: emailBody,
-      },
+    await sendReportEmailAlert({
+      reporterUid,
+      reportedUserUid,
+      groupId,
+      reason,
+      details: trimmedDetails,
+      reporterName,
+      reportedUserName,
+      groupName,
+      timestamp,
     })
   } catch (err) {
-    console.warn('[submitUserReport] email queue failed', err)
+    console.warn('[submitUserReport] email alert failed', err)
   }
 }

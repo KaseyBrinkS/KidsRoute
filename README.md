@@ -46,3 +46,14 @@ src/
 ```
 
 Build each screen in `src/pages/` one at a time as you go.
+
+## Report email alerts (Resend)
+
+When a user submits a report, the app saves to Firestore and POSTs to `/api/send-report`, a Vercel serverless function that sends an alert to `hello@kidsroute.org` via [Resend](https://resend.com).
+
+1. Sign up at resend.com and create an API key.
+2. Add `RESEND_API_KEY` in Vercel → Project Settings → Environment Variables (server-side only).
+3. Optionally set `RESEND_FROM_EMAIL` (defaults to `KidsRoute <onboarding@resend.dev>` for testing).
+4. Deploy to Vercel — the function lives at `api/send-report.js`.
+
+For local API testing, run `vercel dev` instead of `npm run dev`.

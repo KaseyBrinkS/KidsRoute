@@ -134,14 +134,5 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow update, delete: if false;
     }
-
-    // Queued by the app; delivered via Firebase Trigger Email extension (admin SDK).
-    match /mail/{mailId} {
-      allow create: if isSignedIn()
-        && request.resource.data.to is string
-        && request.resource.data.message.subject is string
-        && request.resource.data.message.text is string;
-      allow read, update, delete: if false;
-    }
   }
 }
