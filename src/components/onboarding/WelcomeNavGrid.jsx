@@ -35,6 +35,17 @@ const navItems = [
     ),
   },
   {
+    to: '/leader',
+    label: 'Leader',
+    icon: (
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 3l7 4v5c0 3.5-2.5 6.5-7 9-4.5-2.5-7-5.5-7-9V7l7-4z"
+      />
+    ),
+  },
+  {
     to: '/history',
     label: 'History',
     icon: (

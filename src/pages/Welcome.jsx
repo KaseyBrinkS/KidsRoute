@@ -1,36 +1,49 @@
 import { useEffect, useState } from 'react'
-import AboutHero from '../components/onboarding/AboutHero'
-import {
-  GettingStartedSection,
-  getWelcomeLogoPath,
-  KeyFeaturesSection,
-  WelcomeIntro,
-} from '../components/onboarding/WelcomeAboutContent'
-import WelcomeNavGrid from '../components/onboarding/WelcomeNavGrid'
-import AddToHomeScreenCollapsible from '../components/AddToHomeScreenCollapsible'
-import LegalFooter from '../components/LegalFooter'
+import { useNavigate } from 'react-router-dom'
+import AboutHero, { AboutDescription } from '../components/onboarding/AboutHero'
 import { useAuth } from '../context/AuthContext'
-import { isSetupComplete, subscribeToUserProfile } from '../firebase/users'
+import {
+  advanceOnboardingStep,
+  getOnboardingRedirectPath,
+  isSetupComplete,
+  subscribeToUserProfile,
+} from '../firebase/users'
 
 export default function Welcome() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [setupIncomplete, setSetupIncomplete] = useState(false)
+  const [onboardingStep, setOnboardingStep] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     if (!user) return undefined
-
     const unsubscribe = subscribeToUserProfile(
       user.uid,
       (profile) => {
         setSetupIncomplete(!isSetupComplete(profile))
+        setOnboardingStep(profile.onboardingStep ?? 1)
         setLoading(false)
       },
       () => setLoading(false),
     )
-
     return unsubscribe
   }, [user])
+
+  async function handleGetStarted() {
+    setBusy(true)
+    try {
+      if (onboardingStep > 1) {
+        navigate(getOnboardingRedirectPath({ welcomeCompleted: false, onboardingStep }))
+        return
+      }
+      await advanceOnboardingStep(user.uid, 2)
+      navigate('/onboarding/kids')
+    } catch {
+      setBusy(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -40,33 +53,46 @@ export default function Welcome() {
     )
   }
 
-  const logoPath = getWelcomeLogoPath(setupIncomplete)
-
   return (
-    <div className="flex min-h-screen flex-col bg-bg px-4 py-8 sm:py-10">
-      <div className="mx-auto w-full max-w-2xl flex-1 space-y-6">
-        <section aria-labelledby="welcome-hero-heading" className="kr-card overflow-hidden p-0">
-          <h2 id="welcome-hero-heading" className="sr-only">
-            Welcome to KidsRoute
-          </h2>
-          <AboutHero
-            logoClassName="h-[120px] w-[120px] min-h-[100px] min-w-[100px]"
-            logoTo={logoPath}
-          />
-          <GettingStartedSection />
-        </section>
-
-        <WelcomeIntro />
-
-        <KeyFeaturesSection />
-
-        <section aria-label="App navigation" className="kr-card p-6">
-          <WelcomeNavGrid />
-        </section>
+    <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10">
+      <div className="kr-card w-full max-w-lg overflow-hidden p-0">
+        {setupIncomplete && onboardingStep === 1 && (
+          <p className="pt-6 text-center text-sm font-semibold text-primary">Step 1 of 4</p>
+        )}
+        <AboutHero logoClassName="h-[140px] w-[140px] min-h-[100px] min-w-[100px]" />
+        <div className="space-y-6 px-8 pb-10 pt-2">
+          <AboutDescription />
+          <div className="flex flex-col gap-3">
+            {setupIncomplete ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleGetStarted}
+                  disabled={busy}
+                  className="btn-primary w-full py-3.5"
+                >
+                  {busy ? 'Loading…' : onboardingStep > 1 ? 'Continue setup' : 'Get Started'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard')}
+                  className="btn-ghost w-full py-2"
+                >
+                  Skip for now
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="btn-primary w-full py-3.5"
+              >
+                Back to Dashboard
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-
-      <AddToHomeScreenCollapsible className="mx-auto mt-6 w-full max-w-2xl text-center" />
-      <LegalFooter className="mx-auto mt-4 w-full max-w-2xl pb-4" />
     </div>
   )
 }

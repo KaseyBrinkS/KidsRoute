@@ -48,8 +48,16 @@ export function shouldShowSetupReminder(profile, kidCount = 0) {
   return !hasCompletedBasicSetup(profile, kidCount)
 }
 
-export function getOnboardingRedirectPath() {
-  return '/settings'
+export function getOnboardingRedirectPath(profile) {
+  if (profile && isSetupComplete(profile)) return null
+  const step = profile?.onboardingStep ?? 1
+  const paths = {
+    1: '/welcome',
+    2: '/onboarding/kids',
+    3: '/onboarding/details',
+    4: '/onboarding/activity',
+  }
+  return paths[step] ?? '/welcome'
 }
 
 export async function advanceOnboardingStep(userId, step) {

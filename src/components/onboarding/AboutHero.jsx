@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import KidsRouteLogo from '../KidsRouteLogo'
+import { APP_DESCRIPTION } from './constants'
 
 export default function AboutHero({
   logoClassName = 'h-[120px] w-[120px] min-h-[100px] min-w-[100px]',
@@ -25,5 +26,13 @@ export default function AboutHero({
         <p className="mt-3 text-xl font-medium text-muted">Safe walks, together.</p>
       </div>
     </div>
+  )
+}
+
+export function AboutDescription({ className = '' }) {
+  return (
+    <p className={`text-center text-base leading-relaxed text-[var(--color-text)] ${className}`}>
+      {APP_DESCRIPTION}
+    </p>
   )
 }

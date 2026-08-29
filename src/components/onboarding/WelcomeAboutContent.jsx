@@ -100,7 +100,7 @@ export function WelcomeIntro() {
 
 export function GettingStartedSection() {
   return (
-    <div className="space-y-4 px-6 pb-8 pt-6 text-center sm:px-8 sm:pb-10">
+    <div className="space-y-4 px-6 pb-8 pt-4 text-center sm:px-8 sm:pb-10">
       <Link
         to="/settings"
         className="btn-primary inline-flex w-full justify-center py-3 sm:w-auto sm:min-w-[12rem]"
