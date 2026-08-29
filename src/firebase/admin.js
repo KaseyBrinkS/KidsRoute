@@ -1,15 +1,5 @@
-import {
-  addDoc,
-  collection,
-  doc,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-} from 'firebase/firestore'
+import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from './db'
-import { ACCOUNT_STATUS } from './accessControl'
 
 /**
  * Set VITE_ADMIN_UID in .env.local to your Firebase Auth UID
@@ -21,14 +11,9 @@ export function isAdmin(userId) {
   return Boolean(ADMIN_UID) && userId === ADMIN_UID
 }
 
-export function subscribeToPendingAccounts(onData, onError) {
-  const pendingQuery = query(
-    collection(db, 'users'),
-    where('accountStatus', 'in', [ACCOUNT_STATUS.PENDING, ACCOUNT_STATUS.NEEDS_INVITE]),
-  )
-
+export function subscribeToAllAccounts(onData, onError) {
   return onSnapshot(
-    pendingQuery,
+    collection(db, 'users'),
     (snapshot) => {
       const accounts = snapshot.docs
         .map((docSnap) => ({
@@ -46,25 +31,9 @@ export function subscribeToPendingAccounts(onData, onError) {
   )
 }
 
-export async function approveAccount(userId) {
-  await updateDoc(doc(db, 'users', userId), {
-    accountStatus: ACCOUNT_STATUS.APPROVED,
-    approvedAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
-
-  await addDoc(collection(db, 'users', userId, 'notifications'), {
-    type: 'account_approved',
-    message: 'Your account has been approved! You can now set up your family and join walk groups.',
-    read: false,
-    createdAt: serverTimestamp(),
-  })
+function formatAccountStatus(status) {
+  if (!status) return 'Active'
+  return status.replace(/_/g, ' ')
 }
 
-export async function rejectAccount(userId) {
-  await updateDoc(doc(db, 'users', userId), {
-    accountStatus: ACCOUNT_STATUS.REJECTED,
-    rejectedAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
-}
+export { formatAccountStatus }

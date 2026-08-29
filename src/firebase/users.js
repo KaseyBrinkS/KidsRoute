@@ -1,6 +1,6 @@
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from './db'
-import { ACCOUNT_STATUS, getAccessGatePath } from './accessControl'
+import { ACCOUNT_STATUS } from './accessControl'
 
 import { DEFAULT_SCHOOL } from './schools'
 
@@ -75,8 +75,6 @@ export const completeWelcome = completeOnboarding
 
 export async function getPostLoginPath(userId) {
   const profile = await getUserProfile(userId)
-  const gatePath = getAccessGatePath(profile)
-  if (gatePath) return gatePath
   if (profile.accountType === 'external_leader') return '/leader'
   if (isSetupComplete(profile)) return '/welcome'
   if (profile.welcomeCompleted === false && (profile.onboardingStep ?? 1) === 1) {
@@ -104,7 +102,7 @@ export async function saveUserProfile(user) {
         ...payload,
         welcomeCompleted: false,
         onboardingStep: 1,
-        accountStatus: ACCOUNT_STATUS.PENDING,
+        accountStatus: ACCOUNT_STATUS.APPROVED,
         createdAt: serverTimestamp(),
       },
       { merge: true },

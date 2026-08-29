@@ -438,7 +438,7 @@ export default function Settings() {
           {isAdmin(user.uid) && (
             <SettingsSection
               title="Admin"
-              description="Review and approve new family accounts."
+              description="View families who have signed up for KidsRoute."
             >
               <Link to="/admin" className="btn-secondary inline-flex">
                 Open admin panel
