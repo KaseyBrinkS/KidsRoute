@@ -12,19 +12,19 @@ const FEATURES = [
     emoji: '🎯',
     title: 'Activity Routes',
     description:
-      'Match with neighbors heading to the same after-school classes, sports, and programs.',
+      "Add your child's activities and find families heading to the same place at the same time.",
   },
   {
     emoji: '👥',
     title: 'Shared Walks',
     description:
-      'Join walk groups with families already going your way — share the route, share the responsibility.',
+      'Parents can take turns leading, coordinate with caregivers, or add an approved Group Leader.',
   },
   {
     emoji: '✅',
     title: 'Check-in & Check-out',
     description:
-      'Timestamped pickup and drop-off records so parents always know when their child arrived safely.',
+      'Group Leaders check children in at pickup and out at arrival, keeping all families updated.',
   },
 ]
 
