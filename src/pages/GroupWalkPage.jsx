@@ -12,14 +12,13 @@ import {
   ensureSessionChildRecord,
   getChildWalkStatus,
   getGroupWalkParties,
-  isWalkSessionComplete,
   markChildDroppedOff,
   mergePartiesWithScheduleStatus,
   mergeWalkSessionChildren,
   startGroupWalk,
   subscribeToGroupAbsences,
   subscribeToGroupDocument,
-  subscribeToTodayWalkSession,
+  subscribeToActiveWalkSession,
   subscribeToWalkSessionChildren,
   toggleParticipantAttendanceToday,
   verifyDropOffSaved,
@@ -45,11 +44,8 @@ function normalizePartyForDisplay(party) {
   }
 }
 
-function walkPageStatus({ session, walkComplete }) {
-  if (session?.status === 'completed' || walkComplete) {
-    return { label: 'Completed', badge: 'badge-walk-completed' }
-  }
-  if (session?.status === 'started') {
+function walkPageStatus(walkInProgress) {
+  if (walkInProgress) {
     return { label: 'In progress', badge: 'badge-walk-active' }
   }
   return { label: 'Not started', badge: 'badge-walk-upcoming' }
@@ -69,7 +65,7 @@ export default function GroupWalkPage() {
   const { groupId } = useParams()
   const { user } = useAuth()
   const [group, setGroup] = useState(null)
-  const [todaySession, setTodaySession] = useState(null)
+  const [activeSession, setActiveSession] = useState(null)
   const [sessionChildren, setSessionChildren] = useState([])
   const [absences, setAbsences] = useState([])
   const [groupLoaded, setGroupLoaded] = useState(false)
@@ -113,10 +109,10 @@ export default function GroupWalkPage() {
   useEffect(() => {
     if (!user || !groupId) return undefined
 
-    const unsubSession = subscribeToTodayWalkSession(
+    const unsubSession = subscribeToActiveWalkSession(
       groupId,
       user.uid,
-      setTodaySession,
+      setActiveSession,
       (err) => setError(err.message),
       { leaderAccess: true },
     )
@@ -135,17 +131,17 @@ export default function GroupWalkPage() {
   }, [user, groupId])
 
   useEffect(() => {
-    if (!todaySession?.id) {
+    if (!activeSession?.id) {
       setSessionChildren([])
       return undefined
     }
 
     return subscribeToWalkSessionChildren(
-      todaySession.id,
+      activeSession.id,
       setSessionChildren,
       (err) => setError(err.message),
     )
-  }, [todaySession?.id])
+  }, [activeSession?.id])
 
   const isBuildingWalk = isBuildingWalkMatch(group)
   const isWalkGroup = isWalkGroupDocument(group)
@@ -166,10 +162,7 @@ export default function GroupWalkPage() {
     return matchIsConnectedForUser(group, user.uid) && getGroupWalkParties(group).length > 0
   }, [groupLoaded, group, user?.uid, isWalkGroup, canManageWalk])
 
-  const walkInProgress = todaySession?.status === 'started'
-  const walkComplete =
-    todaySession?.status === 'completed'
-    || (walkInProgress && isWalkSessionComplete(sessionChildren))
+  const walkInProgress = Boolean(activeSession)
 
   const preWalkParties = useMemo(
     () => getGroupWalkParties(group ?? {}).map((party) => normalizePartyForDisplay(party)),
@@ -177,20 +170,20 @@ export default function GroupWalkPage() {
   )
 
   const children = useMemo(() => {
-    if (todaySession) {
+    if (walkInProgress) {
       return mergeWalkSessionChildren(sessionChildren, preWalkParties)
     }
     return mergePartiesWithScheduleStatus(preWalkParties, absences, group?.day).map((child) => ({
       ...child,
       walkStatus: child.walkStatus === 'absent' ? 'absent' : 'confirmed',
     }))
-  }, [todaySession, sessionChildren, preWalkParties, group?.day, absences])
+  }, [walkInProgress, sessionChildren, preWalkParties, group?.day, absences])
 
   const buildingWalkConfig = isBuildingWalk ? BUILDING_WALK_TYPES[group.buildingWalkType] : null
-  const pageStatus = walkPageStatus({ session: todaySession, walkComplete })
+  const pageStatus = walkPageStatus(walkInProgress)
 
   async function handleStartWalk() {
-    if (!groupReadyForWalk || !user || walkInProgress || walkComplete) return
+    if (!groupReadyForWalk || !user || walkInProgress) return
 
     setError(null)
     setActionId('start')
@@ -205,12 +198,12 @@ export default function GroupWalkPage() {
   }
 
   async function handleEndWalk() {
-    if (!todaySession?.id || !walkInProgress) return
+    if (!activeSession?.id || !walkInProgress) return
 
     setError(null)
     setActionId('end')
     try {
-      await endWalkSession(todaySession.id)
+      await endWalkSession(activeSession.id)
       setSuccessMessage('Walk ended. All remaining children marked as dropped off.')
     } catch (err) {
       setError(formatFirestoreError(err, 'Could not end the walk.'))
@@ -220,7 +213,7 @@ export default function GroupWalkPage() {
   }
 
   async function handleToggleAttendance(child) {
-    if (!canManageWalk || walkInProgress || walkComplete || !group) return
+    if (!canManageWalk || walkInProgress || !group) return
 
     const toggleId = `toggle_${child.userId}_${child.childId}`
     setError(null)
@@ -247,7 +240,7 @@ export default function GroupWalkPage() {
   }
 
   async function handleDropOff(child) {
-    if (!todaySession?.id || !walkInProgress || walkComplete) return
+    if (!activeSession?.id || !walkInProgress) return
 
     const dropOffId = child.id ?? `${child.userId}_${child.childId}`
     const previousWalkStatus = child.walkStatus
@@ -268,10 +261,10 @@ export default function GroupWalkPage() {
 
     try {
       if (child._missingFromSession) {
-        await ensureSessionChildRecord(todaySession.id, child, todaySession)
+        await ensureSessionChildRecord(activeSession.id, child, activeSession)
       }
       const result = await markChildDroppedOff(
-        todaySession.id,
+        activeSession.id,
         child.userId,
         child.childId,
         child.id,
@@ -284,7 +277,7 @@ export default function GroupWalkPage() {
     } catch (err) {
       try {
         const verification = await verifyDropOffSaved(
-          todaySession.id,
+          activeSession.id,
           child.userId,
           child.childId,
           child.id,
@@ -323,7 +316,7 @@ export default function GroupWalkPage() {
     )
   }
 
-  const hasAccess = group && (canManageWalk || isParticipant || todaySession)
+  const hasAccess = group && (canManageWalk || isParticipant || activeSession)
 
   if (!hasAccess) {
     return (
@@ -350,26 +343,31 @@ export default function GroupWalkPage() {
         }
       />
 
-      <p className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-4">
         <Link to="/groups" className="link-accent text-sm">
           ← Back to group
         </Link>
-      </p>
+        {canManageWalk && (
+          <Link to={`/groups/${groupId}/leader`} className="btn-secondary py-1.5 text-sm">
+            Group Settings
+          </Link>
+        )}
+      </div>
 
       <div className="kr-card mb-6 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-lg font-semibold text-[var(--color-text)]">{group.location}</p>
-            {walkInProgress && todaySession?.startedAt && (
+            {walkInProgress && activeSession?.startedAt && (
               <p className="mt-1 text-sm text-muted">
-                Started {formatHistoryTime(todaySession.startedAt)}
+                Started {formatHistoryTime(activeSession.startedAt)}
               </p>
             )}
           </div>
           <span className={pageStatus.badge}>{pageStatus.label}</span>
         </div>
 
-        {canManageWalk && !walkInProgress && !walkComplete && (
+        {canManageWalk && !walkInProgress && (
           <button
             type="button"
             onClick={handleStartWalk}
@@ -384,7 +382,7 @@ export default function GroupWalkPage() {
           </button>
         )}
 
-        {canManageWalk && walkInProgress && !walkComplete && (
+        {canManageWalk && walkInProgress && (
           <button
             type="button"
             onClick={handleEndWalk}
@@ -395,13 +393,7 @@ export default function GroupWalkPage() {
           </button>
         )}
 
-        {walkComplete && (
-          <p className="mt-4 text-sm text-[var(--color-walk-green)]">
-            Today&apos;s walk is complete.
-          </p>
-        )}
-
-        {!canManageWalk && isParticipant && !walkInProgress && !walkComplete && (
+        {!canManageWalk && isParticipant && !walkInProgress && (
           <p className="mt-4 text-sm text-muted">
             A Walk Leader will start the walk when your group meets up.
           </p>
@@ -416,7 +408,7 @@ export default function GroupWalkPage() {
 
       <h2 className="kr-section-title">Participants</h2>
       <p className="kr-section-desc">
-        {canManageWalk && !walkInProgress && !walkComplete
+        {canManageWalk && !walkInProgress
           ? 'Tap a name to mark absent or confirmed for today.'
           : 'Walk status for each child in the group.'}
       </p>
@@ -431,10 +423,8 @@ export default function GroupWalkPage() {
             const toggleId = `toggle_${child.userId}_${child.childId}`
             const isAbsent = child.walkStatus === 'absent'
             const isDroppedOff = child.walkStatus === 'dropped_off'
-            const canToggleAttendance =
-              canManageWalk && !walkInProgress && !walkComplete && !isDroppedOff
-            const canDropOff =
-              canManageWalk && walkInProgress && !walkComplete && !isAbsent && !isDroppedOff
+            const canToggleAttendance = canManageWalk && !walkInProgress && !isDroppedOff
+            const canDropOff = canManageWalk && walkInProgress && !isAbsent && !isDroppedOff
 
             return (
               <li key={childKey} className="px-5 py-4">
@@ -498,7 +488,7 @@ export default function GroupWalkPage() {
         </Link>
         {canManageWalk && (
           <Link to={`/groups/${groupId}/leader`} className="link-accent text-sm">
-            Group settings
+            Group Settings
           </Link>
         )}
       </p>
