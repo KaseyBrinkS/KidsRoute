@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="KidsRoute">
+  <title>KidsRoute</title>
+  <desc>Navy rounded square with route pin, two walking figures, and joined hands.</desc>
+  <rect width="120" height="120" rx="26" fill="#1C3A4A"/>
+  <circle cx="60" cy="27" r="11" fill="#C4768A"/>
+  <circle cx="60" cy="27" r="4.5" fill="#FFFFFF"/>
+  <path d="M60 38 L51.5 49.5 Q60 45.5 68.5 49.5 Z" fill="#C4768A"/>
+  <g stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 46)">
+    <circle cx="36" cy="17" r="9"/>
+    <line x1="36" y1="26" x2="36" y2="52"/>
+    <line x1="36" y1="36" x2="21" y2="47"/>
+    <line x1="36" y1="36" x2="51" y2="36"/>
+    <line x1="36" y1="52" x2="27" y2="72"/>
+    <line x1="36" y1="52" x2="47" y2="70"/>
+    <circle cx="84" cy="17" r="9"/>
+    <line x1="84" y1="26" x2="84" y2="52"/>
+    <line x1="84" y1="36" x2="99" y2="47"/>
+    <line x1="84" y1="36" x2="69" y2="36"/>
+    <line x1="84" y1="52" x2="93" y2="72"/>
+    <line x1="84" y1="52" x2="73" y2="70"/>
+  </g>
+  <line x1="51" y1="82" x2="69" y2="82" stroke="#C4768A" stroke-width="8" stroke-linecap="round"/>
+</svg>
