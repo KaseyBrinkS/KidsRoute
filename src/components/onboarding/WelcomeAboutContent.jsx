@@ -15,49 +15,55 @@ const HOW_IT_WORKS_STEPS = [
   {
     emoji: '👶',
     title: 'Add your kids',
-    description: 'Create profiles for each child including their school and grade.',
+    description: 'Create profiles for each child with their school and grade.',
   },
   {
     emoji: '📍',
     title: 'Add their activities',
-    description: "Enter where they go and when. We'll handle the matching.",
+    description: 'Enter where they go and when. We handle the matching.',
   },
   {
     emoji: '🔔',
     title: 'Get matched automatically',
     description:
-      "When another family from your school is heading to the same place at the same time, you'll be notified instantly.",
+      "When a neighboring family is heading the same way at the same time, you'll be notified instantly.",
   },
   {
     emoji: '✅',
     title: 'Walk together safely',
     description:
-      'Join the group, coordinate a meeting point, and get real-time updates when your child is picked up and dropped off.',
+      'Join the group, set a meeting point, and get real-time updates when your child is picked up and dropped off.',
   },
 ]
 
 const KEY_FEATURES = [
   {
-    title: 'Opt in or out anytime',
-    description: "You're always in control. Accept or decline any group match.",
+    title: 'School walks',
+    description:
+      'Coordinate morning drop-off and afternoon pick-up with families in your building.',
   },
   {
-    title: 'Group chaperones',
+    title: 'After-school activities',
     description:
-      'Any parent in a group is automatically a group leader and can start and manage the walk.',
+      'Match with families heading to the same classes, sports, and programs.',
+  },
+  {
+    title: 'Hire trusted help',
+    description:
+      'Connect with approved nannies, babysitters, or older students who can escort your kids for extra pay.',
+  },
+  {
+    title: 'Village support',
+    description:
+      'Running late? Your group leader has it covered and will check your child in safely.',
   },
   {
     title: 'Real-time check-ins',
-    description:
-      'See exactly when your child was picked up and dropped off in the walk history.',
+    description: 'See exactly when your child was picked up and dropped off.',
   },
   {
-    title: 'Meeting points',
-    description: 'Groups can agree on a specific meetup spot before the walk.',
-  },
-  {
-    title: 'Building walks',
-    description: 'Coordinate morning and afternoon school walks with families in your building.',
+    title: 'Opt in or out anytime',
+    description: "You're always in control.",
   },
   {
     title: 'Privacy first',
@@ -68,12 +74,18 @@ const KEY_FEATURES = [
 
 export function WelcomeIntro() {
   return (
-    <p className="text-center text-base leading-relaxed text-[var(--color-text)]">
-      Welcome to KidsRoute — the safe, simple way for school families to coordinate group walks
-      to after-school activities. Match with families heading to the same destination, walk
-      together with a trusted chaperone, and get real-time check-ins so you always know your
-      child arrived safely.
-    </p>
+    <div className="space-y-4 text-center">
+      <p className="text-base leading-relaxed text-[var(--color-text)]">
+        KidsRoute helps families coordinate safe group walks for kids — to school,
+        after-school activities, and everywhere in between. Match with neighboring
+        families heading the same way, hire approved nannies or trusted older students
+        for extra support, and get real-time check-ins so you always know your child
+        arrived safely.
+      </p>
+      <p className="text-base font-medium leading-relaxed text-primary-dark">
+        Because raising kids takes a village — and KidsRoute helps you find yours.
+      </p>
+    </div>
   )
 }
 
