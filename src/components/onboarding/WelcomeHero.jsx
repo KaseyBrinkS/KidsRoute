@@ -1,20 +1,15 @@
 import { Link } from 'react-router-dom'
-import KidsRouteLogo from '../KidsRouteLogo'
+import AboutHero from './AboutHero'
 
 export default function WelcomeHero({ findRoutePath = '/settings' }) {
   return (
-    <section className="text-center">
-      <Link
-        to={findRoutePath}
-        className="inline-block transition-opacity hover:opacity-90"
-        aria-label="KidsRoute home"
-      >
-        <KidsRouteLogo className="mx-auto h-[120px] w-[120px] min-h-[100px] min-w-[100px]" />
-      </Link>
+    <div className="kr-card overflow-hidden p-0">
+      <AboutHero
+        logoClassName="h-[120px] w-[120px] min-h-[100px] min-w-[100px]"
+        logoTo={findRoutePath}
+      />
 
-      <div className="mx-auto mt-8 max-w-2xl space-y-4">
-        <p className="text-lg font-medium text-muted sm:text-xl">Safe walks, together.</p>
-
+      <div className="space-y-4 px-6 pb-8 pt-6 text-center sm:px-8 sm:pb-10">
         <p className="text-base leading-relaxed text-[var(--color-text)]">
           Welcome to KidsRoute — the safe, simple way for school families to coordinate group walks
           to after-school activities. Match with families heading to the same destination, walk
@@ -43,6 +38,6 @@ export default function WelcomeHero({ findRoutePath = '/settings' }) {
           Free for families · No App Store download required
         </p>
       </div>
-    </section>
+    </div>
   )
 }

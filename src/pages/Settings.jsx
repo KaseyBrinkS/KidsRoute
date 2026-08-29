@@ -86,6 +86,7 @@ export default function Settings() {
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [kidCount, setKidCount] = useState(0)
+  const [kidsLoading, setKidsLoading] = useState(true)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [streetNumber, setStreetNumber] = useState('')
   const [streetName, setStreetName] = useState('')
@@ -113,6 +114,8 @@ export default function Settings() {
   useEffect(() => {
     if (!user) return undefined
 
+    setKidsLoading(true)
+
     const unsubSchools = subscribeToSchools(setSchoolOptions, (err) => setError(err.message))
 
     const unsubProfile = subscribeToUserProfile(
@@ -133,6 +136,7 @@ export default function Settings() {
 
     const unsubKids = subscribeToKids(user.uid, (kids) => {
       setKidCount(kids.length)
+      setKidsLoading(false)
     })
 
     return () => {
