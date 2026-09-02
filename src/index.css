@@ -98,6 +98,10 @@ h3,
   @apply inline-flex items-center justify-center rounded-2xl border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-[var(--color-text)] transition-all hover:border-border-warm hover:bg-bg-warm disabled:opacity-50;
 }
 
+.btn-google {
+  @apply inline-flex min-h-[3rem] w-full items-center justify-center gap-3 rounded-2xl border-2 border-[#dadce0] bg-white px-5 py-3.5 text-base font-semibold text-[#3c4043] shadow-sm transition-all hover:border-[#c6c9cc] hover:bg-[#f8f9fa] hover:shadow-md disabled:opacity-50;
+}
+
 .btn-accent {
   @apply inline-flex items-center justify-center rounded-2xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-105 hover:shadow-md disabled:opacity-50;
 }

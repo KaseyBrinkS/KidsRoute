@@ -18,22 +18,30 @@ const appleProvider = new OAuthProvider('apple.com')
 appleProvider.addScope('email')
 appleProvider.addScope('name')
 
+export function isIOS() {
+  if (typeof navigator === 'undefined') return false
+
+  const ua = navigator.userAgent
+  return (
+    /iPad|iPhone|iPod/.test(ua)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  )
+}
+
 export function isIosSafari() {
   if (typeof navigator === 'undefined') return false
 
   const ua = navigator.userAgent
-  const isIOS =
-    /iPad|iPhone|iPod/.test(ua)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
   const isSafari =
     /Safari/i.test(ua)
     && !/Chrome|CriOS|Chromium|Edg|OPR|Firefox|FxiOS/i.test(ua)
 
-  return isIOS && isSafari
+  return isIOS() && isSafari
 }
 
 export function prefersOAuthRedirect() {
-  return isIosSafari()
+  // Popups are unreliable on all iOS browsers (Safari, Chrome, in-app webviews).
+  return isIOS()
 }
 
 /** @deprecated use prefersOAuthRedirect */
