@@ -75,7 +75,7 @@ export async function getPostLoginPath(userId) {
   const profile = await getUserProfile(userId)
   if (profile.accountType === 'external_leader') return '/leader'
   if (isSetupComplete(profile)) return '/dashboard'
-  return '/welcome'
+  return '/settings'
 }
 
 export async function saveUserProfile(user) {

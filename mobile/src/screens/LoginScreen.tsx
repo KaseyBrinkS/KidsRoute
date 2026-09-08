@@ -1,28 +1,45 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth } from '../firebase/auth';
+import {
+  getGoogleOAuthConfig,
+  isAppleSignInAvailable,
+  isGoogleSignInConfigured,
+  signInWithApple,
+  signInWithGoogleIdToken,
+} from '../firebase/auth';
 import { colors } from '../theme/colors';
 
 WebBrowser.maybeCompleteAuthSession();
 
+type SignInMethod = 'google' | 'apple';
+
 export function LoginScreen() {
-  const [signingIn, setSigningIn] = useState(false);
+  const [busyMethod, setBusyMethod] = useState<SignInMethod | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  const googleConfig = getGoogleOAuthConfig();
+  const googleConfigured = isGoogleSignInConfigured();
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    clientId: googleConfig.webClientId,
+    iosClientId: googleConfig.iosClientId || undefined,
+    androidClientId: googleConfig.androidClientId || undefined,
   });
+
+  useEffect(() => {
+    isAppleSignInAvailable().then(setAppleAvailable).catch(() => setAppleAvailable(false));
+  }, []);
 
   useEffect(() => {
     if (response?.type !== 'success') {
@@ -34,36 +51,63 @@ export function LoginScreen() {
 
     if (!idToken) {
       setError('Google sign-in did not return an ID token.');
-      setSigningIn(false);
+      setBusyMethod(null);
       return;
     }
 
-    setSigningIn(true);
+    setBusyMethod('google');
     setError(null);
 
-    const credential = GoogleAuthProvider.credential(idToken);
-    signInWithCredential(auth, credential).catch((err: Error) => {
+    signInWithGoogleIdToken(idToken).catch((err: Error) => {
       setError(err.message);
-      setSigningIn(false);
+      setBusyMethod(null);
     });
   }, [response]);
 
   async function handleGoogleSignIn() {
+    if (!googleConfigured) {
+      setError('Google sign-in is not configured yet. Add OAuth client IDs to mobile/.env.');
+      return;
+    }
+
     setError(null);
-    setSigningIn(true);
+    setBusyMethod('google');
 
     try {
       const result = await promptAsync();
       if (result.type === 'cancel' || result.type === 'dismiss') {
-        setSigningIn(false);
+        setBusyMethod(null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed.');
-      setSigningIn(false);
+      setBusyMethod(null);
     }
   }
 
-  const isDisabled = signingIn || !request;
+  async function handleAppleSignIn() {
+    setError(null);
+    setBusyMethod('apple');
+
+    try {
+      await signInWithApple();
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        'code' in err &&
+        ((err as { code?: string }).code === 'ERR_CANCELED' ||
+          (err as { code?: string }).code === 'ERR_REQUEST_CANCELED')
+      ) {
+        setBusyMethod(null);
+        return;
+      }
+
+      setError(err instanceof Error ? err.message : 'Apple sign-in failed.');
+      setBusyMethod(null);
+    }
+  }
+
+  const isBusy = busyMethod !== null;
+  const googleDisabled = isBusy || !request || !googleConfigured;
 
   return (
     <View style={styles.container}>
@@ -76,17 +120,40 @@ export function LoginScreen() {
         <Text style={styles.tagline}>Safe walks, together.</Text>
       </View>
 
+      <Text style={styles.signInLabel}>Sign in to continue</Text>
+
       <Pressable
-        style={[styles.button, isDisabled && styles.buttonDisabled]}
+        style={[styles.googleButton, googleDisabled && styles.buttonDisabled]}
         onPress={handleGoogleSignIn}
-        disabled={isDisabled}
+        disabled={googleDisabled}
       >
-        {signingIn ? (
+        {busyMethod === 'google' ? (
           <ActivityIndicator color={colors.navy} />
         ) : (
-          <Text style={styles.buttonText}>Sign in with Google</Text>
+          <Text style={styles.googleButtonText}>Sign in with Google</Text>
         )}
       </Pressable>
+
+      {appleAvailable ? (
+        <View
+          pointerEvents={isBusy ? 'none' : 'auto'}
+          style={[styles.appleButtonWrap, isBusy && styles.buttonDisabled]}
+        >
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+            cornerRadius={12}
+            style={styles.appleButton}
+            onPress={handleAppleSignIn}
+          />
+        </View>
+      ) : null}
+
+      {!googleConfigured && Platform.OS !== 'web' ? (
+        <Text style={styles.setupHint}>
+          Add Google OAuth client IDs to mobile/.env to enable sign-in.
+        </Text>
+      ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
@@ -103,7 +170,7 @@ const styles = StyleSheet.create({
   },
   hero: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 32,
   },
   logoMark: {
     width: 96,
@@ -139,23 +206,48 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.muted,
   },
-  button: {
+  signInLabel: {
+    marginBottom: 12,
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.navy,
+  },
+  googleButton: {
     width: '100%',
     maxWidth: 360,
+    minHeight: 48,
     backgroundColor: colors.white,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.navy,
+    borderWidth: 2,
+    borderColor: '#dadce0',
     paddingVertical: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appleButtonWrap: {
+    width: '100%',
+    maxWidth: 360,
+    marginTop: 12,
+  },
+  appleButton: {
+    width: '100%',
+    height: 48,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
-  buttonText: {
+  googleButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.navy,
+    color: '#3c4043',
+  },
+  setupHint: {
+    marginTop: 16,
+    color: colors.muted,
+    textAlign: 'center',
+    maxWidth: 360,
+    fontSize: 13,
+    lineHeight: 18,
   },
   error: {
     marginTop: 16,

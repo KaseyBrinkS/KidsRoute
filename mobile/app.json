@@ -14,7 +14,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "org.kidsroute.app"
+      "bundleIdentifier": "org.kidsroute.app",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "org.kidsroute.app",
@@ -30,7 +31,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-apple-authentication",
+        {
+          "appleTeamId": "YOUR_APPLE_TEAM_ID"
+        }
+      ]
     ]
   }
 }

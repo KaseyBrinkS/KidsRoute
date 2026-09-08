@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
-  completeOAuthRedirectSignIn,
   createAccountWithEmailPassword,
   isIosSafari,
   signInWithApple,
@@ -61,7 +60,7 @@ function AppleIcon() {
 export default function Login() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { user } = useAuth()
+  const { user, loading, initializing, redirectError, clearRedirectError } = useAuth()
   const [error, setError] = useState(null)
   const [busyMethod, setBusyMethod] = useState(null)
   const [emailExpanded, setEmailExpanded] = useState(false)
@@ -69,6 +68,7 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const showAppleSignIn = isIosSafari()
+  const completingLoginRef = useRef(false)
 
   useEffect(() => {
     const inviteToken = searchParams.get('invite')
@@ -77,52 +77,56 @@ export default function Login() {
     }
   }, [searchParams])
 
-  async function finishLogin(userId) {
-    const inviteToken =
-      searchParams.get('invite') || sessionStorage.getItem('leaderInvite')
+  useEffect(() => {
+    if (!redirectError) return
+    setError(redirectError)
+    clearRedirectError()
+  }, [redirectError, clearRedirectError])
 
-    if (inviteToken) {
-      try {
+  const finishLogin = useCallback(
+    async (userId) => {
+      const inviteToken =
+        searchParams.get('invite') || sessionStorage.getItem('leaderInvite')
+
+      if (inviteToken) {
         const invite = await claimLeaderInvite(inviteToken, userId)
         await syncLeaderProfileFromInvite(userId, invite)
         sessionStorage.removeItem('leaderInvite')
         navigate('/leader', { replace: true })
         return
-      } catch (err) {
-        setError(err.message)
-        return
       }
-    }
 
-    const path = await getPostLoginPath(userId)
-    navigate(path, { replace: true })
-  }
+      const path = await getPostLoginPath(userId)
+      navigate(path, { replace: true })
+    },
+    [navigate, searchParams],
+  )
 
-  useEffect(() => {
-    if (!user) return
-    finishLogin(user.uid).catch(() => navigate('/welcome', { replace: true }))
-  }, [user, navigate])
+  const completeLogin = useCallback(
+    async (userId) => {
+      if (completingLoginRef.current) return
+      completingLoginRef.current = true
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function handleRedirectResult() {
       try {
-        const result = await completeOAuthRedirectSignIn()
-        if (cancelled || !result) return
-
-        await saveUserProfile(result.user)
-        await finishLogin(result.user.uid)
+        await finishLogin(userId)
+        sessionStorage.removeItem('oauthRedirectPending')
       } catch (err) {
-        if (!cancelled) setError(err.message)
+        completingLoginRef.current = false
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Sign-in succeeded but we could not open your account. Please try again.',
+        )
       }
-    }
+    },
+    [finishLogin],
+  )
 
-    handleRedirectResult()
-    return () => {
-      cancelled = true
-    }
-  }, [navigate])
+  // After OAuth redirect or restored session: navigate once auth is ready.
+  useEffect(() => {
+    if (loading || !user) return
+    completeLogin(user.uid)
+  }, [user, loading, completeLogin])
 
   async function handleAuth(method, fn) {
     setError(null)
@@ -132,7 +136,7 @@ export default function Login() {
       if (!result) return
 
       await saveUserProfile(result.user)
-      await finishLogin(result.user.uid)
+      await completeLogin(result.user.uid)
     } catch (err) {
       if (err.message) setError(err.message)
     } finally {
@@ -169,6 +173,19 @@ export default function Login() {
   }
 
   const isBusy = busyMethod !== null
+
+  if (initializing) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-bg px-4">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-[var(--color-text)]">
+            {sessionStorage.getItem('oauthRedirectPending') ? 'Completing sign-in…' : 'Loading…'}
+          </p>
+          <p className="mt-2 text-sm text-muted">Please wait a moment.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-bg px-4 py-6 sm:py-10">
@@ -291,8 +308,20 @@ export default function Login() {
             )}
 
             {error && (
-              <p className="alert-error mt-4 text-center">{error}</p>
+              <p className="alert-error mt-4 text-center" role="alert">
+                {error}
+              </p>
             )}
+
+            {error && user ? (
+              <button
+                type="button"
+                onClick={() => completeLogin(user.uid)}
+                className="btn-primary mx-auto mt-4 block min-h-[3rem] px-6 py-2"
+              >
+                Continue to app
+              </button>
+            ) : null}
           </div>
         </div>
 

@@ -13,10 +13,14 @@ import app from './config'
 
 export const auth = getAuth(app)
 const googleProvider = new GoogleAuthProvider()
+googleProvider.setCustomParameters({ prompt: 'select_account' })
 
 const appleProvider = new OAuthProvider('apple.com')
 appleProvider.addScope('email')
 appleProvider.addScope('name')
+
+/** Cached so React Strict Mode / remounts don't consume the redirect twice. */
+let pendingRedirectResult = null
 
 export function isIOS() {
   if (typeof navigator === 'undefined') return false
@@ -49,7 +53,7 @@ export function prefersGoogleRedirect() {
   return prefersOAuthRedirect()
 }
 
-function mapAuthError(error) {
+export function getAuthErrorMessage(error) {
   switch (error?.code) {
     case 'auth/invalid-email':
       return 'Enter a valid email address.'
@@ -67,7 +71,18 @@ function mapAuthError(error) {
       return 'Too many attempts. Please wait a moment and try again.'
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
+    case 'auth/redirect-cancelled-by-user':
       return ''
+    case 'auth/popup-blocked':
+      return 'Pop-up was blocked. Trying redirect sign-in…'
+    case 'auth/unauthorized-domain':
+      return 'This domain is not authorized for sign-in. Add it in Firebase Console → Authentication → Settings → Authorized domains (include kidsroute.org and kidsroute-4c9fd.firebaseapp.com).'
+    case 'auth/operation-not-allowed':
+      return 'This sign-in method is not enabled. Enable it in Firebase Console → Authentication → Sign-in method.'
+    case 'auth/network-request-failed':
+      return 'Network error. Check your connection and try again.'
+    case 'auth/web-storage-unsupported':
+      return 'Sign-in requires browser storage. Disable private browsing or allow cookies for this site.'
     default:
       return error?.message ?? 'Sign in failed. Please try again.'
   }
@@ -77,7 +92,25 @@ async function runAuth(fn) {
   try {
     return await fn()
   } catch (error) {
-    const message = mapAuthError(error)
+    const message = getAuthErrorMessage(error)
+    if (message) {
+      throw new Error(message)
+    }
+    return null
+  }
+}
+
+async function signInWithOAuthPopup(provider) {
+  try {
+    return await signInWithPopup(auth, provider)
+  } catch (error) {
+    if (error?.code === 'auth/popup-blocked') {
+      sessionStorage.setItem('oauthRedirectPending', '1')
+      await signInWithRedirect(auth, provider)
+      return null
+    }
+
+    const message = getAuthErrorMessage(error)
     if (message) {
       throw new Error(message)
     }
@@ -87,18 +120,20 @@ async function runAuth(fn) {
 
 export async function signInWithGoogle() {
   if (prefersOAuthRedirect()) {
+    sessionStorage.setItem('oauthRedirectPending', '1')
     await signInWithRedirect(auth, googleProvider)
     return null
   }
-  return runAuth(() => signInWithPopup(auth, googleProvider))
+  return signInWithOAuthPopup(googleProvider)
 }
 
 export async function signInWithApple() {
   if (prefersOAuthRedirect()) {
+    sessionStorage.setItem('oauthRedirectPending', '1')
     await signInWithRedirect(auth, appleProvider)
     return null
   }
-  return runAuth(() => signInWithPopup(auth, appleProvider))
+  return signInWithOAuthPopup(appleProvider)
 }
 
 export async function signInWithEmailPassword(email, password) {
@@ -110,7 +145,10 @@ export async function createAccountWithEmailPassword(email, password) {
 }
 
 export function completeOAuthRedirectSignIn() {
-  return getRedirectResult(auth)
+  if (!pendingRedirectResult) {
+    pendingRedirectResult = getRedirectResult(auth)
+  }
+  return pendingRedirectResult
 }
 
 /** @deprecated use completeOAuthRedirectSignIn */
@@ -119,5 +157,6 @@ export function completeGoogleRedirectSignIn() {
 }
 
 export function logOut() {
+  pendingRedirectResult = null
   return signOut(auth)
 }
