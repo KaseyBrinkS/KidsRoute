@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
+// Load auth module before React so getRedirectResult starts immediately on page load.
+import './firebase/auth.js'
 import './index.css'
 
 createRoot(document.getElementById('root')).render(

@@ -4,10 +4,13 @@ import { useAuth } from '../context/AuthContext'
 import {
   createAccountWithEmailPassword,
   isIosSafari,
+  isOAuthPopupForced,
+  prefersOAuthRedirect,
   signInWithApple,
   signInWithEmailPassword,
   signInWithGoogle,
 } from '../firebase/auth'
+import { authLog } from '../firebase/authDebug'
 import { claimLeaderInvite, syncLeaderProfileFromInvite } from '../firebase/groupLeaders'
 import { getPostLoginPath, saveUserProfile } from '../firebase/users'
 import KidsRouteLogo from '../components/KidsRouteLogo'
@@ -71,6 +74,18 @@ export default function Login() {
   const completingLoginRef = useRef(false)
 
   useEffect(() => {
+    authLog('Login mount', {
+      href: window.location.href,
+      initializing,
+      loading,
+      hasUser: Boolean(user),
+      oauthMode: prefersOAuthRedirect() ? 'redirect' : 'popup',
+      popupForced: isOAuthPopupForced(),
+      authDebug: 'Add ?authDebug=1 to persist logs through redirect',
+    })
+  }, [])
+
+  useEffect(() => {
     const inviteToken = searchParams.get('invite')
     if (inviteToken) {
       sessionStorage.setItem('leaderInvite', inviteToken)
@@ -97,6 +112,7 @@ export default function Login() {
       }
 
       const path = await getPostLoginPath(userId)
+      authLog('Login.finishLogin: navigating', { userId, path })
       navigate(path, { replace: true })
     },
     [navigate, searchParams],
@@ -108,10 +124,16 @@ export default function Login() {
       completingLoginRef.current = true
 
       try {
+        authLog('Login.completeLogin: start', { userId })
         await finishLogin(userId)
+        authLog('Login.completeLogin: success', { userId })
         sessionStorage.removeItem('oauthRedirectPending')
       } catch (err) {
         completingLoginRef.current = false
+        authLog('Login.completeLogin: failed', {
+          userId,
+          message: err instanceof Error ? err.message : String(err),
+        })
         setError(
           err instanceof Error
             ? err.message
@@ -122,22 +144,30 @@ export default function Login() {
     [finishLogin],
   )
 
-  // After OAuth redirect or restored session: navigate once auth is ready.
+  // After OAuth redirect or restored session: navigate once auth is fully ready.
   useEffect(() => {
-    if (loading || !user) return
+    if (initializing || loading || !user) return
+    authLog('Login: auto completeLogin triggered', { uid: user.uid })
     completeLogin(user.uid)
-  }, [user, loading, completeLogin])
+  }, [user, loading, initializing, completeLogin])
 
   async function handleAuth(method, fn) {
     setError(null)
     setBusyMethod(method)
+    authLog(`Login.handleAuth: ${method} start`)
     try {
       const result = await fn()
-      if (!result) return
+      if (!result) {
+        authLog(`Login.handleAuth: ${method} awaiting redirect (no immediate result)`)
+        return
+      }
 
       await saveUserProfile(result.user)
       await completeLogin(result.user.uid)
     } catch (err) {
+      authLog(`Login.handleAuth: ${method} error`, {
+        message: err instanceof Error ? err.message : String(err),
+      })
       if (err.message) setError(err.message)
     } finally {
       setBusyMethod(null)

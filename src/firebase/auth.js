@@ -10,6 +10,7 @@ import {
   signOut,
 } from 'firebase/auth'
 import app from './config'
+import { authLog, authWarn } from './authDebug'
 
 export const auth = getAuth(app)
 const googleProvider = new GoogleAuthProvider()
@@ -21,6 +22,30 @@ appleProvider.addScope('name')
 
 /** Cached so React Strict Mode / remounts don't consume the redirect twice. */
 let pendingRedirectResult = null
+
+function readSessionFlag(key) {
+  try {
+    return sessionStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writeSessionFlag(key, value) {
+  try {
+    sessionStorage.setItem(key, value)
+  } catch {
+    // sessionStorage may be unavailable (private mode / ITP)
+  }
+}
+
+function removeSessionFlag(key) {
+  try {
+    sessionStorage.removeItem(key)
+  } catch {
+    // ignore
+  }
+}
 
 export function isIOS() {
   if (typeof navigator === 'undefined') return false
@@ -43,9 +68,43 @@ export function isIosSafari() {
   return isIOS() && isSafari
 }
 
+/** ?oauthPopup=1 or session flag — force popup for redirect debugging on iOS. */
+export function isOAuthPopupForced() {
+  if (import.meta.env.VITE_FORCE_OAUTH_POPUP === 'true') return true
+  if (typeof window === 'undefined') return false
+
+  try {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('oauthPopup') === '1') {
+      sessionStorage.setItem('kidsrouteForceOAuthPopup', '1')
+      return true
+    }
+    return sessionStorage.getItem('kidsrouteForceOAuthPopup') === '1'
+  } catch {
+    return false
+  }
+}
+
 export function prefersOAuthRedirect() {
-  // Popups are unreliable on all iOS browsers (Safari, Chrome, in-app webviews).
-  return isIOS()
+  if (isOAuthPopupForced()) {
+    authLog('OAuth mode: popup (forced via ?oauthPopup=1 or VITE_FORCE_OAUTH_POPUP)')
+    return false
+  }
+
+  // TEMPORARY TEST: iOS Safari redirect often fails (ITP blocks storage on the
+  // firebaseapp.com auth handler hop). Try popup unless explicitly re-enabled.
+  // Set VITE_OAUTH_USE_REDIRECT=true to restore redirect on iOS Safari.
+  if (isIosSafari() && import.meta.env.VITE_OAUTH_USE_REDIRECT !== 'true') {
+    authLog('OAuth mode: popup (iOS Safari — redirect disabled for testing)')
+    return false
+  }
+
+  const useRedirect = isIOS()
+  authLog(`OAuth mode: ${useRedirect ? 'redirect' : 'popup'}`, {
+    isIOS: isIOS(),
+    isIosSafari: isIosSafari(),
+  })
+  return useRedirect
 }
 
 /** @deprecated use prefersOAuthRedirect */
@@ -88,6 +147,67 @@ export function getAuthErrorMessage(error) {
   }
 }
 
+function logRedirectContext(label) {
+  if (typeof window === 'undefined') return
+
+  authLog(label, {
+    href: window.location.href,
+    origin: window.location.origin,
+    pathname: window.location.pathname,
+    authDomain: auth.config.authDomain,
+    oauthRedirectPending: readSessionFlag('oauthRedirectPending'),
+    onFirebaseHost: window.location.hostname.includes('firebaseapp.com'),
+    expectedReturnHost: 'kidsroute.org',
+  })
+
+  if (window.location.hostname.includes('firebaseapp.com')) {
+    authWarn(
+      'Page loaded on firebaseapp.com — OAuth should return to kidsroute.org/login. '
+      + 'Check Firebase authorized domains and hosting rewrites.',
+    )
+  }
+}
+
+/**
+ * Start getRedirectResult immediately when this module loads — before React mounts.
+ * Firebase requires this on the returning page after signInWithRedirect.
+ */
+function captureRedirectResultOnLoad() {
+  if (typeof window === 'undefined') {
+    return Promise.resolve(null)
+  }
+
+  logRedirectContext('captureRedirectResultOnLoad: starting getRedirectResult')
+
+  if (!pendingRedirectResult) {
+    pendingRedirectResult = getRedirectResult(auth)
+      .then((result) => {
+        authLog('getRedirectResult resolved', {
+          hasUser: Boolean(result?.user),
+          uid: result?.user?.uid ?? null,
+          email: result?.user?.email ?? null,
+          operationType: result?.operationType ?? null,
+          providerId: result?.providerId ?? null,
+          returnUrl: window.location.href,
+        })
+        return result
+      })
+      .catch((error) => {
+        authWarn('getRedirectResult rejected', {
+          code: error?.code ?? null,
+          message: error?.message ?? null,
+          returnUrl: window.location.href,
+        })
+        throw error
+      })
+  }
+
+  return pendingRedirectResult
+}
+
+// Fire as early as possible — do not wait for React / AuthProvider.
+captureRedirectResultOnLoad()
+
 async function runAuth(fn) {
   try {
     return await fn()
@@ -101,11 +221,20 @@ async function runAuth(fn) {
 }
 
 async function signInWithOAuthPopup(provider) {
+  authLog('signInWithOAuthPopup: opening popup', { origin: window.location.origin })
   try {
-    return await signInWithPopup(auth, provider)
+    const result = await signInWithPopup(auth, provider)
+    authLog('signInWithOAuthPopup: success', { uid: result.user.uid })
+    return result
   } catch (error) {
+    authLog('signInWithOAuthPopup: error', {
+      code: error?.code ?? null,
+      message: error?.message ?? null,
+    })
+
     if (error?.code === 'auth/popup-blocked') {
-      sessionStorage.setItem('oauthRedirectPending', '1')
+      authLog('signInWithOAuthPopup: popup blocked — falling back to redirect')
+      writeSessionFlag('oauthRedirectPending', '1')
       await signInWithRedirect(auth, provider)
       return null
     }
@@ -119,20 +248,37 @@ async function signInWithOAuthPopup(provider) {
 }
 
 export async function signInWithGoogle() {
-  if (prefersOAuthRedirect()) {
-    sessionStorage.setItem('oauthRedirectPending', '1')
+  const useRedirect = prefersOAuthRedirect()
+  authLog('signInWithGoogle: start', {
+    useRedirect,
+    startUrl: typeof window !== 'undefined' ? window.location.href : null,
+  })
+
+  if (useRedirect) {
+    writeSessionFlag('oauthRedirectPending', '1')
+    authLog('signInWithGoogle: calling signInWithRedirect (expect return to same URL)', {
+      expectedReturn: typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}`
+        : null,
+      authHandlerDomain: auth.config.authDomain,
+    })
     await signInWithRedirect(auth, googleProvider)
     return null
   }
+
   return signInWithOAuthPopup(googleProvider)
 }
 
 export async function signInWithApple() {
-  if (prefersOAuthRedirect()) {
-    sessionStorage.setItem('oauthRedirectPending', '1')
+  const useRedirect = prefersOAuthRedirect()
+  authLog('signInWithApple: start', { useRedirect })
+
+  if (useRedirect) {
+    writeSessionFlag('oauthRedirectPending', '1')
     await signInWithRedirect(auth, appleProvider)
     return null
   }
+
   return signInWithOAuthPopup(appleProvider)
 }
 
@@ -145,10 +291,7 @@ export async function createAccountWithEmailPassword(email, password) {
 }
 
 export function completeOAuthRedirectSignIn() {
-  if (!pendingRedirectResult) {
-    pendingRedirectResult = getRedirectResult(auth)
-  }
-  return pendingRedirectResult
+  return captureRedirectResultOnLoad()
 }
 
 /** @deprecated use completeOAuthRedirectSignIn */
@@ -158,5 +301,6 @@ export function completeGoogleRedirectSignIn() {
 
 export function logOut() {
   pendingRedirectResult = null
+  removeSessionFlag('oauthRedirectPending')
   return signOut(auth)
 }
