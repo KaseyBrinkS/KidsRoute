@@ -210,10 +210,11 @@ h3,
 .kr-nav-bar {
   background: var(--color-nav-bg);
   box-shadow: 0 -4px 20px -4px rgb(28 58 74 / 0.35);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .kr-nav-bar .kr-nav-link-active {
-  @apply bg-transparent text-primary;
+  @apply bg-white/15 text-white;
 }
 
 .kr-nav-bar .kr-nav-link-inactive {
@@ -225,7 +226,12 @@ h3,
 }
 
 .kr-nav-link-mobile {
-  @apply flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl px-1 py-2 text-[11px] font-semibold leading-tight transition-all;
+  @apply flex min-h-[4rem] min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-semibold leading-snug transition-all;
+  touch-action: manipulation;
+}
+
+.kr-nav-icon {
+  @apply h-7 w-7 shrink-0;
 }
 
 .kr-nav-link-active {
