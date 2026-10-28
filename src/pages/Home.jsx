@@ -14,6 +14,28 @@ import {
 import { subscribeToUserProfile } from '../firebase/users'
 import { resolveContactPhoneForSharing } from '../utils/contactInfo'
 
+function safeFilterWalkGroups(groups) {
+  if (!Array.isArray(groups)) return []
+  return groups.filter((group) => {
+    if (!group?.id) return false
+    try {
+      return walkGroupHasMultipleFamilies(group)
+    } catch (err) {
+      console.error('[Home] skipping invalid walk group', group?.id, err)
+      return false
+    }
+  })
+}
+
+function safePartitionHomeData(walkGroups, userId, activeSessions) {
+  try {
+    return partitionHomeData(walkGroups, userId, activeSessions)
+  } catch (err) {
+    console.error('[Home] partitionHomeData failed', err)
+    return { todayTrips: [], uncoveredTrips: [], pendingRequests: [] }
+  }
+}
+
 function TripCard({ trip, action }) {
   return (
     <div className="kr-card px-4 py-4">
@@ -57,16 +79,42 @@ export default function Home() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (!user) return undefined
-
-    syncWalkGroupsForUser(user.uid).catch(console.error)
-
-    const unsubGroups = subscribeToWalkGroups(user.uid, (data) => {
-      setWalkGroups(data.filter(walkGroupHasMultipleFamilies))
+    if (!user) {
       setLoading(false)
+      return undefined
+    }
+
+    setLoading(true)
+    setError(null)
+
+    syncWalkGroupsForUser(user.uid).catch((err) => {
+      console.error('[Home] syncWalkGroupsForUser failed', err)
     })
-    const unsubSessions = subscribeToUserActiveWalkSessions(user.uid, setActiveSessions)
-    const unsubProfile = subscribeToUserProfile(user.uid, setProfile)
+
+    const unsubGroups = subscribeToWalkGroups(
+      user.uid,
+      (data) => {
+        setWalkGroups(safeFilterWalkGroups(data))
+        setLoading(false)
+      },
+      (err) => {
+        console.error('[Home] subscribeToWalkGroups failed', err)
+        setError(err.message ?? 'Could not load your trips.')
+        setLoading(false)
+      },
+    )
+
+    const unsubSessions = subscribeToUserActiveWalkSessions(
+      user.uid,
+      setActiveSessions,
+      (err) => console.error('[Home] subscribeToUserActiveWalkSessions failed', err),
+    )
+
+    const unsubProfile = subscribeToUserProfile(
+      user.uid,
+      setProfile,
+      (err) => console.error('[Home] subscribeToUserProfile failed', err),
+    )
 
     return () => {
       unsubGroups()
@@ -76,7 +124,7 @@ export default function Home() {
   }, [user])
 
   const { todayTrips, uncoveredTrips, pendingRequests } = useMemo(
-    () => partitionHomeData(walkGroups, user?.uid, activeSessions),
+    () => safePartitionHomeData(walkGroups, user?.uid, activeSessions),
     [walkGroups, user?.uid, activeSessions],
   )
 
@@ -92,6 +140,10 @@ export default function Home() {
     } finally {
       setRespondingId(null)
     }
+  }
+
+  if (!user) {
+    return null
   }
 
   if (loading) {

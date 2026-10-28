@@ -11,7 +11,11 @@ export default function HomeNotificationAlerts() {
 
   useEffect(() => {
     if (!user) return undefined
-    return subscribeToUserNotifications(user.uid, setNotifications)
+    return subscribeToUserNotifications(
+      user.uid,
+      setNotifications,
+      (err) => console.error('[HomeNotificationAlerts] subscription failed', err),
+    )
   }, [user])
 
   const unread = notifications.filter((n) => !n.read).slice(0, 5)

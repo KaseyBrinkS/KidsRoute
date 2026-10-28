@@ -127,7 +127,10 @@ export function walkGroupIsVisibleOnGroupsPage(group, userId) {
 }
 
 function getNonDeclinedParties(group) {
-  return (group.parties ?? []).filter((party) => party.response !== 'declined')
+  if (!group) return []
+  return (group.parties ?? []).filter(
+    (party) => party && party.response !== 'declined',
+  )
 }
 
 export function countWalkGroupFamilies(group) {
