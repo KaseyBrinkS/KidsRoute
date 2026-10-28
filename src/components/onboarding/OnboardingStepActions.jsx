@@ -21,7 +21,7 @@ export function OnboardingStepActions({
       </button>
       <button
         type="button"
-        onClick={() => navigate('/dashboard')}
+        onClick={() => navigate('/home')}
         className="btn-ghost w-full py-2 text-sm"
       >
         {skipLabel}

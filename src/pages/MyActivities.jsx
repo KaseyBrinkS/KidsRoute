@@ -308,8 +308,8 @@ export default function MyActivities() {
   return (
     <div>
       <PageHeader
-        title="My Activities"
-        description="After-school activities your kids are signed up for"
+        title="Schedule"
+        description="Your children's activities and transportation needs"
       />
 
       {!activitiesLoading && activities.length === 0 && (
@@ -319,18 +319,29 @@ export default function MyActivities() {
         </GuidanceBanner>
       )}
 
-      <div className="mb-6 flex justify-end">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={() => {
+            setEditingId(null)
+            setForm(emptyForm(kids))
+            document.getElementById('add-activity-form')?.scrollIntoView({ behavior: 'smooth' })
+          }}
+          className="btn-primary w-full sm:w-auto"
+        >
+          + Add Activity
+        </button>
         <ViewToggle
           value={viewMode}
           onChange={setViewMode}
           options={[
-            { value: 'list', label: 'List' },
-            { value: 'calendar', label: 'Calendar' },
+            { value: 'list', label: 'Day' },
+            { value: 'calendar', label: 'Week' },
           ]}
         />
       </div>
 
-      <div className="kr-card p-6">
+      <div id="add-activity-form" className="kr-card p-6">
         <h2 className="kr-section-title">
           {editingId ? 'Edit activity' : 'Add an activity'}
         </h2>
@@ -340,8 +351,8 @@ export default function MyActivities() {
         ) : kids.length === 0 ? (
           <p className="mt-4 text-muted">
             Add a child in{' '}
-            <Link to="/settings" className="link-accent">
-              Settings
+            <Link to="/profile/family" className="link-accent">
+              Family Profiles
             </Link>{' '}
             before adding activities.
           </p>

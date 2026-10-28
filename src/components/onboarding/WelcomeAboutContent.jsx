@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 export function getWelcomeLogoPath(setupIncomplete) {
-  if (!setupIncomplete) return '/dashboard'
+  if (!setupIncomplete) return '/home'
   return '/settings'
 }
 

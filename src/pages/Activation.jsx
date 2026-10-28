@@ -8,7 +8,7 @@ export default function Activation() {
 
   useEffect(() => {
     if (isActivationDismissed()) {
-      navigate('/dashboard', { replace: true })
+      navigate('/home', { replace: true })
     }
   }, [navigate])
 
@@ -41,7 +41,7 @@ export default function Activation() {
             <div className="space-y-3 pt-2">
               <button
                 type="button"
-                onClick={() => finish('/my-activities')}
+                onClick={() => finish('/schedule')}
                 className="btn-primary w-full py-3.5 text-base font-semibold tracking-wide"
               >
                 ADD AN ACTIVITY
@@ -51,7 +51,7 @@ export default function Activation() {
 
             <button
               type="button"
-              onClick={() => finish('/dashboard')}
+              onClick={() => finish('/home')}
               className="link-accent text-sm"
             >
               Skip for now

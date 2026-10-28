@@ -82,7 +82,7 @@ export default function Welcome() {
 
             {!setupIncomplete ? (
               <div className="text-center">
-                <Link to="/dashboard" className="link-accent text-sm">
+                <Link to="/home" className="link-accent text-sm">
                   ← Back to Dashboard
                 </Link>
               </div>

@@ -31,7 +31,7 @@ export default class ErrorBoundary extends Component {
             <button type="button" onClick={this.handleRetry} className="btn-primary">
               Try again
             </button>
-            <Link to="/dashboard" className="btn-secondary">
+            <Link to="/home" className="btn-secondary">
               Back to Dashboard
             </Link>
           </div>

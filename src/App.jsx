@@ -3,13 +3,10 @@ import AppLayout from './components/AppLayout'
 import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminOnlyRoute from './components/AdminOnlyRoute'
-import Dashboard from './pages/Dashboard'
+import RedirectGroupChat from './components/RedirectGroupChat'
 import GroupLeaderView from './pages/GroupLeaderView'
 import GroupWalkPage from './pages/GroupWalkPage'
 import GroupLeaderHome from './pages/GroupLeaderHome'
-import GroupChat from './pages/GroupChat'
-import Groups from './pages/Groups'
-import History from './pages/History'
 import Login from './pages/Login'
 import MyActivities from './pages/MyActivities'
 import Privacy from './pages/Privacy'
@@ -21,6 +18,16 @@ import Activation from './pages/Activation'
 import Safety from './pages/Safety'
 import HowItWorks from './pages/HowItWorks'
 import Contact from './pages/Contact'
+import Home from './pages/Home'
+import Matches from './pages/Matches'
+import MatchDetail from './pages/MatchDetail'
+import RideDetail from './pages/RideDetail'
+import Inbox from './pages/Inbox'
+import InboxThread from './pages/InboxThread'
+import Profile from './pages/Profile'
+import ProfileFamily from './pages/ProfileFamily'
+import ProfileConnections from './pages/ProfileConnections'
+import ProfileNotifications from './pages/ProfileNotifications'
 
 export default function App() {
   return (
@@ -34,7 +41,7 @@ export default function App() {
       <Route path="/flyer" element={<Flyer />} />
       <Route path="/pending-approval" element={<Navigate to="/welcome" replace />} />
       <Route path="/rejected" element={<Navigate to="/welcome" replace />} />
-      <Route path="/my-kids" element={<Navigate to="/settings" replace />} />
+      <Route path="/my-kids" element={<Navigate to="/profile/family" replace />} />
       <Route path="/onboarding/*" element={<Navigate to="/settings" replace />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/admin" element={<AdminOnlyRoute />} />
@@ -42,22 +49,38 @@ export default function App() {
         <Route path="/activation" element={<Activation />} />
         <Route path="/" element={<Navigate to="/welcome" replace />} />
         <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/home" element={<Home />} />
           <Route
-            path="/my-activities"
+            path="/schedule"
             element={
-              <ErrorBoundary message="The Activities page couldn't load. Try again, or head back to the dashboard.">
+              <ErrorBoundary message="The Schedule page couldn't load. Try again, or head back to Home.">
                 <MyActivities />
               </ErrorBoundary>
             }
           />
-          <Route path="/groups" element={<Groups />} />
+          <Route path="/matches" element={<Matches />} />
+          <Route path="/matches/:groupId" element={<MatchDetail />} />
+          <Route path="/rides/:groupId" element={<RideDetail />} />
+          <Route path="/inbox" element={<Inbox />} />
+          <Route path="/inbox/:groupId" element={<InboxThread />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/family" element={<ProfileFamily />} />
+          <Route path="/profile/connections" element={<ProfileConnections />} />
+          <Route path="/profile/settings" element={<Navigate to="/settings" replace />} />
+          <Route path="/profile/notifications" element={<ProfileNotifications />} />
+          <Route path="/settings" element={<Settings />} />
+
+          {/* Legacy routes — redirect to new navigation */}
+          <Route path="/dashboard" element={<Navigate to="/home" replace />} />
+          <Route path="/my-activities" element={<Navigate to="/schedule" replace />} />
+          <Route path="/groups" element={<Navigate to="/matches" replace />} />
+          <Route path="/history" element={<Navigate to="/home" replace />} />
+          <Route path="/groups/:groupId/chat" element={<RedirectGroupChat />} />
+
+          {/* Walk leader tools (linked from ride detail and legacy flows) */}
           <Route path="/leader" element={<GroupLeaderHome />} />
-          <Route path="/groups/:groupId/chat" element={<GroupChat />} />
           <Route path="/groups/:groupId/walk" element={<GroupWalkPage />} />
           <Route path="/groups/:groupId/leader" element={<GroupLeaderView />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>
     </Routes>

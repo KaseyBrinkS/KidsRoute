@@ -203,7 +203,7 @@ export default function Admin() {
         </section>
 
         <p className="mt-6">
-          <Link to="/dashboard" className="link-accent text-sm">
+          <Link to="/home" className="link-accent text-sm">
             ← Back to app
           </Link>
         </p>

@@ -2,8 +2,8 @@ import { NavLink } from 'react-router-dom'
 
 const navItems = [
   {
-    to: '/dashboard',
-    label: 'Dashboard',
+    to: '/home',
+    label: 'Home',
     icon: (
       <path
         strokeLinecap="round"
@@ -13,8 +13,8 @@ const navItems = [
     ),
   },
   {
-    to: '/my-activities',
-    label: 'Activities',
+    to: '/schedule',
+    label: 'Schedule',
     icon: (
       <path
         strokeLinecap="round"
@@ -24,8 +24,8 @@ const navItems = [
     ),
   },
   {
-    to: '/groups',
-    label: 'Groups',
+    to: '/matches',
+    label: 'Matches',
     icon: (
       <path
         strokeLinecap="round"
@@ -35,8 +35,19 @@ const navItems = [
     ),
   },
   {
-    to: '/leader',
-    label: 'Leader',
+    to: '/inbox',
+    label: 'Inbox',
+    icon: (
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21 8.25V18a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18V8.25m18 0A2.25 2.25 0 0018.75 6H5.25A2.25 2.25 0 003 8.25m18 0v.75H3v-.75"
+      />
+    ),
+  },
+  {
+    to: '/profile',
+    label: 'Profile',
     icon: (
       <>
         <path
@@ -45,19 +56,7 @@ const navItems = [
           d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
         />
         <circle cx="9" cy="7" r="4" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 8v6M22 11h-6" />
       </>
-    ),
-  },
-  {
-    to: '/history',
-    label: 'History',
-    icon: (
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 8v4l2.5 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
     ),
   },
   {

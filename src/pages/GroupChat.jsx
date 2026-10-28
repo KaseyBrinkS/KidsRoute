@@ -17,7 +17,7 @@ import { getCurrentSessionKey, getSessionConversationLabel } from '../firebase/s
 import { subscribeToGroupDocument } from '../firebase/groupWalk'
 import { formatGroupTimes } from '../firebase/groups'
 
-export default function GroupChat() {
+export default function GroupChat({ backTo = '/groups' }) {
   const { groupId } = useParams()
   const { user } = useAuth()
   const [group, setGroup] = useState(null)
@@ -128,8 +128,8 @@ export default function GroupChat() {
           You don&apos;t have access to this group chat. Join and accept the group invitation
           first.
         </p>
-        <Link to="/groups" className="link-accent mt-4 inline-block text-sm">
-          ← Back to Groups
+        <Link to={backTo} className="link-accent mt-4 inline-block text-sm">
+          ← Back
         </Link>
       </div>
     )
@@ -138,12 +138,8 @@ export default function GroupChat() {
   return (
     <div className="flex flex-col sm:-mx-0" style={{ height: 'calc(100dvh - 7.5rem)' }}>
       <div className="shrink-0 border-b border-border pb-4">
-        <Link to="/groups" className="link-accent text-sm">
-          ← Groups
-        </Link>
-        <span className="text-muted">·</span>
-        <Link to="/leader" className="link-accent text-sm">
-          Leader
+        <Link to={backTo} className="link-accent text-sm">
+          ← Back
         </Link>
         <h1 className="font-heading mt-2 text-xl font-semibold text-primary">Group messages</h1>
         <p className="mt-1 text-sm text-muted">
