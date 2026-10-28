@@ -30,9 +30,19 @@ import ProfileFamily from './pages/ProfileFamily'
 import ProfileConnections from './pages/ProfileConnections'
 import ProfileNotifications from './pages/ProfileNotifications'
 
+const LEGACY_REDIRECTS = [
+  ['/dashboard', '/home'],
+  ['/my-activities', '/schedule'],
+  ['/groups', '/matches'],
+  ['/history', '/home'],
+]
+
 export default function App() {
   return (
     <Routes>
+      {LEGACY_REDIRECTS.map(([from, to]) => (
+        <Route key={from} path={from} element={<Navigate to={to} replace />} />
+      ))}
       <Route path="/login" element={<Login />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />

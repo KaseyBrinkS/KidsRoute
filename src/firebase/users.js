@@ -71,6 +71,20 @@ export async function completeOnboarding(userId) {
 /** @deprecated use completeOnboarding */
 export const completeWelcome = completeOnboarding
 
+const LEGACY_ROUTE_REDIRECTS = {
+  '/dashboard': '/home',
+  '/my-activities': '/schedule',
+  '/groups': '/matches',
+  '/history': '/home',
+}
+
+/** Normalize legacy bookmarks and stored paths to the current app routes. */
+export function normalizeAppPath(path) {
+  if (!path || typeof path !== 'string') return '/home'
+  const base = path.split('?')[0].split('#')[0]
+  return LEGACY_ROUTE_REDIRECTS[base] ?? path
+}
+
 export async function getPostLoginPath(userId) {
   const profile = await getUserProfile(userId)
   if (profile.accountType === 'external_leader') return '/leader'

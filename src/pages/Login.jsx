@@ -12,7 +12,7 @@ import {
 } from '../firebase/auth'
 import { authLog } from '../firebase/authDebug'
 import { claimLeaderInvite, syncLeaderProfileFromInvite } from '../firebase/groupLeaders'
-import { getPostLoginPath, saveUserProfile } from '../firebase/users'
+import { getPostLoginPath, normalizeAppPath, saveUserProfile } from '../firebase/users'
 import KidsRouteLogo from '../components/KidsRouteLogo'
 import LegalFooter from '../components/LegalFooter'
 
@@ -111,7 +111,7 @@ export default function Login() {
         return
       }
 
-      const path = await getPostLoginPath(userId)
+      const path = normalizeAppPath(await getPostLoginPath(userId))
       authLog('Login.finishLogin: navigating', { userId, path })
       navigate(path, { replace: true })
     },

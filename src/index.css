@@ -206,32 +206,9 @@ h3,
   @apply mt-1 text-sm text-muted;
 }
 
-/* App navigation */
-.kr-nav-bar {
-  background: var(--color-nav-bg);
-  box-shadow: 0 -4px 20px -4px rgb(28 58 74 / 0.35);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-.kr-nav-bar .kr-nav-link-active {
-  @apply bg-white/15 text-white;
-}
-
-.kr-nav-bar .kr-nav-link-inactive {
-  @apply text-white/75 hover:bg-white/10 hover:text-white;
-}
-
+/* App navigation — desktop header links */
 .kr-nav-link {
   @apply rounded-2xl px-3 py-2 text-sm font-semibold transition-all;
-}
-
-.kr-nav-link-mobile {
-  @apply flex min-h-[4rem] min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-semibold leading-snug transition-all;
-  touch-action: manipulation;
-}
-
-.kr-nav-icon {
-  @apply h-7 w-7 shrink-0;
 }
 
 .kr-nav-link-active {
@@ -240,4 +217,40 @@ h3,
 
 .kr-nav-link-inactive {
   @apply text-muted hover:bg-bg-warm hover:text-primary;
+}
+
+/* Bottom tab bar — navy bg, teal active, white inactive */
+.kr-nav-bar {
+  background: var(--color-nav-bg);
+  box-shadow: 0 -4px 20px -4px rgb(28 58 74 / 0.35);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.kr-nav-bar .kr-nav-link-mobile {
+  @apply flex min-h-[4rem] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 font-semibold leading-snug transition-all;
+  touch-action: manipulation;
+}
+
+.kr-nav-bar .kr-nav-link-active {
+  color: var(--color-primary-light);
+  background: rgb(255 255 255 / 0.1);
+}
+
+.kr-nav-bar .kr-nav-link-inactive {
+  color: rgb(255 255 255 / 0.78);
+}
+
+.kr-nav-bar .kr-nav-link-inactive:hover {
+  color: #fff;
+  background: rgb(255 255 255 / 0.08);
+}
+
+.kr-nav-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.kr-nav-label {
+  @apply max-w-full truncate px-0.5 text-sm font-semibold;
 }
