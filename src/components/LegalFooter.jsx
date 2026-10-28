@@ -14,6 +14,10 @@ export default function LegalFooter({ className = '' }) {
       <Link to="/terms" className="hover:text-primary hover:underline">
         Terms of Service
       </Link>
+      <span className="mx-2 text-border">·</span>
+      <Link to="/contact" className="hover:text-primary hover:underline">
+        Contact
+      </Link>
     </footer>
   )
 }

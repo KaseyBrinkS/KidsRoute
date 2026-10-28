@@ -22,8 +22,12 @@ export default function Welcome() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user) return undefined
+    if (!user) {
+      setLoading(false)
+      return undefined
+    }
 
+    setLoading(true)
     const unsubscribe = subscribeToUserProfile(
       user.uid,
       (profile) => {

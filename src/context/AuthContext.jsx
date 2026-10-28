@@ -13,60 +13,69 @@ export function AuthProvider({ children }) {
   const [redirectError, setRedirectError] = useState(null)
 
   useEffect(() => {
-    let unsubscribe = () => {}
     let cancelled = false
 
-    async function initAuth() {
-      authLog('AuthProvider.initAuth: start')
+    authLog('AuthProvider: subscribing to onAuthStateChanged')
 
-      let redirectPending = false
-      try {
-        redirectPending = sessionStorage.getItem('oauthRedirectPending') === '1'
-      } catch {
-        redirectPending = false
+    // Subscribe immediately — never block on getRedirectResult (Firebase recommended pattern).
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      authLog('AuthProvider.onAuthStateChanged', {
+        hasUser: Boolean(firebaseUser),
+        uid: firebaseUser?.uid ?? null,
+      })
+
+      if (firebaseUser) {
+        try {
+          await saveUserProfile(firebaseUser)
+        } catch (error) {
+          authWarn('AuthProvider: saveUserProfile failed (non-blocking)', {
+            message: error?.message ?? null,
+          })
+        }
       }
 
-      try {
-        authLog('AuthProvider.initAuth: awaiting getRedirectResult promise')
-        const result = await completeOAuthRedirectSignIn()
+      if (!cancelled) {
+        setUser(firebaseUser)
+        setLoading(false)
+        setInitializing(false)
+        authLog('AuthProvider: auth ready', { hasUser: Boolean(firebaseUser) })
+      }
+    })
+
+    let redirectPending = false
+    try {
+      redirectPending = sessionStorage.getItem('oauthRedirectPending') === '1'
+    } catch {
+      redirectPending = false
+    }
+
+    completeOAuthRedirectSignIn()
+      .then(async (result) => {
         if (cancelled) return
 
-        authLog('AuthProvider.initAuth: redirect result ready', {
+        authLog('AuthProvider: redirect result ready', {
           hasUser: Boolean(result?.user),
           uid: result?.user?.uid ?? null,
         })
 
         if (result?.user) {
           await saveUserProfile(result.user)
-          authLog('AuthProvider.initAuth: saved profile after redirect')
         } else if (redirectPending) {
-          authWarn('AuthProvider.initAuth: redirect was pending but getRedirectResult returned null', {
+          authWarn('AuthProvider: redirect was pending but getRedirectResult returned null', {
             href: window.location.href,
             origin: window.location.origin,
             authDomain: auth.config.authDomain,
           })
           setRedirectError(
             'Google sign-in did not complete after redirect. '
-            + 'Safari may be blocking sign-in storage during the Firebase auth step. '
-            + 'Try again, or open kidsroute.org/login?oauthPopup=1 to test popup sign-in.',
+            + 'Try again, or open kidsroute.org/login?oauthPopup=1 to use popup sign-in.',
           )
         }
-
-        try {
-          sessionStorage.removeItem('oauthRedirectPending')
-        } catch {
-          // ignore
-        }
-      } catch (error) {
+      })
+      .catch((error) => {
         if (cancelled) return
 
-        try {
-          sessionStorage.removeItem('oauthRedirectPending')
-        } catch {
-          // ignore
-        }
-
-        authWarn('AuthProvider.initAuth: redirect handling failed', {
+        authWarn('AuthProvider: redirect handling failed', {
           code: error?.code ?? null,
           message: error?.message ?? null,
         })
@@ -75,35 +84,14 @@ export function AuthProvider({ children }) {
         if (message) {
           setRedirectError(message)
         }
-      }
-
-      authLog('AuthProvider.initAuth: subscribing to onAuthStateChanged')
-      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        authLog('AuthProvider.onAuthStateChanged', {
-          hasUser: Boolean(firebaseUser),
-          uid: firebaseUser?.uid ?? null,
-        })
-
-        if (firebaseUser) {
-          try {
-            await saveUserProfile(firebaseUser)
-          } catch (error) {
-            authWarn('AuthProvider: saveUserProfile failed (non-blocking)', {
-              message: error?.message ?? null,
-            })
-          }
-        }
-
-        if (!cancelled) {
-          setUser(firebaseUser)
-          setLoading(false)
-          setInitializing(false)
-          authLog('AuthProvider: auth ready', { hasUser: Boolean(firebaseUser) })
+      })
+      .finally(() => {
+        try {
+          sessionStorage.removeItem('oauthRedirectPending')
+        } catch {
+          // ignore
         }
       })
-    }
-
-    initAuth()
 
     return () => {
       cancelled = true

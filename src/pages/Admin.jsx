@@ -9,6 +9,11 @@ import {
   removeUserAccount,
   subscribeToAllAccounts,
 } from '../firebase/admin'
+import {
+  contactSubjectLabel,
+  formatContactSubmittedAt,
+  subscribeToContactSubmissions,
+} from '../firebase/contactSubmissions'
 import { formatSchoolDisplay } from '../firebase/schools'
 
 function formatSignedUpAt(account) {
@@ -39,7 +44,9 @@ function AccountStatusBadge({ status }) {
 export default function Admin() {
   const { user } = useAuth()
   const [accounts, setAccounts] = useState([])
+  const [contactSubmissions, setContactSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [contactsLoading, setContactsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [removeTarget, setRemoveTarget] = useState(null)
   const [removing, setRemoving] = useState(false)
@@ -53,6 +60,20 @@ export default function Admin() {
       (err) => {
         setError(err.message)
         setLoading(false)
+      },
+    )
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    const unsub = subscribeToContactSubmissions(
+      (nextSubmissions) => {
+        setContactSubmissions(nextSubmissions)
+        setContactsLoading(false)
+      },
+      (err) => {
+        setError(err.message)
+        setContactsLoading(false)
       },
     )
     return unsub
@@ -136,6 +157,47 @@ export default function Admin() {
                   </li>
                 )
               })}
+            </ul>
+          )}
+        </section>
+
+        <section className="kr-card mt-8 overflow-hidden">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="kr-section-title">Contact form messages</h2>
+            <p className="kr-section-desc">Newest submissions first</p>
+          </div>
+
+          {contactsLoading ? (
+            <p className="px-5 py-8 text-muted">Loading messages…</p>
+          ) : contactSubmissions.length === 0 ? (
+            <p className="px-5 py-8 text-muted">No contact messages yet.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {contactSubmissions.map((submission) => (
+                <li key={submission.id} className="px-5 py-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-[var(--color-text)]">
+                        {submission.name}
+                      </p>
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                        {contactSubjectLabel(submission.subject)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted">
+                      <a href={`mailto:${submission.email}`} className="link-accent">
+                        {submission.email}
+                      </a>
+                    </p>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--color-text)]">
+                      {submission.message}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {formatContactSubmittedAt(submission)}
+                    </p>
+                  </div>
+                </li>
+              ))}
             </ul>
           )}
         </section>

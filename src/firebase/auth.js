@@ -91,11 +91,10 @@ export function prefersOAuthRedirect() {
     return false
   }
 
-  // TEMPORARY TEST: iOS Safari redirect often fails (ITP blocks storage on the
-  // firebaseapp.com auth handler hop). Try popup unless explicitly re-enabled.
-  // Set VITE_OAUTH_USE_REDIRECT=true to restore redirect on iOS Safari.
-  if (isIosSafari() && import.meta.env.VITE_OAUTH_USE_REDIRECT !== 'true') {
-    authLog('OAuth mode: popup (iOS Safari — redirect disabled for testing)')
+  // iOS redirect often fails (ITP blocks storage on the firebaseapp.com auth handler).
+  // Use popup on all iOS unless explicitly re-enabled via VITE_OAUTH_USE_REDIRECT=true.
+  if (isIOS() && import.meta.env.VITE_OAUTH_USE_REDIRECT !== 'true') {
+    authLog('OAuth mode: popup (iOS — redirect disabled)')
     return false
   }
 
@@ -198,7 +197,8 @@ function captureRedirectResultOnLoad() {
           message: error?.message ?? null,
           returnUrl: window.location.href,
         })
-        throw error
+        // Return null so a failed redirect check never blocks app load.
+        return null
       })
   }
 

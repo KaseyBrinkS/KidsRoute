@@ -159,5 +159,28 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow update, delete: if false;
     }
+
+    match /contactSubmissions/{submissionId} {
+      allow create: if request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 0
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.subject is string
+        && request.resource.data.subject in [
+          'general_question',
+          'safety_concern',
+          'technical_issue',
+          'school_business',
+          'feedback',
+          'other'
+        ]
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 5000;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
   }
 }

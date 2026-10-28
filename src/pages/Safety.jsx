@@ -51,7 +51,11 @@ export default function Safety() {
             </p>
 
             <p className="rounded-2xl border border-primary/15 bg-primary/5 px-5 py-4 text-sm leading-relaxed text-[var(--color-text)]">
-              Still have questions? We&apos;re real people — email us at{' '}
+              Still have questions? We&apos;re real people —{' '}
+              <Link to="/contact" className="link-accent font-semibold">
+                send us a message
+              </Link>
+              {' '}or email{' '}
               <a href="mailto:hello@kidsroute.org" className="link-accent font-semibold">
                 hello@kidsroute.org
               </a>
