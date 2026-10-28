@@ -3,6 +3,7 @@ import AppLayout from './components/AppLayout'
 import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminOnlyRoute from './components/AdminOnlyRoute'
+import NotFound from './components/NotFound'
 import RedirectGroupChat from './components/RedirectGroupChat'
 import GroupLeaderView from './pages/GroupLeaderView'
 import GroupWalkPage from './pages/GroupWalkPage'
@@ -49,40 +50,51 @@ export default function App() {
         <Route path="/activation" element={<Activation />} />
         <Route path="/" element={<Navigate to="/welcome" replace />} />
         <Route element={<AppLayout />}>
-          <Route path="/home" element={<Home />} />
           <Route
-            path="/schedule"
+            path="home"
+            element={
+              <ErrorBoundary message="The Home page couldn't load. Try again, or open another tab.">
+                <Home />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="schedule"
             element={
               <ErrorBoundary message="The Schedule page couldn't load. Try again, or head back to Home.">
                 <MyActivities />
               </ErrorBoundary>
             }
           />
-          <Route path="/matches" element={<Matches />} />
-          <Route path="/matches/:groupId" element={<MatchDetail />} />
-          <Route path="/rides/:groupId" element={<RideDetail />} />
-          <Route path="/inbox" element={<Inbox />} />
-          <Route path="/inbox/:groupId" element={<InboxThread />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/profile/family" element={<ProfileFamily />} />
-          <Route path="/profile/connections" element={<ProfileConnections />} />
-          <Route path="/profile/settings" element={<Navigate to="/settings" replace />} />
-          <Route path="/profile/notifications" element={<ProfileNotifications />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="matches" element={<Matches />} />
+          <Route path="matches/:groupId" element={<MatchDetail />} />
+          <Route path="rides/:groupId" element={<RideDetail />} />
+          <Route path="inbox" element={<Inbox />} />
+          <Route path="inbox/:groupId" element={<InboxThread />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="profile/family" element={<ProfileFamily />} />
+          <Route path="profile/connections" element={<ProfileConnections />} />
+          <Route path="profile/settings" element={<Navigate to="/settings" replace />} />
+          <Route path="profile/notifications" element={<ProfileNotifications />} />
+          <Route path="settings" element={<Settings />} />
 
           {/* Legacy routes — redirect to new navigation */}
-          <Route path="/dashboard" element={<Navigate to="/home" replace />} />
-          <Route path="/my-activities" element={<Navigate to="/schedule" replace />} />
-          <Route path="/groups" element={<Navigate to="/matches" replace />} />
-          <Route path="/history" element={<Navigate to="/home" replace />} />
-          <Route path="/groups/:groupId/chat" element={<RedirectGroupChat />} />
+          <Route path="dashboard" element={<Navigate to="/home" replace />} />
+          <Route path="my-activities" element={<Navigate to="/schedule" replace />} />
+          <Route path="groups" element={<Navigate to="/matches" replace />} />
+          <Route path="history" element={<Navigate to="/home" replace />} />
+          <Route path="groups/:groupId/chat" element={<RedirectGroupChat />} />
 
           {/* Walk leader tools (linked from ride detail and legacy flows) */}
-          <Route path="/leader" element={<GroupLeaderHome />} />
-          <Route path="/groups/:groupId/walk" element={<GroupWalkPage />} />
-          <Route path="/groups/:groupId/leader" element={<GroupLeaderView />} />
+          <Route path="leader" element={<GroupLeaderHome />} />
+          <Route path="groups/:groupId/walk" element={<GroupWalkPage />} />
+          <Route path="groups/:groupId/leader" element={<GroupLeaderView />} />
+
+          <Route path="*" element={<NotFound />} />
         </Route>
+        <Route path="*" element={<NotFound />} />
       </Route>
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }

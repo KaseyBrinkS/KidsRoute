@@ -1,7 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import KidsRouteLogo from './KidsRouteLogo'
 import AppFooter from './AppFooter'
-import { useAuth } from '../context/AuthContext'
 
 const navIcons = {
   home: (

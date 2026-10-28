@@ -48,8 +48,13 @@ export default function AccountAccessGate({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user) return undefined
+    if (!user) {
+      setProfile(null)
+      setLoading(false)
+      return undefined
+    }
 
+    setLoading(true)
     return subscribeToUserProfile(
       user.uid,
       (data) => {
@@ -58,7 +63,7 @@ export default function AccountAccessGate({ children }) {
       },
       () => setLoading(false),
     )
-  }, [user])
+  }, [user?.uid])
 
   if (loading) {
     return (
