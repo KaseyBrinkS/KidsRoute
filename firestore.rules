@@ -143,9 +143,22 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
         && request.resource.data.isCommunity == true
+        && request.resource.data.status == 'pending'
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 120;
+      allow update, delete: if isAdmin();
+    }
+
+    match /locations/{locationId} {
+      allow read: if isSignedIn()
+        && (resource.data.status == 'approved' || isAdmin());
+      allow create: if isSignedIn()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.submittedBy == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 

@@ -273,6 +273,7 @@ export default function Settings() {
         schoolSelect,
         schoolCustom,
         registerCommunitySchool,
+        user.uid,
       )
       await updateUserProfile(user.uid, { school, schoolConfirmed: true })
       setSchoolSaved(true)

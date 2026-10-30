@@ -38,10 +38,15 @@ export function resolveSchoolValue(selectValue, customValue) {
   return selectValue
 }
 
-export async function resolveAndRegisterSchool(selectValue, customValue, registerFn) {
+export async function resolveAndRegisterSchool(
+  selectValue,
+  customValue,
+  registerFn,
+  submittedBy = null,
+) {
   const school = resolveSchoolValue(selectValue, customValue)
   if (selectValue === OTHER_SCHOOL_LABEL && registerFn) {
-    await registerFn(school)
+    await registerFn(school, submittedBy)
   }
   return school
 }

@@ -1,10 +1,14 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
+  query,
   serverTimestamp,
   setDoc,
+  updateDoc,
+  where,
 } from 'firebase/firestore'
 import { db } from './db'
 import { DEFAULT_SCHOOL, SCHOOLS as DEFAULT_SCHOOLS } from './schools'
@@ -17,6 +21,13 @@ function schoolDocId(name) {
     .replace(/^-|-$/g, '')
 }
 
+export function isCommunitySchoolVisible(docSnap) {
+  if (docSnap.isCommunity === false) return true
+  if (!docSnap.isCommunity) return true
+  const status = docSnap.status
+  return !status || status === 'approved'
+}
+
 export function mergeSchoolOptions(communityDocs = []) {
   const defaults = DEFAULT_SCHOOLS.map((name) => ({
     name,
@@ -26,6 +37,7 @@ export function mergeSchoolOptions(communityDocs = []) {
 
   const defaultNames = new Set(DEFAULT_SCHOOLS)
   const community = communityDocs
+    .filter(isCommunitySchoolVisible)
     .map((docSnap) => ({
       name: docSnap.name?.trim() ?? '',
       isCommunity: docSnap.isCommunity !== false,
@@ -55,7 +67,27 @@ export function subscribeToSchools(onData, onError) {
   )
 }
 
-export async function registerCommunitySchool(name) {
+export function subscribeToPendingSchools(onData, onError) {
+  return onSnapshot(
+    query(collection(db, 'schools'), where('status', '==', 'pending')),
+    (snapshot) => {
+      const docs = snapshot.docs
+        .map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }))
+        .sort((a, b) => {
+          const aTime = a.createdAt?.seconds ?? 0
+          const bTime = b.createdAt?.seconds ?? 0
+          return bTime - aTime
+        })
+      onData(docs)
+    },
+    onError,
+  )
+}
+
+export async function registerCommunitySchool(name, submittedBy = null) {
   const trimmed = name?.trim()
   if (!trimmed || DEFAULT_SCHOOLS.includes(trimmed)) return
 
@@ -70,8 +102,22 @@ export async function registerCommunitySchool(name) {
     name: trimmed,
     isCommunity: true,
     isDefault: false,
+    status: 'pending',
+    submittedBy: submittedBy ?? null,
     createdAt: serverTimestamp(),
   })
+}
+
+export async function approveCommunitySchool(schoolId) {
+  const ref = doc(db, 'schools', schoolId)
+  await updateDoc(ref, {
+    status: 'approved',
+    verifiedAt: serverTimestamp(),
+  })
+}
+
+export async function rejectCommunitySchool(schoolId) {
+  await deleteDoc(doc(db, 'schools', schoolId))
 }
 
 export { DEFAULT_SCHOOL, DEFAULT_SCHOOLS }

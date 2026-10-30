@@ -141,7 +141,11 @@ export default function AppLayout() {
         <AppFooter />
       </main>
 
-      <nav className="kr-nav-bar fixed inset-x-0 bottom-0 z-10 sm:hidden" aria-label="Main navigation">
+      <nav
+        className="kr-nav-bar fixed inset-x-0 bottom-0 z-10 sm:hidden"
+        aria-label="Main navigation"
+        data-nav="home-schedule-matches-inbox"
+      >
         <div className="flex min-h-[4rem] items-stretch px-1 pt-1">
           {NAV_ITEMS.map(({ to, label, icon }) => (
             <BottomNavItem key={to} to={to} label={label} icon={icon} />

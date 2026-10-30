@@ -83,7 +83,7 @@ export default function Welcome() {
             {!setupIncomplete ? (
               <div className="text-center">
                 <Link to="/home" className="link-accent text-sm">
-                  ← Back to Dashboard
+                  ← Back to Home
                 </Link>
               </div>
             ) : null}

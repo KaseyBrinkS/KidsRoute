@@ -12,6 +12,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './db'
+import { registerPendingLocation } from './locationsRegistry'
 import { defaultSessions } from './sessions'
 import { getUserProfile } from './users'
 import { processActivityWalkGrouping, repairWalkGroupParticipantIds, syncWalkGroupPartiesForActivity } from './walkGroups'
@@ -139,8 +140,15 @@ export async function syncWalkGroupsForUser(userId) {
   return { synced, skipped: null }
 }
 
+async function syncPendingLocationSubmission(userId, activityData) {
+  if (activityData.locationPendingReview && activityData.location?.trim()) {
+    await registerPendingLocation(activityData.location, userId)
+  }
+}
+
 export async function addActivityAndFindMatches(userId, activityData) {
   const activityRef = await addActivity(userId, activityData)
+  await syncPendingLocationSubmission(userId, activityData)
 
   try {
     const payload = activityMatchingPayload(activityData)
@@ -183,6 +191,8 @@ export async function fetchUserActivities(userId) {
 }
 
 export async function updateActivityAndFindMatches(userId, activityId, activityData) {
+  await syncPendingLocationSubmission(userId, activityData)
+
   await updateDoc(doc(db, 'users', userId, 'activities', activityId), {
     childId: activityData.childId,
     childFirstName: activityData.childFirstName,

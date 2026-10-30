@@ -32,17 +32,13 @@ export const PRESET_LOCATIONS = [
   'Luna Performing Arts',
 ]
 
-export function filterLocations(query) {
+export function filterLocations(query, locations = PRESET_LOCATIONS) {
   const normalized = query.trim().toLowerCase()
-  if (!normalized) return PRESET_LOCATIONS
+  if (!normalized) return locations
 
-  return PRESET_LOCATIONS.filter((location) =>
-    location.toLowerCase().includes(normalized),
-  )
+  return locations.filter((location) => location.toLowerCase().includes(normalized))
 }
 
-export function matchesPresetLocation(name) {
-  return PRESET_LOCATIONS.some(
-    (location) => location.toLowerCase() === name.trim().toLowerCase(),
-  )
+export function matchesPresetLocation(name, locations = PRESET_LOCATIONS) {
+  return locations.some((location) => location.toLowerCase() === name.trim().toLowerCase())
 }

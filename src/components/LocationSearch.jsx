@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { filterLocations, matchesPresetLocation } from '../data/locations'
+import { filterLocations, matchesPresetLocation, PRESET_LOCATIONS } from '../data/locations'
+import { subscribeToApprovedLocations } from '../firebase/locationsRegistry'
 
 const inputClass =
   'block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
@@ -7,12 +8,19 @@ const inputClass =
 export default function LocationSearch({ value, onChange }) {
   const [query, setQuery] = useState(value?.name ?? '')
   const [open, setOpen] = useState(false)
+  const [locationOptions, setLocationOptions] = useState(PRESET_LOCATIONS)
   const containerRef = useRef(null)
 
-  const filtered = filterLocations(query)
+  useEffect(() => {
+    return subscribeToApprovedLocations(setLocationOptions, (err) => {
+      console.error('[LocationSearch] failed to load community locations', err)
+    })
+  }, [])
+
+  const filtered = filterLocations(query, locationOptions)
   const trimmedQuery = query.trim()
   const showCustomOption =
-    trimmedQuery.length > 0 && !matchesPresetLocation(trimmedQuery)
+    trimmedQuery.length > 0 && !matchesPresetLocation(trimmedQuery, locationOptions)
 
   useEffect(() => {
     function handleClickOutside(event) {

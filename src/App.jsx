@@ -29,6 +29,7 @@ import Profile from './pages/Profile'
 import ProfileFamily from './pages/ProfileFamily'
 import ProfileConnections from './pages/ProfileConnections'
 import ProfileNotifications from './pages/ProfileNotifications'
+import RootRedirect from './components/RootRedirect'
 
 const LEGACY_REDIRECTS = [
   ['/dashboard', '/home'],
@@ -58,7 +59,7 @@ export default function App() {
         <Route path="/admin" element={<AdminOnlyRoute />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/activation" element={<Activation />} />
-        <Route path="/" element={<Navigate to="/welcome" replace />} />
+        <Route path="/" element={<RootRedirect />} />
         <Route element={<AppLayout />}>
           <Route
             path="home"

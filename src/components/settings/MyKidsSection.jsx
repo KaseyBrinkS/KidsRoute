@@ -97,6 +97,7 @@ export default function MyKidsSection({ onError, onKidsChanged }) {
         form.schoolSelect,
         form.schoolCustom,
         registerCommunitySchool,
+        user.uid,
       )
       const payload = {
         firstName: form.firstName,

@@ -112,8 +112,14 @@ export default function Login() {
       }
 
       const path = normalizeAppPath(await getPostLoginPath(userId))
+      console.log('[KidsRoute] Sign-in redirect', {
+        userId,
+        path,
+        from: window.location.pathname,
+        routerState: null,
+      })
       authLog('Login.finishLogin: navigating', { userId, path })
-      navigate(path, { replace: true })
+      navigate(path, { replace: true, state: {} })
     },
     [navigate, searchParams],
   )

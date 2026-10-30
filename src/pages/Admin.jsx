@@ -14,7 +14,29 @@ import {
   formatContactSubmittedAt,
   subscribeToContactSubmissions,
 } from '../firebase/contactSubmissions'
+import {
+  approveCommunityLocation,
+  rejectCommunityLocation,
+  subscribeToPendingLocations,
+} from '../firebase/locationsRegistry'
+import {
+  approveCommunitySchool,
+  rejectCommunitySchool,
+  subscribeToPendingSchools,
+} from '../firebase/schoolsRegistry'
 import { formatSchoolDisplay } from '../firebase/schools'
+
+function formatSubmittedAt(entry) {
+  const timestamp = entry.createdAt
+  if (!timestamp?.seconds) return 'Unknown'
+  return new Date(timestamp.seconds * 1000).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
 
 function formatSignedUpAt(account) {
   const timestamp = account.createdAt ?? account.updatedAt
@@ -45,11 +67,16 @@ export default function Admin() {
   const { user } = useAuth()
   const [accounts, setAccounts] = useState([])
   const [contactSubmissions, setContactSubmissions] = useState([])
+  const [pendingSchools, setPendingSchools] = useState([])
+  const [pendingLocations, setPendingLocations] = useState([])
   const [loading, setLoading] = useState(true)
   const [contactsLoading, setContactsLoading] = useState(true)
+  const [schoolsLoading, setSchoolsLoading] = useState(true)
+  const [locationsLoading, setLocationsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [removeTarget, setRemoveTarget] = useState(null)
   const [removing, setRemoving] = useState(false)
+  const [reviewBusyId, setReviewBusyId] = useState(null)
 
   useEffect(() => {
     const unsub = subscribeToAllAccounts(
@@ -79,6 +106,82 @@ export default function Admin() {
     return unsub
   }, [])
 
+  useEffect(() => {
+    const unsub = subscribeToPendingSchools(
+      (nextSchools) => {
+        setPendingSchools(nextSchools)
+        setSchoolsLoading(false)
+      },
+      (err) => {
+        setError(err.message)
+        setSchoolsLoading(false)
+      },
+    )
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    const unsub = subscribeToPendingLocations(
+      (nextLocations) => {
+        setPendingLocations(nextLocations)
+        setLocationsLoading(false)
+      },
+      (err) => {
+        setError(err.message)
+        setLocationsLoading(false)
+      },
+    )
+    return unsub
+  }, [])
+
+  async function handleApproveSchool(schoolId) {
+    setError(null)
+    setReviewBusyId(`school-approve-${schoolId}`)
+    try {
+      await approveCommunitySchool(schoolId)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setReviewBusyId(null)
+    }
+  }
+
+  async function handleRejectSchool(schoolId) {
+    setError(null)
+    setReviewBusyId(`school-reject-${schoolId}`)
+    try {
+      await rejectCommunitySchool(schoolId)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setReviewBusyId(null)
+    }
+  }
+
+  async function handleApproveLocation(locationId) {
+    setError(null)
+    setReviewBusyId(`location-approve-${locationId}`)
+    try {
+      await approveCommunityLocation(locationId)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setReviewBusyId(null)
+    }
+  }
+
+  async function handleRejectLocation(locationId) {
+    setError(null)
+    setReviewBusyId(`location-reject-${locationId}`)
+    try {
+      await rejectCommunityLocation(locationId)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setReviewBusyId(null)
+    }
+  }
+
   async function handleConfirmRemove() {
     if (!removeTarget) return
 
@@ -105,6 +208,108 @@ export default function Admin() {
         {error && <p className="alert-error mb-4">{error}</p>}
 
         <section className="kr-card overflow-hidden">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="kr-section-title">Pending school requests</h2>
+            <p className="kr-section-desc">
+              Community-added schools waiting for approval before they appear for all users
+            </p>
+          </div>
+
+          {schoolsLoading ? (
+            <p className="px-5 py-8 text-muted">Loading school requests…</p>
+          ) : pendingSchools.length === 0 ? (
+            <p className="px-5 py-8 text-muted">No pending school requests.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {pendingSchools.map((school) => (
+                <li key={school.id} className="px-5 py-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[var(--color-text)]">{school.name}</p>
+                      <p className="mt-1 text-xs text-muted">
+                        Submitted {formatSubmittedAt(school)}
+                        {school.submittedBy ? <> · User {school.submittedBy}</> : null}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleApproveSchool(school.id)}
+                        disabled={reviewBusyId !== null}
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+                      >
+                        {reviewBusyId === `school-approve-${school.id}` ? 'Approving…' : 'Approve'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRejectSchool(school.id)}
+                        disabled={reviewBusyId !== null}
+                        className="rounded-xl border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {reviewBusyId === `school-reject-${school.id}` ? 'Rejecting…' : 'Reject'}
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="kr-card mt-8 overflow-hidden">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="kr-section-title">Pending location requests</h2>
+            <p className="kr-section-desc">
+              Custom activity locations submitted by families for review
+            </p>
+          </div>
+
+          {locationsLoading ? (
+            <p className="px-5 py-8 text-muted">Loading location requests…</p>
+          ) : pendingLocations.length === 0 ? (
+            <p className="px-5 py-8 text-muted">No pending location requests.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {pendingLocations.map((location) => (
+                <li key={location.id} className="px-5 py-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[var(--color-text)]">{location.name}</p>
+                      <p className="mt-1 text-xs text-muted">
+                        Submitted {formatSubmittedAt(location)}
+                        {location.submittedBy ? <> · User {location.submittedBy}</> : null}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleApproveLocation(location.id)}
+                        disabled={reviewBusyId !== null}
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+                      >
+                        {reviewBusyId === `location-approve-${location.id}`
+                          ? 'Approving…'
+                          : 'Approve'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRejectLocation(location.id)}
+                        disabled={reviewBusyId !== null}
+                        className="rounded-xl border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {reviewBusyId === `location-reject-${location.id}`
+                          ? 'Rejecting…'
+                          : 'Reject'}
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="kr-card mt-8 overflow-hidden">
           <div className="border-b border-border px-5 py-4">
             <h2 className="kr-section-title">Signed-up accounts</h2>
             <p className="kr-section-desc">
